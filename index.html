@@ -13249,8 +13249,9 @@ function fbmKpiHtml(wk){
   }).join('')+'</div>';
 }
 /* 展示用列 = 标准 FBM_COLS + 本次上传识别到的额外列（自动识别、不丢列）。
-   A–AH 是原有列（A–G 上传必需 / H–S 自动生成 / T–AH 上传手填），结构固定、始终显示；
-   AI–AL（订单状态 / 发货状态 / 中差评 / 意图）是后加的可选维度 —— 表里没这几列就不再占位。 */
+   A–G 上传必需列 + H–S 系统生成列（站点/人员/账号状态等，由看板生成、必有值）：始终显示；
+   T–AH 上传手填列（客诉日期/分仓/物流/中差评/意图 等）与 AI–AM 可选维度（订单状态/发货状态/中差评/意图/买家意图）：
+   按「行内有值 或 上传表含此列」才显示 —— 整列无数据时自动隐藏，避免导入字段空占列宽。 */
 const FBM_OPT_KEYS={orderState:1,shipState:1,badReview:1,intent:1,buyerIntent:1};
 function fbmAllCols(){
   const ex=(DATA.fbmExtra||[]).map(function(x){return ['',x.key,x.label,120,'man'];});
@@ -13266,9 +13267,13 @@ function fbmAllCols(){
   if(!has.buyerIntent){
     for(let i=0;i<rows.length;i++){if(fbmIntents(rows[i]).length){has.buyerIntent=1;break;}}
   }
+  /* 始终显示：A–G 上传必需列（up）+ H–S 系统生成列（auto 且非可选维度，必有值）；
+     其余（T–AH 上传手填列 + AI–AM 可选维度）按「行内有值 或 上传表含此列」才显示，
+     整列无数据时自动隐藏，避免导入字段空占列宽 */
   const keep=FBM_COLS.filter(function(c){
-    if(!FBM_OPT_KEYS[c[1]])return true;          /* A–AH 固定显示 */
-    return !!(has[c[1]]||up[c[1]]);              /* 可选维度：有值或上传表里有这一列才显示 */
+    if(c[4]==='up')return true;
+    if(c[4]==='auto'&&!FBM_OPT_KEYS[c[1]])return true;
+    return !!(has[c[1]]||up[c[1]]);
   });
   return keep.concat(ex);
 }
