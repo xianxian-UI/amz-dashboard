@@ -472,6 +472,17 @@
     font-weight:700;margin-bottom:6px;border-bottom:1px solid #f0f4f2;padding-bottom:5px}
   #fbmClipPop .cp-x{cursor:pointer;color:#b3bec4;font-weight:700}
   #fbmClipPop.on{display:block}
+  #fbmClipPop .cp-b{max-height:300px;overflow:auto;margin-bottom:8px}
+  #fbmClipPop .cp-g,#fbmClipPop .cp-tran-link{display:inline-block;margin:2px 10px 6px 0;font-size:12px;color:#2f7d5b;
+    text-decoration:none;cursor:pointer;border:1px solid #cfe6da;border-radius:6px;padding:3px 9px;background:#f3faf6}
+  #fbmClipPop .cp-g:hover,#fbmClipPop .cp-tran-link:hover{background:#e7f5ee}
+  #fbmClipPop .cp-tran{margin-top:6px;padding:8px 10px;background:#f6faf8;border:1px dashed #cfe6da;border-radius:8px;
+    font-size:12.5px;line-height:1.7;color:#21503a}
+  #fbmClipPop .cp-tran .lab{display:block;font-size:10.5px;color:#8c9aa2;font-weight:700;margin-bottom:3px}
+  #fbmClipPop .cp-tran.loading{color:#8c9aa2}
+  .fbm-tbl td.clip .tr-link{float:right;margin-left:8px;color:#2f7d5b;cursor:pointer;font-size:11px;
+    border-bottom:1px dashed #2f7d5b;opacity:.85}
+  .fbm-tbl td.clip .tr-link:hover{opacity:1}
   /* 列映射面板：上传表列 → 看板字段，手动指定兜底 */
   .fbm-mask{position:fixed;left:0;top:0;right:0;bottom:0;background:rgba(20,35,28,.38);z-index:12000;
     display:flex;align-items:center;justify-content:center;padding:20px}
@@ -9968,8 +9979,12 @@ document.getElementById('app').addEventListener('click',e=>{
     return;
   }
   /* 长文本单元格：点一下看完整内容（最新物流信息 / AZ内容 等） */
+  const _trk=e.target.closest&&e.target.closest('.tr-link');
   const _cl=e.target.closest&&e.target.closest('.fbm-tbl td.clip');
+  if(_trk&&_cl){fbmClipShow(_cl,true);return;} /* 点「🌐译」= 打开并自动翻译 */
   if(_cl){fbmClipShow(_cl);return;}
+  const _tat=e.target.closest&&e.target.closest('[data-act="tr"]');
+  if(_tat){const pp=document.getElementById('fbmClipPop');if(pp)fbmClipTranslate(pp);return;}
   if(!(e.target.closest&&e.target.closest('#fbmClipPop')))fbmClipHide();
   if(e.target.id==='fbmMapBtn'){fbmMapOpen();return;}
   if(e.target.id==='fbmMapClose'){fbmMapHide();return;}
@@ -13294,11 +13309,16 @@ function fbmClipEl(){
   return p;
 }
 function fbmClipHide(){const p=document.getElementById('fbmClipPop');if(p)p.classList.remove('on');}
-function fbmClipShow(td){
+function fbmClipShow(td,autoTr){
   const txt=td.getAttribute('data-full')||'',col=td.getAttribute('data-col')||'';
   const p=fbmClipEl(),on=p.classList.contains('on')&&p.getAttribute('data-for')===col+txt;
   fbmClipHide();if(on)return;
-  p.innerHTML='<div class="cp-h"><span>'+esc(col)+'</span><span class="cp-x">✕ 关闭</span></div><div class="cp-b"></div>';
+  const gUrl='https://www.bing.com/translator?from=en&to=zh-Hans&text='+encodeURIComponent(txt);
+  p.innerHTML='<div class="cp-h"><span>'+esc(col)+'</span><span class="cp-x">✕ 关闭</span></div>'
+    +'<div class="cp-b"></div>'
+    +'<a class="cp-g" href="'+gUrl+'" target="_blank" rel="noopener">🌐在线翻译(Bing)</a>'
+    +'<a class="cp-tran-link" data-act="tr">🌐翻译为中文</a>'
+    +'<div class="cp-tran" style="display:none"></div>';
   p.querySelector('.cp-b').textContent=txt;
   p.setAttribute('data-for',col+txt);
   p.classList.add('on');
@@ -13307,7 +13327,62 @@ function fbmClipShow(td){
   let top=r.bottom+6;
   if(top+h>window.innerHeight-8)top=Math.max(8,r.top-h-6);
   p.style.left=left+'px';p.style.top=top+'px';
+  if(autoTr)fbmClipTranslate(p);
 }
+
+/* ---------- AZ内容 / 差评内容 / 中差评 自动翻译（MyMemory 主 + Google 备选） ---------- */
+const TR_CACHE={};
+function trSleep(ms){return new Promise(function(r){setTimeout(r,ms);});}
+const TR_SEG_RE=/[\n。.!?！？]+/;
+function trSplit(t){return String(t).split(TR_SEG_RE).map(function(s){return s.trim();}).filter(Boolean);}
+/* 主接口：MyMemory 免费无 key，国内可达、浏览器跨域(CORS *) */
+function trMyMem(text){
+  return new Promise(function(res){
+    const url='https://api.mymemory.translated.net/get?q='+encodeURIComponent(text)+'&langpair=en|zh-CN';
+    fetch(url).then(function(r){return r.json();}).then(function(d){
+      const t=d&&d.responseData&&d.responseData.translatedText;
+      if(t&&/[\u4e00-\u9fa5]/.test(t))res(t);else res(null);
+    }).catch(function(){res(null);});
+  });
+}
+/* 备选：Google 免 key（国内多数网络不稳/常限流，仅网络能通时生效） */
+function trGtx(text){
+  return new Promise(function(res){
+    const url='https://translate.googleapis.com/translate_a/single?client=gtx&sl=en&tl=zh-CN&dt=t&q='+encodeURIComponent(text);
+    fetch(url).then(function(r){return r.json();}).then(function(d){
+      try{const t=(d[0]||[]).map(function(x){return (x&&x[0])||'';}).join('');
+        if(t&&/[\u4e00-\u9fa5]/.test(t))res(t);else res(null);}catch(e){res(null);}
+    }).catch(function(){res(null);});
+  });
+}
+async function trTranslate(text){
+  if(TR_CACHE[text])return TR_CACHE[text];
+  let t=await trMyMem(text);
+  if(t){TR_CACHE[text]=t;return t;}
+  const segs=trSplit(text);
+  if(segs.length){
+    let out=[],ok=false;
+    for(let i=0;i<segs.length;i++){
+      const r=await trMyMem(segs[i]);
+      if(r){ok=true;out.push(r);}else out.push(null);
+      if(i<segs.length-1)await trSleep(250);
+    }
+    if(ok){const res=out.map(function(s,i){return s==null?('【'+segs[i]+'】'):s;}).join('。');TR_CACHE[text]=res;return res;}
+  }
+  const g=await trGtx(text);
+  if(g){TR_CACHE[text]=g;return g;}
+  return null;
+}
+async function fbmClipTranslate(p){
+  const seg=p.querySelector('.cp-tran');
+  const src=p.querySelector('.cp-b').textContent;
+  if(!seg||src==null)return;
+  seg.style.display='block';seg.className='cp-tran loading';seg.innerHTML='<span class="lab">中文译文</span>翻译中…';
+  const t=await trTranslate(src);
+  seg.className='cp-tran';
+  seg.innerHTML='<span class="lab">中文译文</span>'+(t?esc(t):'<span style="color:#b0533a">翻译接口暂时繁忙，请点上方「🌐在线翻译(Bing)」到网页查看。</span>');
+}
+
 function fbmTableHtml(){
   const rows=fbmList();
   const pages=Math.max(1,Math.ceil(rows.length/isPageSize));
@@ -13335,8 +13410,10 @@ function fbmTableHtml(){
       if(c[1]==='neg'||c[1]==='az'||c[1]==='cb')cls=v?'st-mark':'';
       /* 长内容（最新物流信息 / AZ内容 / 差评内容 等）：单元格里截断显示，点一下弹完整内容 */
       if(v.length>24){
+        const trLink=(c[1]==='azContent'||c[1]==='badContent'||c[1]==='badReview')
+          ?'<span class="tr-link" title="翻译为中文">🌐译</span>':'';
         return '<td class="fbm-td clip '+cls+'" data-full="'+esc(v)+'" data-col="'+esc(c[0]+' · '+c[2])+'"'
-          +' title="点击查看完整内容（共 '+v.length+' 字）">'+esc(v)+'</td>';
+          +' title="点击查看完整内容（共 '+v.length+' 字）">'+esc(v)+trLink+'</td>';
       }
       return '<td class="fbm-td '+cls+'" title="'+esc(v)+'">'+(v?esc(v):'<span class="fbm-nil">—</span>')+'</td>';
     }).join('')+'</tr>';
