@@ -13425,9 +13425,9 @@ function fbmTableHtml(){
       }
       if(c[1]==='affect'&&v==='是')cls='st-warn';
       if(c[1]==='neg'||c[1]==='az'||c[1]==='cb')cls=v?'st-mark':'';
-      /* 可翻译文本列：AZ内容/差评内容/中差评/最新物流信息 —— 只要含外文就给「🌐译」，与字数无关
-         （短句如 "Not received it, the" 只有 20 字，旧逻辑按 v.length>24 判长内容会漏掉按钮） */
-      const trCol=(c[1]==='azContent'||c[1]==='badContent'||c[1]==='badReview'||c[1]==='logiInfo');
+      /* 需要「🌐译」的只有两列：AZ内容 / 差评内容 —— 内容含非中文（外文）才显示按钮，
+         与字数无关（短句如 "Not received it, the" 只有 20 字，旧逻辑按 v.length>24 会漏掉） */
+      const trCol=(c[1]==='azContent'||c[1]==='badContent');
       const needTr=trCol&&!!v&&/[A-Za-z\u00C0-\u024F]/.test(v); /* 纯中文原文不必翻译，不显示按钮 */
       /* 长内容 或 需要翻译的短内容：单元格里截断显示，点一下弹完整内容/译文 */
       if(v.length>24||needTr){
