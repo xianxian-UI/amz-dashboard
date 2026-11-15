@@ -16927,13 +16927,13 @@ function targetCfgView(){
       return '<tr><td class="tgt-name">'+esc(n)+'</td>'+TGT_FIELDS.map(function(f){return cell(block,n,f[0]);}).join('')+'</tr>';
     }).join('');
   };
-  /* 总计行：可直接改；未手改时显示自动均值，清空即恢复自动 */
+  /* 总计行：口径 = 导入表格里的「合计 / 总计」行（也支持手改）；没有合计行才回落到客服均值 */
   const totalRow='<tr class="tgt-tot"><td class="tgt-name"><b>总计</b></td>'+TGT_FIELDS.map(function(f){
     const m=tgtTotGet('cs',f[0]),a=tgtAvg('cs',f[0]);
     const manual=(m!=='');
     const raw=manual?m:a;
     const show=(raw===''||raw==null||isNaN(Number(raw)))?'':(Math.round(Number(raw)*100)/100).toFixed(2);
-    return '<td class="tgt-cell"><input class="cfg-num tgt-in tgt-tin'+(manual?' manual':'')+'" data-tgt="cs" data-tgtname="'+TGT_TOT+'" data-tgtf="'+f[0]+'" value="'+esc(show)+'" placeholder="—" title="'+(manual?'手动指定（清空后恢复自动均值）':'自动取客服均值，可直接修改')+'"><i>%</i></td>';
+    return '<td class="tgt-cell"><input class="cfg-num tgt-in tgt-tin'+(manual?' manual':'')+'" data-tgt="cs" data-tgtname="'+TGT_TOT+'" data-tgtf="'+f[0]+'" value="'+esc(show)+'" placeholder="—" title="'+(manual?'取导入表格的「合计」行（也可手改；清空后恢复自动均值）':'表格没有合计行 → 自动取客服均值，可直接修改')+'"><i>%</i></td>';
   }).join('')+'</tr>';
   return '<div class="panel">'
     +cfgTabBar()
@@ -16942,7 +16942,7 @@ function targetCfgView(){
     +'<div class="cfg-sec">'
       +'<h3>客服目标（'+cs.length+' 人）</h3>'
       +'<div class="tgt-bar"><label class="btn ghost tgt-imp">⬆ 导入目标<input type="file" id="tgtFile" accept=".xlsx,.xls,.csv,.txt" hidden></label>'
-        +'<span class="cfg-tip">表头需含「客服」+ 任一目标列（主健康率 / 主账号 / 小账号 / 店铺评分 / 退款率的持平值、退款率优秀值）；数值可写 94.34% 或 0.9434</span></div>'
+        +'<span class="cfg-tip">表头需含「客服」+ 任一目标列（主健康率 / 主账号 / 小账号 / 店铺评分 / 退款率的持平值、退款率优秀值）；数值可写 94.34% 或 0.9434。表格里的「合计 / 总计」行会直接写进下方<b>总计</b>行（不再用客服均值）</span></div>'
       +'<table class="cfg-table tgt-tbl"><thead><tr><th>客服</th>'+TGT_FIELDS.map(function(f){return '<th>'+f[1]+'</th>';}).join('')+'</tr></thead><tbody>'+body(cs,'cs')+totalRow+'</tbody></table>'
     +'</div>'
     +'<div class="cfg-sec">'
@@ -16977,12 +16977,23 @@ function targetApplyAoa(aoa,apply){
     if(m.name!=null&&(m.mainHealth!=null||m.mainAcct!=null||m.subAcct!=null||m.shopScore!=null||m.refRate!=null||m.refRateGood!=null)){hi=i;map=m;break;}
   }
   if(hi<0||!map)return {ok:false,msg:'没找到表头（需要「客服」+ 至少一个持平值列）'};
-  if(apply===false)return {ok:true,cs:0,ld:0,skip:0};   /* 仅探测表头，不落库 */
+  if(apply===false)return {ok:true,cs:0,ld:0,tot:0,skip:0};   /* 仅探测表头，不落库 */
   const csSet=new Set(csLsAll(DATA.stdCfg)),ldSet=new Set(tgtLeaderList());
-  let nCs=0,nLd=0,skip=0;
+  let nCs=0,nLd=0,nTot=0,skip=0;
   for(let i=hi+1;i<aoa.length;i++){
     const row=aoa[i]||[];const nm=String(row[map.name]==null?'':row[map.name]).trim();
-    if(!nm||/^(总计|合计|总计值|总和)$/.test(nm)){skip++;continue;}
+    if(!nm){skip++;continue;}
+    /* 「合计 / 总计」行 → 直接写进总计行：总计 = 表格自带的合计数，不再拿客服均值当总计 */
+    if(/^(总计|合计|总计值|合计值|总和|汇总|总合计|总共|全部)$/.test(nm)){
+      let hitT=0;
+      TGT_FIELDS.forEach(function(f){
+        if(map[f[0]]==null)return;
+        const v=tgtNum(row[map[f[0]]]);
+        if(isFinite(v)){tgtSet('cs',TGT_TOT,f[0],v);hitT++;}
+      });
+      if(hitT)nTot++;else skip++;
+      continue;
+    }
     const block=(map.leader!=null&&String(row[map.leader]==null?'':row[map.leader]).trim()===nm)||(!csSet.has(nm)&&ldSet.has(nm))?'leader':'cs';
     let hit=0;
     TGT_FIELDS.forEach(function(f){
@@ -16993,7 +17004,7 @@ function targetApplyAoa(aoa,apply){
     if(hit){if(block==='leader')nLd++;else nCs++;}
     else skip++;
   }
-  return {ok:true,cs:nCs,ld:nLd,skip:skip};
+  return {ok:true,cs:nCs,ld:nLd,tot:nTot,skip:skip};
 }
 function targetImportFile(f){
   const isX=/\.(xlsx|xls)$/i.test(f.name)&&window.XLSX;
@@ -17016,7 +17027,7 @@ function targetImportFile(f){
     const r=targetApplyAoa(aoa);
     if(!r.ok){alert('目标未导入：'+r.msg);return;}
     save();render();
-    alert('目标已导入：客服 '+r.cs+' 人、组长 '+r.ld+' 人'+(r.skip?('，跳过 '+r.skip+' 行'):''));
+    alert('目标已导入：客服 '+r.cs+' 人、组长 '+r.ld+' 人'+(r.tot?('，总计取表格「合计」行'):'')+(r.skip?('，跳过 '+r.skip+' 行'):''));
   };
   if(isX)rd.readAsArrayBuffer(f);else rd.readAsText(f,'UTF-8');
 }
