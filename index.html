@@ -10733,7 +10733,9 @@ const STD_METRIC_GROUPS=[
   ['订单缺陷率',[['fbmOdr','FBM订单缺陷率'],['invDefRate','发票缺陷率']]],
   ['店铺评分',[['shopScore','店铺评分']]],
   ['政策合规性',[['acctGrade','账户评级'],['acctScore','账户评分']]],
-  ['物流考核&发货问题',[['late10','10天迟发率'],['late30','30天迟发率'],['cancelRate','预配送取消率'],['trackRate','有效追踪率'],['ontimeRate','准时交货率']]]
+  ['物流考核&发货问题',[['late10','10天迟发率'],['late30','30天迟发率'],['cancelRate','预配送取消率'],['trackRate','有效追踪率'],['ontimeRate','准时交货率']]],
+  /* 账号报损：日/周/月退款率（取汇总表「账号报损」的快照值，判定规则在「模块设置 · 达标设置 ③」） */
+  ['账号报损',[['baoDRate','日退款率'],['baoWRate','周退款率'],['baoMRate','月退款率']]]
 ];
 const STD_M_COLS=STD_METRIC_GROUPS.reduce((a,g)=>a.concat(g[1]),[]);
 const STD_M_KEYS=STD_M_COLS.map(c=>c[0]);
@@ -10828,11 +10830,16 @@ function stdCfgDefault(){return {
     late30:{on:true,dir:'le',val:4,warn:6},
     cancelRate:{on:true,dir:'le',val:2.5,warn:4},
     trackRate:{on:true,dir:'ge',val:95,warn:90},
-    ontimeRate:{on:true,dir:'ge',val:90,warn:85}
+    ontimeRate:{on:true,dir:'ge',val:90,warn:85},
+    /* 账号报损：退款率 = 退款额÷销售额，越低越好；默认 达标 ≤5%、临界 ≤8% */
+    baoDRate:{on:true,dir:'le',val:5,warn:8},
+    baoWRate:{on:true,dir:'le',val:5,warn:8},
+    baoMRate:{on:true,dir:'le',val:5,warn:8}
   },
   healthMode:'checked',
   /* ④ 健康账号口径：独立于 ③ 的勾选，默认把全部指标计入健康判定 */
-  healthKeys:STD_M_KEYS.slice(),
+  /* 报损退款率默认不计入「健康账号」（它是快照、口径与周指标不同），需要时在 ④ 单独勾 */
+  healthKeys:STD_M_KEYS.filter(function(k){return SUM_BAO_RATE.indexOf(k)<0;}),
   /* ⑤ 无数据占位值：显示什么、就按什么参与判定（非数字 = 不参与判定） */
   emptyText:'—',
   emptyMode:'skip'
@@ -10852,7 +10859,8 @@ function stdCfgMerge(c){
   if((ag.good==null||Number(ag.good)===600)&&(ag.risk==null||Number(ag.risk)===300)){ag.good=200;ag.risk=100;}
   /* 健康账号口径改为「④ 独立勾选」，旧 all/rate/odr 与缺失值统一归一为「全部计入健康」 */
   c.healthMode='checked';
-  c.healthKeys=Array.isArray(c.healthKeys)?STD_M_KEYS.filter(k=>c.healthKeys.indexOf(k)>=0):STD_M_KEYS.slice();
+  /* 默认健康口径仍是原来的周指标（不含报损退款率）；老配置里没存 healthKeys 时也按这套，别悄悄改变健康账号数 */
+  c.healthKeys=Array.isArray(c.healthKeys)?STD_M_KEYS.filter(k=>c.healthKeys.indexOf(k)>=0):STD_M_KEYS.filter(k=>SUM_BAO_RATE.indexOf(k)<0);
   if(['skip','fail','nodata'].indexOf(c.emptyMode)<0)c.emptyMode='skip';
   /* 旧版三选一 → 统一成可编辑占位值：skip=「—」/ nodata=「无数据」/ fail=「0」 */
   if(c.emptyText==null||String(c.emptyText).trim()===''){
@@ -10959,11 +10967,18 @@ function stdEvalRow(a, ds){
   /* ⑤ 无数据映射：把占位值当作该指标的取值参与阈值判定（非数字则不判定） */
   const et=stdEmptyText(),numEmpty=isFinite(stdEmptyNum()),etLv=stdEmptyLevel();
   const key=String(a.short==null?'':a.short).trim().toUpperCase();
-  const mm=Object.assign({},m);let rawMissing=0;
+  /* 报损退款率来自「上传指标数据源 · 日/周/月退款明细」的快照，不在周指标里，这里并进来一一判定 */
+  const mm=Object.assign({},m,sumBaoFields(key));let rawMissing=0;
+  /* 「整行一条指标都没有」只看周指标（退款率是快照，不能把空行救活） */
+  const guardKeys=keys.filter(function(k){return SUM_BAO_RATE.indexOf(k)<0;});
+  let guardMissing=0;
   /* 店铺评分关联规则：账号无负面反馈订单且评分不达标(<3.5) → 改为3.5（仅改有值的，空/0 走 zeroTo 不动） */
   if(mm.shopScore!=null&&String(mm.shopScore).trim()!=='')mm.shopScore=shopScoreEff(key, mm.shopScore);
   const missingKeys={};
-  keys.forEach(function(k){const v=mm[k];if(v==null||String(v).trim()===''){rawMissing++;missingKeys[k]=1;if(numEmpty)mm[k]=et;}});
+  keys.forEach(function(k){
+    const v=mm[k];
+    if(v==null||String(v).trim()===''){rawMissing++;missingKeys[k]=1;if(numEmpty)mm[k]=et;if(guardKeys.indexOf(k)>=0)guardMissing++;}
+  });
   const passMap={};let fail=0,warn=0,missing=0;
   keys.forEach(function(k){
     /* ⑤ 写的是「达标/临界/不达标」→ 直接采用该判定；否则按数值映射/正常判定 */
@@ -10973,7 +10988,7 @@ function stdEvalRow(a, ds){
     else if(lv==='warn')warn++;
   });
   /* 整行一条指标都没有（且 ⑤ 未给判定/数值）→ 一律视为未录入，不让 0 值映射把空行判成达标 */
-  if(keys.length>0&&rawMissing===keys.length&&!numEmpty&&!etLv){
+  if(guardKeys.length>0&&guardMissing===guardKeys.length&&!numEmpty&&!etLv){
     Object.keys(passMap).forEach(function(k){delete passMap[k];});
     fail=0;warn=0;missing=keys.length;
   }
@@ -10985,8 +11000,11 @@ function stdEvalRow(a, ds){
     if(lv==null){hMissing++;if(cfg.emptyMode==='fail')hFail++;}
     else if(lv==='fail')hFail++;
   });
-  const noData=(keys.length>0&&keys.every(function(k){return passMap[k]==null;}));
-  const healthNoData=(hkeys.length===0)||(hMissing===hkeys.length&&cfg.emptyMode!=='fail');
+  const noData=(guardKeys.length>0&&guardKeys.every(function(k){return passMap[k]==null;}));
+  /* 健康口径的「无数据」只看周指标：报损退款率是快照，勾进 ④ 后不能把「一条周指标都没有」的账号判成健康 */
+  const hGuard=hkeys.filter(function(k){return SUM_BAO_RATE.indexOf(k)<0;});
+  const hGuardMissing=hGuard.filter(function(k){return passMap[k]==null;}).length;
+  const healthNoData=(hkeys.length===0)||(hGuard.length>0&&hGuardMissing===hGuard.length&&cfg.emptyMode!=='fail');
   return {fail:fail,warn:warn,missing:missing,judgeN:keys.length,passMap:passMap,
     healthN:hkeys.length,healthFail:hFail,healthMissing:hMissing,
     healthy:(hkeys.length>0&&hFail===0),healthNoData:healthNoData,noData:noData};
@@ -10995,7 +11013,7 @@ function stdFields(a, ds){
   ds=ds||stdCurWeek();const wi=sumWeekInfo(ds);
   const key=String(a.short==null?'':a.short).trim().toUpperCase();
   let m=stdMetricRec(a, ds);
-  m=Object.assign({},m,{shopScore:shopScoreEff(key, m.shopScore)});
+  m=Object.assign({},m,{shopScore:shopScoreEff(key, m.shopScore)},sumBaoFields(key));
   const ev=stdEvalRow(a, ds);
   const cfg=DATA.stdCfg||{};
   const site=String(a.site==null?'':a.site).trim().toUpperCase();
@@ -16450,11 +16468,11 @@ function stdBodyInner(){
   const total=all.length,shown=list.length;
   const mSet={};STD_M_KEYS.forEach(k=>mSet[k]=1);
   const vcStd=colVisible('std'),gcStd=colGroupsVisible('std');
-  const head1=`<tr class="grow"><th class="grp" rowspan="2">#</th>${gcStd.map(g=>`<th class="grp" colspan="${g.cols.length}">${esc(g.name)}</th>`).join('')}</tr>`;
+  const head1=`<tr class="grow"><th class="grp" rowspan="2">#</th>${gcStd.map(g=>`<th class="grp${g.name==='账号报损'?' bao':''}" colspan="${g.cols.length}">${esc(g.name)}</th>`).join('')}</tr>`;
   const head2=`<tr>${vcStd.map(([k,l])=>{
     const act=stdSortK===k?(stdSortDir===2?2:1):0;
-    const hl=(k==='stdFail'||k==='stdHealthy')?' class="hl"':'';
-    return `<th${hl} data-stdsort="${k}" title="点击切换排序：升序 → 降序 → 取消">${esc(l)}<span class="xlf${act?' on':''}"><i>${act===2?'▼':'▲'}</i></span></th>`;
+    const hl=(k==='stdFail'||k==='stdHealthy')?'hl':baoCls(k);
+    return `<th${hl?' class="'+hl+'"':''} data-stdsort="${k}" title="点击切换排序：升序 → 降序 → 取消">${esc(l)}<span class="xlf${act?' on':''}"><i>${act===2?'▼':'▲'}</i></span></th>`;
   }).join('')}</tr>`;
   const et=stdEmptyText();
   const blank=et;
@@ -17039,7 +17057,7 @@ function stdCfgViewMain(){
     </div>
     <div class="cfg-sec">
       <h3>③ 指标达标规则 与 临界（黄色）阈值</h3>
-      <p class="cfg-tip">勾选 = 参与达标判定与「不达标数量」统计（<b>「健康账号」口径在 ④ 单独勾选，与这里互不影响</b>）；「≤ / ≥」表示达标需小于等于 / 大于等于阈值；率字段按百分比比较。<b>「账户评级」由账户评分三档数值映射</b>（≥ 良好阈值 → <b class="sok">良好</b>=达标；≥ 存在风险阈值 → <b class="swarn">存在风险</b>=临界；&lt; 存在风险阈值 → <b class="sbad">不佳</b>=不达标）。<br>「临界阈值」<b>留空则该指标不显示黄色</b>；填写后，指标值落在「阈值」与「临界阈值」之间时，汇总表对应单元格显示 <span class="swarn">黄色（临界）</span>，介于达标与未达标之间、需关注但不计入「不达标数量」。<b>AMZ达标表只显示「达标 / 不达标 / 临界」文字（不染色），颜色在 AMZ汇总表。</b></p>
+      <p class="cfg-tip">勾选 = 参与达标判定与「不达标数量」统计（<b>「健康账号」口径在 ④ 单独勾选，与这里互不影响</b>）；「≤ / ≥」表示达标需小于等于 / 大于等于阈值；率字段按百分比比较。<b>「账户评级」由账户评分三档数值映射</b>（≥ 良好阈值 → <b class="sok">良好</b>=达标；≥ 存在风险阈值 → <b class="swarn">存在风险</b>=临界；&lt; 存在风险阈值 → <b class="sbad">不佳</b>=不达标）。<br>「临界阈值」<b>留空则该指标不显示黄色</b>；填写后，指标值落在「阈值」与「临界阈值」之间时，汇总表对应单元格显示 <span class="swarn">黄色（临界）</span>，介于达标与未达标之间、需关注但不计入「不达标数量」。<b>AMZ达标表只显示「达标 / 不达标 / 临界」文字（不染色），颜色在 AMZ汇总表。</b><br><b>「日/周/月退款率」</b>取「上传指标数据源 · 日/周/月退款明细」的快照（= 退款额 ÷ 销售额），不随周切换；默认 达标 ≤ 5%、临界 ≤ 8%，按实际口径改这里的数值即可。</p>
       <label class="cfg-chk"><input type="checkbox" data-stdset="warnOn"${warnOn?' checked':''}><span>启用临界（黄色）预警</span></label>
       <table class="cfg-table"><thead><tr><th>指标</th><th>方向</th><th>阈值</th><th>临界阈值</th><th>0 值映射</th><th>单位</th></tr></thead><tbody>${metricRows}</tbody></table>
       <p class="cfg-tip"><b>0 值映射</b>：某些指标填 0（或整格没数据）表示「没抓取到」而不是真的最差（例如<b>店铺评分 0 分</b>）。填一个映射值后，<b>显示与判定都按这个值算</b>（店铺评分 0/空 → 5 分，绿色达标），鼠标悬停可看到「原值 0/无数据，按映射值 5 显示」；健康账号与看板同步。留空则不映射，0 就是 0、空就是无数据。<br><b>率类指标（单位 %）请按百分比填</b>，与「阈值」同口径：填 <b>1</b> = 1%，不是 100%。</p>
