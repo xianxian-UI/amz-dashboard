@@ -17042,7 +17042,15 @@ function targetApplyAoa(aoa,apply){
         const v=tgtNum(row[map[f[0]]]);
         if(isFinite(v)){tgtSet('cs',TGT_TOT,f[0],v);hitT++;}
       });
-      if(hitT)nTot++;else skip++;
+      /* 合计行以表格为准：表格里空着的项要清掉旧值，否则会残留上一版的数、看着像「只有某一项对」 */
+      if(hitT){
+        const tr=tgtBlockOf('cs')[TGT_TOT]||{};
+        TGT_FIELDS.forEach(function(f){
+          const raw=(map[f[0]]==null)?'':row[map[f[0]]];
+          if(!isFinite(tgtNum(raw))&&tr[f[0]]!=null)delete tr[f[0]];
+        });
+        nTot++;
+      }else skip++;
       continue;
     }
     const block=(map.leader!=null&&String(row[map.leader]==null?'':row[map.leader]).trim()===nm)||(!csSet.has(nm)&&ldSet.has(nm))?'leader':'cs';
