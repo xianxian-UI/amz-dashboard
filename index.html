@@ -13817,24 +13817,22 @@ function baoInner(){
     });
     body+=baoRowHtml(allEnt,{cls:'bao-sum',tint:CSF_SUM_TINT.amber});
   }
-  /* 表头：左边固定区 + 当前维度整组（表头组名带快照日期） */
+  /* 表头：一行到底（不再单独给维度加一行名头，靠三色 + 日/周/月 按钮区分口径） */
   const tone=BAO_TONE[k]||BAO_TONE.w;
   const dt=baoMetaDate(k);
-  const dtag=BAO_KLBL[k]+(dt?(' · '+(k==='m'?dt.slice(0,7):dt.slice(5))):' · 未上传');
+  const mstyle='background:'+tone.hd+';color:'+tone.fg;
   const head='<thead><tr>'
-    +'<th class="grp hk-reg" rowspan="2">项目</th>'
-    +'<th rowspan="2" class="bao-th-tgt" title="该行的「退款率持平值」（客服取目标设置·客服区；分类组取分类组区 / 组内客服均值）">月目标值</th>'
-    +'<th rowspan="2" class="bao-th-ach" title="目标 ÷ 实际退款率（按当前 日/周/月 口径；>100% 即优于目标）">达成率</th>'
-    +'<th rowspan="2" title="这张表上一期与本期相比的退款率差（百分点）">环比</th>'
-    +'<th rowspan="2" title="持平目标 − 实际退款率（正数＝比目标更低，优于目标）">差距</th>'
-    +'<th rowspan="2" title="全体客服统一排名（按达成率降序）">排名</th>'
-    +'<th colspan="5" class="bao-hdg" style="background:'+tone.hd+';color:'+tone.fg+';border-left:3px solid '+tone.bd+'" title="当前 '+BAO_KLBL[k]+' 口径（快照 '+esc(dt||'未上传')+'）">'+esc(dtag)+'</th>'
-    +'</tr><tr>'
-    +'<th class="bao-mh" style="background:'+tone.hd+';color:'+tone.fg+';border-left:3px solid '+tone.bd+'" title="退款率 = 退款额 ÷ 销售额（'+BAO_KLBL[k]+'口径）">退款率</th>'
-    +'<th class="bao-mh" style="background:'+tone.hd+';color:'+tone.fg+'" title="部分退款占比（数据源待接入，暂时留空）">部分退款占比</th>'
-    +'<th class="bao-mh" style="background:'+tone.hd+';color:'+tone.fg+'" title="退款额合计（'+BAO_KLBL[k]+'口径）">退款总额</th>'
-    +'<th class="bao-mh bao-m2" style="background:'+tone.hd+';color:'+tone.fg+'" title="退款率 ≤ 客服持平值的账号占比（'+BAO_KLBL[k]+'口径）">达标率</th>'
-    +'<th class="bao-mh" style="background:'+tone.hd+';color:'+tone.fg+'" title="退款率 > 客服持平值的账号数（'+BAO_KLBL[k]+'口径）">不达标账号数</th>'
+    +'<th class="grp hk-reg">项目</th>'
+    +'<th class="bao-th-tgt" title="该行的「退款率持平值」（客服取目标设置·客服区；分类组取分类组区 / 组内客服均值）">月目标值</th>'
+    +'<th class="bao-th-ach" title="目标 ÷ 实际退款率（按当前 日/周/月 口径；>100% 即优于目标）">达成率</th>'
+    +'<th title="这张表上一期与本期相比的退款率差（百分点）">环比</th>'
+    +'<th title="持平目标 − 实际退款率（正数＝比目标更低，优于目标）">差距</th>'
+    +'<th title="全体客服统一排名（按达成率降序）">排名</th>'
+    +'<th class="bao-mh" style="'+mstyle+';border-left:3px solid '+tone.bd+'" title="退款率 = 退款额 ÷ 销售额（'+BAO_KLBL[k]+'口径，快照 '+esc(dt||'未上传')+'）">退款率</th>'
+    +'<th class="bao-mh" style="'+mstyle+'" title="部分退款占比（数据源待接入，暂时留空）">部分退款占比</th>'
+    +'<th class="bao-mh" style="'+mstyle+'" title="退款额合计（'+BAO_KLBL[k]+'口径，快照 '+esc(dt||'未上传')+'）">退款总额</th>'
+    +'<th class="bao-mh bao-m2" style="'+mstyle+'" title="退款率 ≤ 客服持平值的账号占比（'+BAO_KLBL[k]+'口径）">达标率</th>'
+    +'<th class="bao-mh" style="'+mstyle+'" title="退款率 > 客服持平值的账号数（'+BAO_KLBL[k]+'口径）">不达标账号数</th>'
     +'</tr></thead>';
   /* 口径说明（默认收起） */
   const note=baoNote
