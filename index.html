@@ -1310,6 +1310,30 @@
   .pol-upd-src{margin-top:6px;font-size:11.5px;color:#a2a7b8}
   mark{background:#fff3b0;color:inherit;border-radius:3px;padding:0 2px}
   .mask{position:fixed;inset:0;background:rgba(63,68,77,.20);display:flex;align-items:flex-start;justify-content:center;padding:40px 16px;z-index:20;overflow:auto}
+  /* ── 账号报损（日/周/月退款）表头：绿色，跟其它分组不同色 ── */
+  table.xl thead tr.grow th.bao{background:#cce8cf;color:#2c5f38;box-shadow:inset 0 -1px 0 #b7d9bb}
+  table.xl thead tr.grow th.bao:hover{background:#cce8cf}
+  table.xl thead th.bcol{background:#e3f2e5;color:#2c5f38;box-shadow:inset 0 -1px 0 #cbe4cf}
+  table.xl thead th.bcol:hover{background:#d8ecdb}
+  /* ── 报损截图单元格 ── */
+  td.shot{text-align:center;white-space:nowrap;padding:3px 6px}
+  .shot-add{width:36px;height:24px;border:1px dashed #c9c4e0;background:#faf9ff;color:#8a85a6;border-radius:6px;cursor:pointer;font-size:13px;line-height:20px;padding:0}
+  .shot-add:hover{border-color:#7d6ee8;color:#5a51cb;background:#f3f0ff}
+  .shot-btn{padding:0;border:1px solid var(--line);background:#fff;border-radius:6px;cursor:zoom-in;line-height:0;vertical-align:middle}
+  .shot-btn img{height:26px;width:auto;max-width:74px;object-fit:cover;border-radius:5px;display:inline-block}
+  .shot-btn:hover{border-color:#7d6ee8}
+  .shot-del{margin-left:2px;border:none;background:transparent;color:#c9c4e0;cursor:pointer;font-size:11px;padding:0}
+  .shot-del:hover{color:#d63a34}
+  /* ── 上传指标数据源面板：主表 + 日/周/月三张独立退款表 ── */
+  .modal.srcpanel{width:min(980px,100%)}
+  .sp-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+  .sp-card{border:1px solid var(--line);border-radius:10px;overflow:hidden;background:#fff;display:flex;flex-direction:column}
+  .sp-card.main{grid-column:1/-1}
+  .sp-hd{padding:9px 12px;font-weight:700;font-size:13px;background:var(--psoft);color:#5a51cb;border-bottom:1px solid #e0dbfa}
+  .sp-card.bao .sp-hd{background:#cce8cf;color:#2c5f38;border-bottom-color:#b7d9bb}
+  .sp-bd{padding:10px 12px;display:flex;flex-direction:column;gap:7px;align-items:flex-start;flex:1}
+  .sp-cols{font-size:11.5px;color:#8a85a6;line-height:1.55}
+  .sp-st{font-size:12px;color:#4a4560;line-height:1.5;flex:1}
   .modal{background:#fff;border-radius:14px;width:min(700px,100%);box-shadow:0 18px 44px rgba(63,68,77,.15)}
   .modal header{padding:15px 20px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center;gap:10px;position:static}
   .modal header h2{margin:0;font-size:15px;font-weight:600}
@@ -2566,6 +2590,12 @@ const SUM_KEEP_WEEKS=4;
 var SUM_PRUNED=[];
 /* 兼容旧数据：早期「对接/停用时间」是同一列，日期要拆到「停用时间」 */
 function migrateData(d){
+  /* 账号报损：日/周/月三张退款明细（各存最近一次上传的快照）{ d:{账号:{ord,ref,sale,rate,at}}, w:{}, m:{} } */
+  if(!d.sumBao||typeof d.sumBao!=='object'||Array.isArray(d.sumBao))d.sumBao={};
+  ['d','w','m'].forEach(function(k){if(!d.sumBao[k]||typeof d.sumBao[k]!=='object'||Array.isArray(d.sumBao[k]))d.sumBao[k]={};});
+  if(!d.sumBaoMeta||typeof d.sumBaoMeta!=='object'||Array.isArray(d.sumBaoMeta))d.sumBaoMeta={};
+  /* 账号报损截图：{ '账号大写': {src:压缩后的dataURL, at, ds} } */
+  if(!d.sumShots||typeof d.sumShots!=='object'||Array.isArray(d.sumShots))d.sumShots={};
   if(!d.compliance||!Array.isArray(d.compliance))d.compliance=[];
   if(!d.closeCases||!Array.isArray(d.closeCases))d.closeCases=[];
   /* 用户与权限 / 申请审批 / 使用记录：Supabase 通道下存进数据包（不再走 CloudBase） */
@@ -5956,16 +5986,34 @@ function seedSumMetricsIfEmpty(){
    ⑥ 筛选栏：8 个可多选下拉（站点/核算分组/小组/管理经理/管理主管/销售/客服/区域）+ 填表日期/周次 两个单选周选择器（选周即查看该周数据），可跨字段叠加。 */
 const SUM_BASE_COLS=[['short','账号'],['site','站点'],['bigGroup','核算分组'],['group','小组'],['mgr','管理经理'],['supervisor','管理主管'],['sales','销售'],['cs','客服'],['region','区域'],['formDate','填表日期'],['formMonth','月'],['formWeek','周数'],['formWeekSpan','周次']];
 /* 指标列：分组与「指标数据源」的 Amazon汇总表 表头一致 */
+/* 账号报损：日 / 周 / 月三张退款明细表（三个独立上传入口，各存最近一次快照）+ 报损截图。
+   列顺序按业务给定表头；截图排在最前，紧接着「准时交货率」（= 业务口中的「准时送达率」）。 */
+const SUM_BAO_COLS=[
+  ['sumShot','截图'],
+  ['baoDOrd','日订单量'],['baoDRef','日退款额'],['baoDSale','日销售额'],['baoDRate','日退款率'],
+  ['baoWOrd','周订单量'],['baoWRef','周退款额'],['baoWSale','周销售额'],['baoWRate','周退款率'],
+  ['baoMOrd','月订单量'],['baoMRef','月退款额'],['baoMSale','月销售额'],['baoMRate','月退款率'],
+  ['baoAt','更新时间']
+];
+const SUM_BAO_KEYS=SUM_BAO_COLS.map(function(c){return c[0];});
+const SUM_BAO_RATE=['baoDRate','baoWRate','baoMRate'];
+/* 日/周/月三套快照的键：d/w/m → 列前缀 */
+const SUM_BAO_KIND=[['d','日','baoD'],['w','周','baoW'],['m','月','baoM']];
+/* 默认不显示的列：订单量 / 销售额 / 更新时间 —— 到「🧩 显示字段」里勾选才出现 */
+const SUM_COL_DEFAULT_OFF=['baoDOrd','baoDSale','baoWOrd','baoWSale','baoMOrd','baoMSale','baoAt'];
+/* 上传面板开关 / 截图目标账号 */
+let sumUpOpen=false,sumShotFor='';
 const SUM_METRIC_GROUPS=[
   ['订单缺陷率',[['fbmOdr','FBM订单缺陷率'],['odrCnt','缺陷订单数'],['ordTotal','订单总数'],['invDefRate','发票缺陷率']]],
   ['店铺评分',[['shopScore','店铺评分']]],
   ['政策合规性',[['acctGrade','账户评级'],['acctScore','账户评分'],['probCnt','问题数量']]],
-  ['物流考核&发货问题',[['late10','10天迟发率'],['late30','30天迟发率'],['cancelRate','预配送取消率'],['trackRate','有效追踪率'],['ontimeRate','准时交货率']]]
+  ['物流考核&发货问题',[['late10','10天迟发率'],['late30','30天迟发率'],['cancelRate','预配送取消率'],['trackRate','有效追踪率'],['ontimeRate','准时交货率']]],
+  ['账号报损',SUM_BAO_COLS]
 ];
 const SUM_M_COLS=SUM_METRIC_GROUPS.reduce((a,g)=>a.concat(g[1]),[]);
 const SUM_M_KEYS=SUM_M_COLS.map(c=>c[0]);
 /* 率字段（小数分数存储 → 显示/导出时 ×100 加 %；缺陷订单数/订单总数/评分等保持原值） */
-const SUM_PCT_KEYS=['fbmOdr','invDefRate','late10','late30','cancelRate','trackRate','ontimeRate'];
+const SUM_PCT_KEYS=['fbmOdr','invDefRate','late10','late30','cancelRate','trackRate','ontimeRate'].concat(SUM_BAO_RATE);
 function fmtPct(v){if(v==null)return '—';const s=String(v).trim();if(s==='')return '—';if(s.indexOf('%')>=0)return s;const n=parseFloat(s);if(isNaN(n))return s;const p=n*100;return (p%1===0?p:Math.round(p*100)/100)+'%';}
 /* 上传解析：只取指标字段的数值。率字段统一存小数（"0.24%"→0.0024）；「账户评级」等文本字段按原文 */
 const SUM_NUM_KEYS=['fbmOdr','odrCnt','ordTotal','invDefRate','shopScore','acctScore','probCnt','late10','late30','cancelRate','trackRate','ontimeRate'];
@@ -5993,7 +6041,7 @@ const SUM_FILTER_GROUPS=[
 ];
 const SUM_FILTER_FIELDS=SUM_FILTER_GROUPS.reduce((a,g)=>a.concat(g[2]),[]);
 /* 指标维度（区间）可选数值指标：排除文本型 acctGrade */
-const SUM_METRIC_NUM_KEYS=SUM_M_KEYS.filter(k=>k!=='acctGrade');
+const SUM_METRIC_NUM_KEYS=SUM_M_KEYS.filter(k=>k!=='acctGrade'&&k!=='sumShot'&&k!=='baoAt');
 const SUM_M_LABEL={};SUM_M_COLS.forEach(c=>SUM_M_LABEL[c[0]]=c[1]);
 const SUM_ACCT_ALIAS=['账号','店铺','账户','账号简称','卖家账号','seller账号','seller'];
 const SUM_M_ALIAS={
@@ -6096,7 +6144,7 @@ function sumFields(a){
   const key=String(a.short==null?'':a.short).trim().toUpperCase();
   const m=(ds&&DATA.sumMetrics[ds]&&DATA.sumMetrics[ds][key])||{};
   const m2=Object.assign({},m,{shopScore:shopScoreEff(key, m.shopScore)});
-  return Object.assign({},a,m2,{formDate:ds,formMonth:wi.month,formWeek:wi.week,formWeekSpan:wi.span});
+  return Object.assign({},a,m2,{formDate:ds,formMonth:wi.month,formWeek:wi.week,formWeekSpan:wi.span},sumBaoFields(key));
 }
 function sumSorted(list){
   if(!sumSortK)return list;
@@ -6199,10 +6247,14 @@ function sumToolbarInner(){
       <input id="sumSearch" class="search" placeholder="🔍 搜索 账号 / 站点 / 小组 / 经理 / 销售 / 指标…（空格/逗号分隔可批量）" value="${esc(sumSearch)}">
       <span class="src-date">${weekMetaLine(ds,'填表日期由上传文件决定；周次可直接编辑，等于数据源「周次」字段')}</span>
       <label class="keep" title="勾选=与历史周合并；周指标固定只保留最近 4 周，导入第 5 周会自动删除最老一周"><input type="checkbox" id="sumKeep" checked> 保留历史周数据</label>
-      <button class="btn ghost" id="sumSrcBtn" title="选择指标数据源文件 → 按文件内「填表日期」分周载入；勾选「保留历史周数据」则合并各周，否则覆盖全部历史">⬆ 上传指标数据源</button>
+      <button class="btn ghost" id="sumSrcBtn" title="打开上传面板：主指标表 + 账号报损的日/周/月三张退款明细（分开上传）">⬆ 上传指标数据源</button>
       <button class="btn ghost" id="sumColBtn" title="选择要显示的列（账号必选；默认全部显示）">🧩 显示字段</button>
       <button class="btn ghost" id="sumExportBtn" title="把当前筛选结果（当前周）导出为 xlsx（无 Excel 环境时导出 csv）">⬇ 导出</button>
       <input type="file" id="sumSrcFile" accept=".xlsx,.xls,.csv,.txt" style="display:none">
+      <input type="file" id="baoFileD" accept=".xlsx,.xls,.csv,.txt" style="display:none">
+      <input type="file" id="baoFileW" accept=".xlsx,.xls,.csv,.txt" style="display:none">
+      <input type="file" id="baoFileM" accept=".xlsx,.xls,.csv,.txt" style="display:none">
+      <input type="file" id="sumShotFile" accept="image/*" style="display:none">
     </div>`;
 }
 /* 筛选栏独立成块：刷新时只替换工具栏自身，避免每次交互都多插一个 .filterbar */
@@ -6270,16 +6322,17 @@ function sumBodyInner(){
   const start=(curPage-1)*pageSize;const pageList=list.slice(start,start+pageSize);
   const total=all.length,shown=list.length;
   const vcSum=colVisible('sum'),gcSum=colGroupsVisible('sum');
-  const head1=`<tr class="grow"><th class="grp" rowspan="2">#</th>${gcSum.map(g=>`<th class="grp" colspan="${g.cols.length}">${esc(g.name)}</th>`).join('')}</tr>`;
+  const head1=`<tr class="grow"><th class="grp" rowspan="2">#</th>${gcSum.map(g=>`<th class="grp${g.name==='账号报损'?' bao':''}" colspan="${g.cols.length}">${esc(g.name)}</th>`).join('')}</tr>`;
   const head2=`<tr>${vcSum.map(([k,l])=>{
     const act=sumSortK===k?(sumSortDir===2?2:1):0;
-    return `<th data-sumsort="${k}" title="点击切换排序：升序 → 降序 → 取消">${esc(l)}<span class="xlf${act?' on':''}"><i>${act===2?'▼':'▲'}</i></span></th>`;
+    return `<th data-sumsort="${k}" class="${SUM_BAO_KEYS.indexOf(k)>=0?'bcol':''}" title="点击切换排序：升序 → 降序 → 取消">${esc(l)}<span class="xlf${act?' on':''}"><i>${act===2?'▼':'▲'}</i></span></th>`;
   }).join('')}</tr>`;
   const rows=pageList.map((a,idx)=>{
     const mSet={};STD_M_KEYS.forEach(k=>mSet[k]=1);
     /* 整行一条指标都没有时不做 0 值映射（交回 ⑤ 的无数据口径） */
     const rowEmpty=SUM_M_KEYS.every(function(k){return a[k]==null||String(a[k]).trim()==='';});
     const tds=vcSum.map(function(c){const k=c[0],raw=a[k]==null?'':a[k];
+      if(k==='sumShot')return '<td class="shot">'+sumShotCell(a.short)+'</td>';
       if(mSet[k]){
         const zt=stdZeroTo(k),ztr=stdZeroRaw(k);
         const isMapped=!rowEmpty&&isFinite(zt)&&(raw===''||stdIsZero(raw));
@@ -6305,7 +6358,7 @@ function sumBodyInner(){
   const cur=curWeek(),curWi=cur?sumWeekInfo(cur):{week:'',span:''};
   const acctCnt=Object.keys((DATA.sumMetrics&&curWeek()&&DATA.sumMetrics[curWeek()])||{}).length;
   const mTxt=wkCnt?('已载入 <b>'+wkCnt+'</b> 周指标 · 当前周 <b>'+esc(cur)+'</b>（周'+curWi.week+'·'+esc(curWi.span)+'）覆盖 <b>'+acctCnt+'</b> 个账号'):'<span class="dim">未载入指标（点右上「上传指标数据源」）</span>';
-  return `<div class="meta">共 <b>${total}</b> 条（账号管理「启用且纳入考核」）${shown!==total?(' · 筛选后 <b>'+shown+'</b> 条'):''}${lab}${slang} · 基础信息实时同步账号管理（账号/站点/核算分组/小组/管理经理/管理主管/销售/客服/区域） · ${mTxt}<span class="dim"> · 缺陷订单数 / 问题数量 / 有效追踪率 / 准时送达率的<b>异常值可点</b>，直接跳该账号的问题明细</span></div>
+  return `<div class="meta">共 <b>${total}</b> 条（账号管理「启用且纳入考核」）${shown!==total?(' · 筛选后 <b>'+shown+'</b> 条'):''}${lab}${slang} · 基础信息实时同步账号管理（账号/站点/核算分组/小组/管理经理/管理主管/销售/客服/区域） · ${mTxt}<span class="dim"> · 缺陷订单数 / 问题数量 / 有效追踪率 / 准时送达率的<b>异常值可点</b>，直接跳该账号的问题明细 · 报损<b>截图</b>点 ＋ 上传，或先点一下再 Ctrl+V 粘贴</span></div>
     <div class="scroll"><table class="xl">
       <thead>${head1}${head2}</thead>
       <tbody>${rows||`<tr><td colspan="${vcSum.length+1}" class="empty">没有匹配的记录</td></tr>`}</tbody>
@@ -6378,6 +6431,228 @@ function sumParseAoa(aoa){
   }
   return {ok:true,got:got,recs:recs,n:n,date:fileDate,week:fileWeek};
 }
+/* ══════════ 账号报损：日/周/月退款明细（三个独立上传入口）+ 报损截图 ══════════
+   · 三张表各存「最近一次上传」的快照，按账号大写索引；重复上传 = 整表替换（不累加）
+   · 只取数值列，账号信息仍实时映射账号管理；率统一存小数（"6.2%" → 0.062），显示时 ×100
+   · 截图压成 JPEG dataURL 存 DATA.sumShots，点缩略图放大 */
+const BAO_ALIAS={
+  ord:['订单量','订单数','订单数量','总订单量','日订单量','周订单量','月订单量','订单'],
+  ref:['退款额','退款金额','退款总额','退款金额合计','日退款额','周退款额','月退款额'],
+  sale:['销售额','销售金额','销售总额','销售金额合计','日销售额','周销售额','月销售额','GMV','gmv'],
+  rate:['退款率','退款占比','退款比例','退款额占比','日退款率','周退款率','月退款率'],
+  at:['更新时间','更新日期','数据更新时间','更新于','统计时间','数据时间']
+};
+const BAO_COL_LABEL={ord:'订单量',ref:'退款额',sale:'销售额',rate:'退款率'};
+const SUM_SHOT_MAXLEN=165000;      /* 单张截图压缩后上限（≈120KB），防 localStorage / 云端体积炸掉 */
+function sumBaoStore(){
+  if(!DATA.sumBao||typeof DATA.sumBao!=='object'||Array.isArray(DATA.sumBao))DATA.sumBao={};
+  SUM_BAO_KIND.forEach(function(kp){if(!DATA.sumBao[kp[0]]||typeof DATA.sumBao[kp[0]]!=='object'||Array.isArray(DATA.sumBao[kp[0]]))DATA.sumBao[kp[0]]={};});
+  return DATA.sumBao;
+}
+function sumBaoMetaStore(){
+  if(!DATA.sumBaoMeta||typeof DATA.sumBaoMeta!=='object'||Array.isArray(DATA.sumBaoMeta))DATA.sumBaoMeta={};
+  return DATA.sumBaoMeta;
+}
+function sumShots(){
+  if(!DATA.sumShots||typeof DATA.sumShots!=='object'||Array.isArray(DATA.sumShots))DATA.sumShots={};
+  return DATA.sumShots;
+}
+/* 行上挂报损值：把 日/周/月 三套快照按列前缀摊平（渲染 / 排序 / 筛选 / 导出统一走行字段） */
+function sumBaoFields(key){
+  const out={},st=sumBaoStore();
+  const SFX={ord:'Ord',ref:'Ref',sale:'Sale',rate:'Rate'};
+  SUM_BAO_KIND.forEach(function(kp){
+    const rec=(st[kp[0]]||{})[key];if(!rec)return;
+    ['ord','ref','sale','rate'].forEach(function(f){
+      const v=rec[f];if(v==null||v==='')return;
+      out[kp[2]+SFX[f]]=v;
+    });
+    if(rec.at&&(!out.baoAt||String(rec.at)>String(out.baoAt)))out.baoAt=rec.at;
+  });
+  return out;
+}
+/* 金额/数量/率：去千分位与币种符号；率带 % 转小数 */
+function baoNum(v){
+  let s=String(v==null?'':v).replace(/[\s,]/g,'').replace(/[€$£¥￥]/g,'').replace(/％/g,'%');
+  if(!s)return '';
+  if(SUM_NA_VALS.indexOf(s.toLowerCase())>=0)return '';
+  const pct=s.indexOf('%')>=0;s=s.replace(/%/g,'');
+  const n=parseFloat(s);if(isNaN(n))return '';
+  return pct?Number((n/100).toFixed(6)):n;
+}
+/* CSV/TXT → 二维数组：优先按引号感知切分（退款额/销售额常含千分位逗号），纯 tab 分隔时按 tab 切 */
+function baoTextAoa(txt){
+  const lines=String(txt||'').split(/\r?\n/).filter(function(l){return l!=='';});
+  return lines.map(function(l){
+    let cs;
+    if(l.indexOf('\t')>=0&&l.indexOf(',')<0)cs=l.split('\t');
+    else cs=cutCSV(l);
+    return cs.map(function(c){return String(c==null?'':c).replace(/^"|"$/g,'').trim();});
+  });
+}
+/* 报损表 → 账号行（表头行定位：含「账号」列；列按别名精确匹配，含日/周/月前缀） */
+function baoParseAoa(aoa){
+  let hi=-1;
+  for(let i=0;i<Math.min(aoa.length,20);i++){
+    const row=(aoa[i]||[]).map(function(x){return String(x==null?'':x).trim();});
+    if(row.some(function(c){return c&&SUM_ACCT_ALIAS.some(function(a){return c===a||c.toLowerCase()===a.toLowerCase();});})){hi=i;break;}
+  }
+  if(hi<0)return {ok:false,msg:'没有找到表头行（需含「账号」列）'};
+  const head=(aoa[hi]||[]).map(function(x){return String(x==null?'':x).trim();});
+  const map={acct:-1,ord:-1,ref:-1,sale:-1,rate:-1,at:-1};
+  head.forEach(function(c,i){
+    if(!c)return;
+    if(map.acct<0&&SUM_ACCT_ALIAS.some(function(a){return c===a||c.toLowerCase()===a.toLowerCase();})){map.acct=i;return;}
+    ['ord','ref','sale','rate','at'].forEach(function(f){
+      if(map[f]>=0)return;
+      if(BAO_ALIAS[f].some(function(a){return c===a;}))map[f]=i;
+    });
+  });
+  if(map.acct<0)return {ok:false,msg:'表头缺少「账号」列'};
+  const got=['ord','ref','sale','rate'].filter(function(f){return map[f]>=0;});
+  if(!got.length)return {ok:false,msg:'表头未识别到 订单量 / 退款额 / 销售额 / 退款率 中的任何一列'};
+  const recs={};let n=0;
+  for(let i=hi+1;i<aoa.length;i++){
+    const row=aoa[i]||[];
+    const key=String(row[map.acct]==null?'':row[map.acct]).trim().toUpperCase();
+    if(!key||badShort(key))continue;
+    const o=recs[key]||(recs[key]={});
+    let add=0;
+    got.forEach(function(f){const num=baoNum(row[map[f]]);if(num==='')return;o[f]=num;add++;});
+    if(map.at>=0){const t=String(row[map.at]==null?'':row[map.at]).trim();if(t)o.at=t;}
+    if(add)n++;
+  }
+  return {ok:true,recs:recs,n:n,got:got,missing:['ord','ref','sale','rate'].filter(function(f){return map[f]<0;})};
+}
+function sumBaoUseFile(f,kind){
+  const now=new Date(),pad=function(x){return String(x).padStart(2,'0');};
+  const stamp=now.getFullYear()+'-'+pad(now.getMonth()+1)+'-'+pad(now.getDate())+' '+pad(now.getHours())+':'+pad(now.getMinutes());
+  const klab=(SUM_BAO_KIND.filter(function(kp){return kp[0]===kind;})[0]||[])[1]||'';
+  const isXlsx=/\.(xlsx|xls)$/i.test(f.name)&&window.XLSX;
+  const rd=new FileReader();
+  rd.onload=function(){
+    const extra=[];let aoa=null,sheet='';
+    try{
+      if(isXlsx){
+        const wb=XLSX.read(new Uint8Array(rd.result),{type:'array',cellDates:true});
+        const names=wb.SheetNames.slice();
+        for(let i=0;i<names.length;i++){
+          const a=XLSX.utils.sheet_to_json(wb.Sheets[names[i]],{header:1,defval:'',blankrows:false,raw:true});
+          if(baoParseAoa(a).ok){aoa=a;sheet=names[i];break;}
+        }
+        if(!aoa)extra.push('未找到含「账号」的工作表');
+      }else{
+        const txt=(typeof rd.result==='string'?rd.result:decodeText(rd.result)).replace(/^\uFEFF/,'');
+        aoa=baoTextAoa(txt);
+      }
+    }catch(e){extra.push('读取失败：'+e.message);}
+    let okFlag=false;
+    if(aoa){
+      const p=baoParseAoa(aoa);
+      if(p.ok){
+        okFlag=true;
+        Object.keys(p.recs).forEach(function(k){if(!p.recs[k].at)p.recs[k].at=stamp;});
+        sumBaoStore()[kind]=p.recs;
+        sumBaoMetaStore()[kind]={file:f.name,at:stamp,n:Object.keys(p.recs).length,sheet:sheet};
+        extra.unshift('已载入 '+Object.keys(p.recs).length+' 个账号的'+klab+'退款明细（'+(sheet?('工作表「'+sheet+'」'):f.name)+'）');
+        if(p.missing.length)extra.push('文件里没有这些列（保持为空）：'+p.missing.map(function(f2){return BAO_COL_LABEL[f2];}).join('、'));
+        extra.push('重复上传按账号整表替换，不累加');
+      }else{extra.push('未导入：'+p.msg);}
+    }
+    DATA.sumBaoMeta=sumBaoMetaStore();
+    save();render();
+    alert(['已导入'+klab+'退款明细：'+f.name].concat(extra).join('\n'));
+    return okFlag;
+  };
+  rd.readAsArrayBuffer(f);
+}
+/* 上传面板：主指标表（紫）+ 日/周/月三张退款明细（绿，入口分开） */
+function sumSrcModal(){
+  if(!sumUpOpen)return '';
+  const mt=sumBaoMetaStore(),m0=DATA.sumMeta||{};
+  const mainSt=m0.srcFile?('已导入 <b>'+sumWeekList().length+'</b> 周 · '+esc(m0.srcAt||'')+'<br>'+esc(m0.srcFile)):'<span class="dim">还没有导入</span>';
+  const card=function(title,cols,status,btn,cls){
+    return '<div class="sp-card'+(cls?' '+cls:'')+'"><div class="sp-hd">'+esc(title)+'</div>'
+      +'<div class="sp-bd"><div class="sp-cols">识别列：'+esc(cols)+'</div><div class="sp-st">'+status+'</div>'+btn+'</div></div>';
+  };
+  const baoCard=function(kind){
+    const kp=SUM_BAO_KIND.filter(function(x){return x[0]===kind;})[0]||['d','',''];
+    const m=mt[kind];
+    const st=m?('已导入 <b>'+m.n+'</b> 个账号 · '+esc(m.at||'')+(m.file?('<br>'+esc(m.file)):'')):'<span class="dim">还没有导入</span>';
+    return card(kp[1]+'退款明细','账号 · 订单量 · 退款额 · 销售额 · 退款率 · 更新时间',st,
+      '<button class="btn ghost xs" data-baoup="'+kind+'">选择文件</button>','bao');
+  };
+  return '<div class="mask" id="sumSrcMask"><div class="modal srcpanel">'
+    +'<header><h2>⬆ 上传指标数据源</h2><button class="btn ghost xs" id="sumSrcClose">关闭</button></header>'
+    +'<div class="body one-col">'
+    +'<p style="margin:0 0 12px;font-size:13px;color:#4a4560">按<b>表头字段名</b>自动匹配（不看列顺序）。账号报损的日 / 周 / 月是<b>三张独立的表</b>，可以分别上传；只取数值，账号信息仍实时同步账号管理。</p>'
+    +'<div class="sp-grid">'
+    +card('Amazon汇总表（指标主表）','账号 · 订单缺陷率 / 缺陷订单数 / 店铺评分 / 政策合规性 / 物流考核 等',mainSt,'<button class="btn ghost xs" id="spMainBtn">选择文件</button>','main')
+    +baoCard('d')+baoCard('w')+baoCard('m')
+    +'</div>'
+    +'<p style="margin:12px 0 0;font-size:12px;color:#8a85a6">汇总表里「账号报损」分组默认只显示 日/周/月退款额 + 退款率，订单量 / 销售额 / 更新时间到「🧩 显示字段」里勾选才出现。</p>'
+    +'</div><footer><button class="btn" id="sumSrcClose2">关闭</button></footer></div></div>';
+}
+/* ── 报损截图：点＋选文件 / Ctrl+V 粘贴，自动压缩成 JPEG dataURL ── */
+function sumShotAcc(){return String(sumShotFor||'').trim().toUpperCase();}
+function sumShotPick(acc){
+  sumShotFor=String(acc==null?'':acc).trim().toUpperCase();
+  const el=document.getElementById('sumShotFile');
+  if(el){el.value='';el.click();}
+}
+function sumShotCell(acc){
+  const k=String(acc==null?'':acc).trim().toUpperCase();
+  const s=sumShots()[k];
+  if(s&&s.src){
+    return '<button class="shot-btn" data-shotsrc="'+esc(k)+'" title="点击放大 · '+(s.at||'')+' 上传"><img src="'+s.src+'" alt="截图"></button>'
+      +'<button class="shot-del" data-shotdel="'+esc(k)+'" title="删除该截图">✕</button>';
+  }
+  return '<button class="shot-add" data-shotadd="'+esc(k)+'" title="点这里上传截图，或先点一下再 Ctrl+V 粘贴">＋</button>';
+}
+function sumShotReadFile(f,acc){
+  const key=String(acc==null?'':acc).trim().toUpperCase();
+  if(!key||!f)return;
+  const rd=new FileReader();
+  rd.onload=function(){
+    const raw=String(rd.result||'');
+    const commit=function(out){
+      const now=new Date(),pad=function(x){return String(x).padStart(2,'0');};
+      const at=now.getFullYear()+'-'+pad(now.getMonth()+1)+'-'+pad(now.getDate())+' '+pad(now.getHours())+':'+pad(now.getMinutes());
+      sumShots()[key]={src:out,at:at,ds:curWeek()||''};
+      sumShotFor='';save();render();
+    };
+    const img=new Image();
+    img.onload=function(){
+      let w=img.width||600,h=img.height||400;
+      const sc=Math.min(1,760/w,1600/h);
+      w=Math.max(1,Math.round(w*sc));h=Math.max(1,Math.round(h*sc));
+      let out='';
+      try{
+        const cv=document.createElement('canvas');cv.width=w;cv.height=h;
+        const cx=cv.getContext('2d');cx.fillStyle='#fff';cx.fillRect(0,0,w,h);cx.drawImage(img,0,0,w,h);
+        let q=0.68;out=cv.toDataURL('image/jpeg',q);
+        while(out.length>SUM_SHOT_MAXLEN&&q>0.34){q-=0.09;out=cv.toDataURL('image/jpeg',q);}
+      }catch(e){out='';}
+      commit(out||raw);
+    };
+    img.onerror=function(){commit(raw);};
+    img.src=raw;
+  };
+  rd.readAsDataURL(f);
+}
+/* 粘贴截图：点了某一行的＋后，直接 Ctrl+V */
+document.addEventListener('paste',function(e){
+  if(!sumShotFor)return;
+  const cd=e.clipboardData;if(!cd)return;
+  const items=cd.items||[];
+  for(let i=0;i<items.length;i++){
+    const it=items[i];
+    if(it&&it.type&&it.type.indexOf('image')===0){
+      const f=it.getAsFile&&it.getAsFile();
+      if(f){e.preventDefault();sumShotReadFile(f,sumShotAcc());return;}
+    }
+  }
+});
 function sumUseSrcFile(f){
   const now=new Date(),pad=x=>String(x).padStart(2,'0');
   const stamp=now.getFullYear()+'-'+pad(now.getMonth()+1)+'-'+pad(now.getDate())+' '+pad(now.getHours())+':'+pad(now.getMinutes());
@@ -6444,7 +6719,7 @@ function exportSum(){
   const names=['序号'].concat(SUM_COLS.map(c=>c[1]));
   const gRow=[''];
   SUM_HEAD_GROUPS.forEach(function(g){gRow.push(g[0]);for(let i=1;i<g[1];i++)gRow.push('');});
-  const body=list.map(function(p,i){const r=[i+1];SUM_COLS.forEach(function(c){const k=c[0];let v=p[k]==null?'':p[k];if(SUM_PCT_KEYS.indexOf(k)>=0)v=fmtPct(v);r.push(v);});return r;});
+  const body=list.map(function(p,i){const r=[i+1];SUM_COLS.forEach(function(c){const k=c[0];let v=p[k]==null?'':p[k];if(k==='sumShot')v=(sumShots()[String(p.short==null?'':p.short).trim().toUpperCase()]?'有截图':'—');else if(SUM_PCT_KEYS.indexOf(k)>=0)v=fmtPct(v);r.push(v);});return r;});
   const merges=[];let cc=1;
   SUM_HEAD_GROUPS.forEach(function(g){if(g[1]>1)merges.push({s:{r:0,c:cc},e:{r:0,c:cc+g[1]-1}});cc+=g[1];});
   const base='AMZ汇总表_周'+(curWeek()||'')+'_'+list.length+'条_'+todayStr();
@@ -8744,7 +9019,7 @@ function render(){
   if(_vw&&WB.user&&_vw!==WB._lastUsageView){WB._lastUsageView=_vw;wbLogUsage(_vw);}
   if(view==='stdcfg'&&cfgTab==='usage'&&!(UM.usage&&UM.usage.since))umUsageLoad();
   const content=(view==='summary')?sumView():(view==='standard')?stdView():(view==='stdcfg')?stdCfgView():(view==='issue')?issueView():(view==='compliance')?pcView():(view==='account')?accountView():(view==='policy')?policyView():(view==='health')?healthView():healthView();
-  document.getElementById('app').innerHTML=`<div class="layout${navFold?' navfold':''}">${navFold?'<div class="navpeek" title="鼠标移到左边缘展开模块导航"><i>›</i></div>':''}${navBar()}<section class="content">${scopeBand()}${content}</section></div>${formModal()}${policyModal()}${quickModal()}${reasonModal()}${uploadModal()}${pcFormModal()}${pcDetailModal()}${pcFollowModal()}${pcFocusModal()}${isUploadModal()}${riskNoteModal()}${kbAddModal()}${lightbox()}${umAddModal()}${umPwModal()}${umScopeModal()}${umBulkModal()}${umReqApModal()}${stopModal()}`;
+  document.getElementById('app').innerHTML=`<div class="layout${navFold?' navfold':''}">${navFold?'<div class="navpeek" title="鼠标移到左边缘展开模块导航"><i>›</i></div>':''}${navBar()}<section class="content">${scopeBand()}${content}</section></div>${formModal()}${policyModal()}${quickModal()}${reasonModal()}${uploadModal()}${pcFormModal()}${pcDetailModal()}${pcFollowModal()}${pcFocusModal()}${isUploadModal()}${riskNoteModal()}${kbAddModal()}${sumSrcModal()}${lightbox()}${umAddModal()}${umPwModal()}${umScopeModal()}${umBulkModal()}${umReqApModal()}${stopModal()}`;
 }
 function goPage(p){
   const list=filtered();const pages=Math.max(1,Math.ceil(list.length/pageSize));
@@ -9098,6 +9373,11 @@ document.getElementById('app').addEventListener('change',e=>{
   if(e.target.id==='sumSpanSel'){sumFilter.fspan=e.target.value;sumFilter.fdate='';curPage=1;sumRefreshFilterUI();return;}
   /* 填表日期不再支持手动修改（由上传文件决定） */
   if(e.target.id==='sumSrcFile'){const sf=e.target.files&&e.target.files[0];if(sf)sumUseSrcFile(sf);e.target.value='';return;}
+  if(e.target.id==='baoFileD'||e.target.id==='baoFileW'||e.target.id==='baoFileM'){
+    const bk=e.target.id==='baoFileD'?'d':(e.target.id==='baoFileW'?'w':'m');
+    const bf=e.target.files&&e.target.files[0];if(bf)sumBaoUseFile(bf,bk);e.target.value='';return;
+  }
+  if(e.target.id==='sumShotFile'){const sf2=e.target.files&&e.target.files[0];const sk2=sumShotAcc();if(sf2&&sk2)sumShotReadFile(sf2,sk2);e.target.value='';return;}
   if(e.target.id==='stdWeekSel'){stdFilter.fdate=e.target.value;stdFilter.fspan='';curPage=1;stdRefreshFilterUI();return;}
   if(e.target.id==='stdSpanSel'){stdFilter.fspan=e.target.value;stdFilter.fdate='';curPage=1;stdRefreshFilterUI();return;}
   if(e.target.id==='stdFailSel'){stdFilter.stdFail=e.target.value;curPage=1;stdRefreshFilterUI();return;}
@@ -9423,7 +9703,7 @@ document.getElementById('app').addEventListener('click',e=>{
   if(e.target.id==='ctrExactBtn'){ctrExact=!ctrExact;isPage=1;ctrRefresh();const b=document.getElementById('ctrExactBtn');if(b)b.innerHTML='匹配：'+(ctrExact?'精确':'包含');return;}
   /* 写权限守卫：非管理员一切写操作直接拦掉（服务端同样会 403，这里只是给个明确提示，不让人白点） */
   if(!wbCanWrite()){
-    const w=t2=>t2&&t2.closest?t2.closest('[data-wkdel],[data-edit],[data-toggle],[data-delacc],[data-editpc],[data-delpc],[data-delkb],[data-delcase],#addBtn,#quickBtn,#uploadBtn,#pcUploadBtn,#pcAddBtn,#kbAddBtn,#sumSrcBtn,#fbmUploadBtn,#otdUploadBtn,[data-editissue],[data-delissue],#umAdd,#umAddSave,#umPwSave,#umScopeSave,[data-umpw],[data-umdel],[data-umv],[data-ume],#umBulkSave,#umBulkMod,#umBulkScope,#umBulkRO,#umReqApprove,#umReqReject,#umApSave,[data-umreqok],[data-umreqno],[data-kbsave],[data-kbdel],#kbSearchBtn,#kbSearchClear,#kbAddCatBtn,#kbBatchSaveBtn,#kbBatchClearBtn,#kbCheckAll,[data-kbcheck],#kbSmartBtn,#kbSmartApply,#kbSmartClear,#stopSave'):null;
+    const w=t2=>t2&&t2.closest?t2.closest('[data-wkdel],[data-edit],[data-toggle],[data-delacc],[data-editpc],[data-delpc],[data-delkb],[data-delcase],#addBtn,#quickBtn,#uploadBtn,#pcUploadBtn,#pcAddBtn,#kbAddBtn,#sumSrcBtn,#fbmUploadBtn,#otdUploadBtn,[data-shotadd],[data-shotdel],[data-baoup],#spMainBtn,[data-editissue],[data-delissue],#umAdd,#umAddSave,#umPwSave,#umScopeSave,[data-umpw],[data-umdel],[data-umv],[data-ume],#umBulkSave,#umBulkMod,#umBulkScope,#umBulkRO,#umReqApprove,#umReqReject,#umApSave,[data-umreqok],[data-umreqno],[data-kbsave],[data-kbdel],#kbSearchBtn,#kbSearchClear,#kbAddCatBtn,#kbBatchSaveBtn,#kbBatchClearBtn,#kbCheckAll,[data-kbcheck],#kbSmartBtn,#kbSmartApply,#kbSmartClear,#stopSave'):null;
     if(w(e.target)){
       e.preventDefault();e.stopPropagation();
       alert('你当前是「'+wbRoleName((WB.user||{}).role)+'」，只能查看数据，不能修改。\n如需调整请联系管理员。');
@@ -10172,7 +10452,17 @@ document.getElementById('app').addEventListener('click',e=>{
   if(t.id==='pcExportBtn'){exportPc();return;}
   if(t.id==='pcFollowOnly'){pcFollowOnly=!pcFollowOnly;curPage=1;render();return;}
   if(t.id==='sumExportBtn'){exportSum();return;}
-  if(t.id==='sumSrcBtn'){const si=document.getElementById('sumSrcFile');if(si)si.click();return;}
+  if(t.id==='sumSrcBtn'){sumUpOpen=true;render();return;}
+  if(t.id==='sumSrcClose'||t.id==='sumSrcClose2'||t.id==='sumSrcMask'){sumUpOpen=false;render();return;}
+  if(t.id==='spMainBtn'){const si=document.getElementById('sumSrcFile');if(si)si.click();return;}
+  const baoup=t.closest('[data-baoup]');
+  if(baoup){const bk=baoup.getAttribute('data-baoup');const fid=(bk==='d')?'baoFileD':((bk==='w')?'baoFileW':'baoFileM');const el=document.getElementById(fid);if(el){el.value='';el.click();}return;}
+  const shotAdd=t.closest('[data-shotadd]');
+  if(shotAdd){sumShotPick(shotAdd.getAttribute('data-shotadd'));return;}
+  const shotSrc=t.closest('[data-shotsrc]');
+  if(shotSrc){const ss=sumShots()[shotSrc.getAttribute('data-shotsrc')];if(ss&&ss.src){kbLightbox=ss.src;render();}return;}
+  const shotDel=t.closest('[data-shotdel]');
+  if(shotDel){const sk=shotDel.getAttribute('data-shotdel');if(confirm('删除该账号的报损截图？')){delete sumShots()[sk];save();render();}return;}
   const msClr=t.closest('[data-msclr]');
   if(msClr){if(msClr.closest('#stdFilterBar')){stdFilter[msClr.dataset.msclr]=[];curPage=1;stdRefreshFilterUI();}else{sumFilter[msClr.dataset.msclr]=[];curPage=1;sumRefreshFilterUI();}return;}
   if(t.closest('.ms-pop'))return;                       /* 弹层内点击（勾选/滚动）不关闭 */
@@ -10438,7 +10728,13 @@ const COL_GROUPS_STD=[['基础信息',SUM_BASE_COLS]].concat(STD_METRIC_GROUPS.m
 function colDefs(which){return which==='sum'?SUM_COLS:STD_COLS;}
 function colGroupDefs(which){return which==='sum'?COL_GROUPS_SUM:COL_GROUPS_STD;}
 function colAllKeys(which){return colDefs(which).map(c=>c[0]);}
-function colSel(which){const a=(which==='sum')?sumColsSel:stdColsSel;return (Array.isArray(a)&&a.length)?a:colAllKeys(which);}
+function colSel(which){
+  const a=(which==='sum')?sumColsSel:stdColsSel;
+  if(Array.isArray(a)&&a.length)return a;
+  /* 汇总表默认只显示 日/周/月退款额 + 退款率（其余列到「显示字段」里勾选才出现） */
+  if(which==='sum')return colAllKeys('sum').filter(function(k){return k==='short'||SUM_COL_DEFAULT_OFF.indexOf(k)<0;});
+  return colAllKeys(which);
+}
 function colOn(which,k){return k==='short'||colSel(which).indexOf(k)>=0;}
 function colVisible(which){return colDefs(which).filter(c=>colOn(which,c[0]));}
 function colGroupsVisible(which){return colGroupDefs(which).map(g=>({name:g[0],cols:g[1].filter(c=>colOn(which,c[0]))})).filter(g=>g.cols.length);}
