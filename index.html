@@ -839,35 +839,31 @@
   .bao-band1 th,.bao-band1 td{background:#fdf4e7;font-weight:800;color:#5c3f14;border-top:2px solid #e8d3b0}
   .bao-band2 th,.bao-band2 td{background:#fbf3e6;font-weight:700;color:#6b4a19}
   .bao-split td{background:#fff;color:#a08a6a;font-size:11.5px;letter-spacing:.3px;text-align:left;padding:7px 10px;border-top:1px dashed #ecdcc2}
-  /* ── 五、客服报损情况（重构）：分类组分层（分类组 → 组内客服）+ 日/周/月 三块分色（日蓝 / 周橙 / 月玫） ── */
+  /* ── 五、客服报损情况：按分类组分层（分类组 → 组内客服）；右侧 5 列跟随当前 日/周/月 口径整体配色（日蓝 / 周橙 / 月玫） ── */
   .bao-tbl th,.bao-tbl td{padding:4px 6px}
   .bao-tbl.csf-tbl thead th{font-size:11px;line-height:1.35;padding:5px 6px}
   .bao-tbl.csf-tbl thead th.hk-reg{min-width:92px;text-align:left;white-space:nowrap}
   .bao-tbl.csf-tbl thead th.bao-th-tgt,.bao-tbl.csf-tbl thead th.bao-th-ach{background:#f6f0e2;color:#6b4a19}
-  .bao-tbl.csf-tbl thead th.bao-th-rate{background:#fdf1df;color:#7a5420}
-  /* 三块表头：第一行=块名（日·11-15），第二行=指标名 */
-  .bao-tbl.csf-tbl thead th.bao-hd-d{background:#c7dffa;color:#17457a;border-left:3px solid #9dc3ee;font-weight:800;font-size:11.5px}
-  .bao-tbl.csf-tbl thead th.bao-hd-w{background:#fbe0ba;color:#7d4310;border-left:3px solid #e8bf85;font-weight:800;font-size:11.5px}
-  .bao-tbl.csf-tbl thead th.bao-hd-m{background:#f8cfda;color:#8e2745;border-left:3px solid #e9aabd;font-weight:800;font-size:11.5px}
-  .bao-tbl.csf-tbl thead th.bao-c-d{background:#e9f2fd;color:#1d4e89;border-left:2px solid #dbe9f9}
-  .bao-tbl.csf-tbl thead th.bao-c-w{background:#fdf2e0;color:#8a4a10;border-left:2px solid #f6e2c4}
-  .bao-tbl.csf-tbl thead th.bao-c-m{background:#fbeaef;color:#9b2c4c;border-left:2px solid #f6d8e2}
-  /* 数据格：半透明底色叠在行底色上 → 分类组色带与 日/周/月 色同时可见 */
-  .bao-tbl td.bao-c-d{background:rgba(203,226,252,.66)}
-  .bao-tbl td.bao-c-w{background:rgba(252,227,190,.62)}
-  .bao-tbl td.bao-c-m{background:rgba(248,211,222,.62)}
-  .bao-tbl td.bao-cx{border-left:3px solid rgba(150,168,200,.42)}
-  .bao-tbl td.bao-c-d,.bao-tbl td.bao-c-w,.bao-tbl td.bao-c-m{text-align:center;font-variant-numeric:tabular-nums;font-feature-settings:"tnum" 1}
-  .bao-tbl td.bao-cx{min-width:60px}
-  .bao-tbl td.bao-ctgt,.bao-tbl td.bao-cach,.bao-tbl td.bao-crate,.bao-tbl td.bao-camt,
-  .bao-tbl td.bao-crank,.bao-tbl td.bao-cpart,.bao-tbl td.bao-cchg,.bao-tbl td.bao-cgap{text-align:center;white-space:nowrap;font-variant-numeric:tabular-nums}
-  .bao-tbl td.bao-crate{font-weight:800;color:#8a5a12;background:#fdf6ec}
-  .bao-tbl td.bao-camt{color:#6b6257}
-  .bao-tbl td.bao-cpart{color:#b3ab9c;background:#fbf8f2}
-  .bao-tbl td.bao-crank{font-weight:800;color:#7a6a52}
+  .bao-tbl.csf-tbl thead th.bao-hdg{font-weight:800;font-size:11.5px}
+  .bao-tbl.csf-tbl thead th.bao-mh{font-weight:700;font-size:11px;white-space:nowrap}
+  /* 维度色：三个 class 由 JS 按当前 日/周/月 挂到 5 个指标列上 */
+  .bao-tbl td.bao-mcd{background:rgba(200,223,251,.9)}
+  .bao-tbl td.bao-mcw{background:rgba(252,226,188,.9)}
+  .bao-tbl td.bao-mcm{background:rgba(247,209,221,.9)}
+  .bao-tbl td.bao-mc{text-align:center;white-space:nowrap;font-variant-numeric:tabular-nums;font-feature-settings:"tnum" 1}
+  .bao-tbl td.bao-m1{border-left:3px solid rgba(150,168,200,.4)}
+  .bao-tbl td.bao-m2{border-left:2px dashed rgba(150,168,200,.5)}
+  .bao-tbl th.bao-m2{border-left:2px dashed rgba(255,255,255,.85)}
+  .bao-tbl td.bao-cpart{color:#a89a83}
+  .bao-tbl td.bao-camt{color:#6b5a3f;font-weight:600;min-width:88px}
+  .bao-tbl td.bao-cok{font-weight:600}
+  .bao-tbl td.bao-cbad{min-width:70px}
+  .bao-tbl td.bao-ctgt,.bao-tbl td.bao-cach,.bao-tbl td.bao-cchg,.bao-tbl td.bao-cgap,
+  .bao-tbl td.bao-crank{text-align:center;white-space:nowrap;font-variant-numeric:tabular-nums}
   .bao-tbl td.bao-cach.ok b{color:#1f8a5b}
   .bao-tbl td.bao-cach.bad b{color:#c0392b}
-  .bao-tbl td.bao-cgap b,.bao-tbl td.bao-cchg b{font-size:11.5px}
+  .bao-tbl td.bao-cchg b,.bao-tbl td.bao-cgap b{font-size:11.5px}
+  .bao-tbl td.bao-crank{font-weight:800;color:#7a6a52}
   .bao-tbl b.bao-bad{color:#c0392b}
   .bao-tbl b.bao-ok{color:#1f8a5b}
   /* 行层次：分类组整行（色带）/ 组内客服（缩进）/ 汇总 */
@@ -875,10 +871,8 @@
   .bao-tbl tr.bao-ghead th.hk-reg{font-size:12.5px;letter-spacing:.3px}
   .bao-tbl tr.bao-sub th.hk-reg{padding-left:20px;font-weight:600;color:#4d4436;background:var(--tint,#faf4ea)}
   .bao-tbl tr.bao-sub th.hk-reg::before{content:'·';margin-right:6px;color:#c0a884}
-  .bao-tbl tr.bao-sub td{background:var(--tint,#faf4ea)}
-  .bao-tbl tr.bao-sub td.bao-c-d{background:rgba(203,226,252,.66)}
-  .bao-tbl tr.bao-sub td.bao-c-w{background:rgba(252,227,190,.62)}
-  .bao-tbl tr.bao-sub td.bao-c-m{background:rgba(248,211,222,.62)}
+  .bao-tbl tr.bao-sub td.bao-ctgt,.bao-tbl tr.bao-sub td.bao-cach,.bao-tbl tr.bao-sub td.bao-cchg,
+  .bao-tbl tr.bao-sub td.bao-cgap,.bao-tbl tr.bao-sub td.bao-crank{background:var(--tint,#faf4ea)}
   .bao-tbl tr.bao-sum th,.bao-tbl tr.bao-sum td{background:var(--tint,#fdf4e7);font-weight:800;color:#4a3418;border-top:2px solid #e0c398}
   /* 可点单元格（跳 AMZ汇总表 / AMZ达标表）+ 悬浮趋势 */
   .bao-tbl tr[data-baogo] th.hk-reg{cursor:pointer}
@@ -890,11 +884,6 @@
   .bao-tip{position:fixed;left:0;top:0;z-index:9999;display:none;pointer-events:none;min-width:186px;
     background:#fff;border:1px solid #dfe6f2;border-radius:10px;padding:8px 10px 7px;
     box-shadow:0 10px 26px rgba(41,60,96,.18)}
-  .bao-hdim{display:inline-block;margin-left:3px;font-style:normal;font-size:9.5px;font-weight:800;
-    padding:0 4px;border-radius:8px;vertical-align:1px;letter-spacing:0}
-  .bao-hdim.hd-d{background:#d7e7fb;color:#1d4e89}
-  .bao-hdim.hd-w{background:#fbdfba;color:#8a4a10}
-  .bao-hdim.hd-m{background:#f8d2dd;color:#9b2c4c}
   .bao-tip.on{display:block}
   .bao-tip-hd{display:flex;align-items:baseline;gap:7px;font-size:12px;font-weight:800;color:#2f3a52;margin-bottom:3px}
   .bao-tip-tag{font-style:normal;font-size:10.5px;font-weight:700;border-radius:20px;padding:1px 7px;white-space:nowrap}
@@ -903,10 +892,15 @@
   .bao-tip .bao-tip-v{font-size:9.5px;fill:#5b6478;font-weight:700}
   .bao-tip-ft{display:flex;gap:9px;flex-wrap:wrap;font-size:10.5px;color:#8a93a8;border-top:1px dashed #eceff6;padding-top:4px}
   .bao-tip-ft b{color:#2f3a52;font-variant-numeric:tabular-nums}
-  /* 顶部卡片：日/周/月 切换按钮也按三种颜色区分 */
-  .bao-seg button.seg-d.on{background:#3d7fc1}
-  .bao-seg button.seg-w.on{background:#c2812f}
-  .bao-seg button.seg-m.on{background:#c0507a}
+  /* 顶部卡片：日/周/月 三个按钮各自固定颜色（未选中=浅底同色字，选中=实底白字） */
+  .bao-seg button.seg-d{background:#f4f9ff;color:#1d4e89;border:1px solid #cfe1f6}
+  .bao-seg button.seg-w{background:#fff8ee;color:#8a4a10;border:1px solid #f0dcbe}
+  .bao-seg button.seg-m{background:#fff5f8;color:#9b2c4c;border:1px solid #f3d3de}
+  .bao-seg button.seg-d.on{background:#3d7fc1;color:#fff;border-color:#3d7fc1}
+  .bao-seg button.seg-w.on{background:#c2812f;color:#fff;border-color:#c2812f}
+  .bao-seg button.seg-m.on{background:#c0507a;color:#fff;border-color:#c0507a}
+  .bao-seg button+button{border-left:0}
+
   .nt-cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:10px;margin-bottom:12px}
   .nt-card{background:#fff;border:1px solid #e6e9f4;border-radius:10px;padding:9px 12px 7px}
   .nt-hd{display:flex;align-items:baseline;gap:8px;margin-bottom:6px}
@@ -13275,31 +13269,103 @@ function netSection(){
 }
 
 /* ───────────── 五、客服报损情况 ─────────────
-   数据源：AMZ汇总表「账号报损」的 日 / 周 / 月 三张快照（各自存最近一次上传）。
+   数据源：AMZ汇总表「账号报损」的 日 / 周 / 月 三张快照（三张表每天都可能重新上传一次）。
    口径：
      · 退款率 = 退款额合计 ÷ 销售额合计（不是各行退款率的平均）；
      · 达标 = 该账号该维度退款率 ≤ 其客服「目标设置 · 退款率持平值」（该客服没填则不参与达标率分母）；
      · 持平达成率 = 目标 ÷ 实际（退款率越低越好，>100% 即优于目标）；
-     · 环比 = 同一张表历次上传之间的退款率差（百分点），首次上传显示「首期」。
-   行结构：按「分类组」分层（分类组整体 → 组内客服明细）→ 末尾汇总行；
-   列结构：左边固定区（月目标值 / 达成率 / 环比 / 差距 / 排名 / 退款率 / 部分退款占比 / 退款总额）
-           + 日 / 周 / 月 三块（每块「账号达标率 + 不达标账号数」，三块各用一种底色区分）。
-   交互：鼠标悬浮数值 → 弹该期趋势（日留 30 期 / 周留 4 期 / 月留 12 期）；
-         点 项目名 / 目标 / 达成率 / 退款率 / 部分退款 / 退款总额 → 「AMZ汇总表」；
-         点 账号达标率 / 不达标账号数 → 「AMZ达标表」（已按该期退款率指标 + 达标状态筛好）。 */
+     · 环比 = 同一张表上一期与本期的退款率差（百分点），首次上传显示「首期」。
+   行结构：按「分类组」分层（分类组整体 → 组内客服明细）→ 末尾汇总行。
+   列结构：项目 / 月目标值 / 达成率 / 环比 / 差距 / 排名 + 当前维度（日 或 周 或 月）的
+           退款率 / 部分退款占比 / 退款总额 / 账号达标率 / 不达标账号数（整组按维度配色：日蓝 · 周橙 · 月玫）。
+   历次快照留存（每天上传一次，按周期归并后再留期数）：
+     · 日：一天一期，留最新 30 天；
+     · 周：一周只留「周期最后一天」那一期（周末/最新一次），留最新 4 周；
+     · 月：一月只留「每月 1 日」那一期（当月最早的一次上传），留最新 12 个月。
+   交互：悬浮数值 → 该维度趋势小图（30 天 / 4 周 / 12 个月）；
+         点 项目名 / 月目标值 / 达成率 / 退款率 / 部分退款占比 / 退款总额 → 「AMZ汇总表」；
+         点 账号达标率 / 不达标账号数 → 「AMZ达标表」（已按该维度退款率指标 + 达标状态筛好）。 */
 const BAO_KINDS=[['d','日'],['w','周'],['m','月']];
 const BAO_KLBL={d:'日',w:'周',m:'月'};
 const BAO_DIM_KEY={d:'baoDRate',w:'baoWRate',m:'baoMRate'};
-const BAO_TREND_N={d:30,w:4,m:12};      /* 悬浮趋势保留期数：日 30 / 周 4 / 月 12 */
-const BAO_KEEP_N={d:30,w:12,m:12};      /* 历次快照留存上限（日留 30 天） */
+/* 留存期数：日 30 天 / 周 4 周 / 月 12 个月 */
+const BAO_KEEP_N={d:30,w:4,m:12};
 let baoDim='w',baoNote=false;
 let BAO_TR={};                          /* 悬浮趋势注册表：key → {nm,dimLbl,metric,pts,tgt,...} */
+let BAO_HC={};
+const BAO_MC={d:'bao-mcd',w:'bao-mcw',m:'bao-mcm'};                          /* 历次快照归并结果缓存（每次重绘清空） */
+/* 各维度配色（表头/单元格/趋势线共用一套） */
+const BAO_TONE={
+  d:{hd:'#c7dffa',fg:'#17457a',bd:'#9dc3ee',cell:'rgba(203,226,252,.58)',line:'#2f7bbf',chip:'#d7e7fb'},
+  w:{hd:'#fbe0ba',fg:'#7d4310',bd:'#e8bf85',cell:'rgba(252,227,190,.55)',line:'#c2812f',chip:'#fbdfba'},
+  m:{hd:'#f8cfda',fg:'#8e2745',bd:'#e9aabd',cell:'rgba(248,211,222,.55)',line:'#c0507a',chip:'#f8d2dd'}
+};
 function baoMetaOf(k){return sumBaoMetaStore()[k]||{};}
-function baoHistOf(k){const h=baoMetaOf(k).hist;return Array.isArray(h)?h:[];}
-/* 该维度的快照日期（只取年月日） */
-function baoMetaDate(k){return String(baoMetaOf(k).at||'').slice(0,10)||String((baoMetaOf(k).hist||[]).slice(-1)[0]||{}).d||'';}
+/* 该维度快照的日期（只取年月日） */
+function baoMetaDate(k){
+  const mt=baoMetaOf(k);
+  const d=String(mt.at||'').slice(0,10);
+  if(d)return d;
+  const h=Array.isArray(mt.hist)?mt.hist:[];
+  return h.length?String(h[h.length-1].d||'').slice(0,10):'';
+}
+/* 上传日期做一期的 key：一天只记一条（同一天多次上传就覆盖），
+   不再用文件里的 dateMax —— 否则文件覆盖区间不变时历史永远只有 1 期，环比全是「首期」 */
+function baoDayKey(stamp,p){
+  const s=String(stamp||'').slice(0,10);
+  if(/^\d{4}-\d{2}-\d{2}$/.test(s))return s;
+  const dm=String((p&&p.dateMax)||'').slice(0,10);
+  if(/^\d{4}-\d{2}-\d{2}$/.test(dm))return dm;
+  return todayStr();
+}
+/* 周 key = 该周周一（周一~周日为一周） */
+function baoWeekKey(d){
+  const p=String(d||'').split('-').map(Number);
+  if(p.length<3||!p[0])return String(d||'');
+  const dt=new Date(Date.UTC(p[0],p[1]-1,p[2]));
+  const dow=(dt.getUTCDay()+6)%7;
+  return new Date(dt.getTime()-dow*86400000).toISOString().slice(0,10);
+}
+/* 周的显示：11/09-11/15 */
+function baoWeekLabel(d){
+  const p=String(d||'').split('-').map(Number);
+  if(p.length<3||!p[0])return String(d||'');
+  const mon=new Date(baoWeekKey(d)+'T00:00:00Z');
+  const sun=new Date(mon.getTime()+6*86400000);
+  const f=function(x){return (x.getUTCMonth()+1)+'/'+String(x.getUTCDate()).padStart(2,'0');};
+  return f(mon)+'-'+f(sun);
+}
+/* 按周期归并 + 只留最近 N 期：
+   日 → 一天一期（取当天最后一次）；周 → 一周只留最后一天；月 → 一月只留最早一天（≈ 1 日） */
+function baoHistTrim(kind,hist){
+  const arr=(Array.isArray(hist)?hist:[]).filter(function(e){return e&&e.d;});
+  arr.sort(function(a,b){return String(a.d)<String(b.d)?-1:(String(a.d)>String(b.d)?1:0);});
+  const keyOf=function(d){
+    d=String(d||'');
+    if(kind==='w')return baoWeekKey(d);
+    if(kind==='m')return d.slice(0,7);
+    return d.slice(0,10);
+  };
+  const pick={},order=[];
+  arr.forEach(function(e){
+    const kk=keyOf(e.d),cur=pick[kk];
+    if(!cur){pick[kk]=e;order.push(kk);return;}
+    if(kind==='m'){ if(String(e.d)<String(cur.d))pick[kk]=e; }   /* 月：留当月最早一天 */
+    else{ if(String(e.d)>String(cur.d))pick[kk]=e; }             /* 日 / 周：留最新一天 */
+  });
+  const out=order.map(function(kk){return pick[kk];});
+  out.sort(function(a,b){return String(a.d)<String(b.d)?-1:1;});
+  return out.slice(-(BAO_KEEP_N[kind]||12));
+}
+function baoHistOf(k){
+  if(BAO_HC[k])return BAO_HC[k];
+  const mt=baoMetaOf(k);
+  const out=baoHistTrim(k,mt.hist);
+  BAO_HC[k]=out;
+  return out;
+}
 /* 上传报损表时记一条历次快照：只存 客服 / 组长 / 全体 三级的退款额、销售额与达标计数
-   （20 来人 × 5 个数，比存全表账号明细省得多），供「环比 / 悬浮趋势」用；按维度留够期数 */
+   （20 来人 × 5 个数，比存全表账号明细省得多），供「环比 / 悬浮趋势」用 */
 function baoPushHist(kind,recs,p,stamp){
   const mt=sumBaoMetaStore()[kind]||(sumBaoMetaStore()[kind]={});
   const hist=Array.isArray(mt.hist)?mt.hist:[];
@@ -13326,12 +13392,12 @@ function baoPushHist(kind,recs,p,stamp){
     if(c)add(hcs,c,ref,sale,ok,bad);
     if(g)add(hld,g,ref,sale,ok,bad);
   });
-  const d=((p&&p.dateMax)?p.dateMax:(String(stamp||'').slice(0,10)||''));
-  const ent={d:d,at:stamp||'',all:all,ld:hld,cs:hcs};
-  const i=hist.findIndex(function(x){return x&&x.d===ent.d;});
+  const d=baoDayKey(stamp,p);
+  const ent={d:d,at:stamp||'',dm:String((p&&p.dateMax)||''),all:all,ld:hld,cs:hcs};
+  const i=hist.findIndex(function(x){return x&&String(x.d||'').slice(0,10)===d;});
   if(i>=0)hist[i]=ent;else hist.push(ent);
-  hist.sort(function(a,b){return String(a.d)<String(b.d)?-1:1;});
-  mt.hist=hist.slice(-(BAO_KEEP_N[kind]||12));
+  mt.hist=baoHistTrim(kind,hist);
+  BAO_HC={};
 }
 /* 账号 → 组长（先取账号上的「客服组长」，没有再按「达标设置② 客服→组长」对照） */
 function baoLeaderOf(a){
@@ -13415,8 +13481,7 @@ function baoHistLevel(e,kind,name,members){
   }
   return null;
 }
-/* 趋势序列：metric='rate' 退款率；metric='ok' 账号达标率（只有新版快照记了 ok/bad 才有）
-   按维度只留最近 N 期（日 30 / 周 4 / 月 12） */
+/* 趋势序列：metric='rate' 退款率 / 'ok' 账号达标率（新版快照才记 ok/bad）/ 'amt' 退款总额 */
 function baoHistSeries(dim,kind,name,metric){
   const members=(kind==='cat')?baoCatMembersOf(name):null;
   const out=[];
@@ -13428,13 +13493,15 @@ function baoHistSeries(dim,kind,name,metric){
       const ok=Number(v.ok),bad=Number(v.bad);
       if(v.ok==null||!(isFinite(ok)&&isFinite(bad))||(ok+bad)<=0)return;
       val=ok/(ok+bad);
+    }else if(metric==='amt'){
+      val=Number(v.ref)||0;
     }else{
       if(!(Number(v.sale)>0))return;
       val=Number(v.ref)/Number(v.sale);
     }
     out.push({d:String(e.d||''),at:String(e.at||''),v:val});
   });
-  return out.slice(-(BAO_TREND_N[dim]||12));
+  return out;
 }
 /* 环比用的序列：历史 + 本次（本次若已在历史里就替换，避免重复计一期） */
 function baoWowSeries(dim,kind,name,curRate){
@@ -13458,7 +13525,7 @@ function baoWowOf(ser){
 function baoPct(v){return (v==null||!isFinite(v))?'—':(Math.round(v*10000)/100).toFixed(2)+'%';}
 /* 环比：退款率上升=变差（红），下降=变好（绿） */
 function baoChgHtml(pp){
-  if(pp==null)return '<span class="dim" title="同一张表上传第二次起才有环比">首期</span>';
+  if(pp==null)return '<span class="dim" title="这张表上一期与本期都有数据才有环比">首期</span>';
   const worse=pp>0;
   return '<b class="bao-'+(worse?'bad':'ok')+'" title="退款率'+(worse?'上升':'下降')+' '+Math.abs(pp).toFixed(2)+' 个百分点">'
     +(worse?'▲':'▼')+Math.abs(pp).toFixed(2)+'</b>';
@@ -13469,44 +13536,64 @@ function baoGapHtml(v){
   return '<b class="bao-'+(v>=0?'ok':'bad')+'">'+(v>=0?'+':'−')+Math.abs(v).toFixed(2)+'</b>';
 }
 function baoPctTgt(v){return (v==null||!isFinite(v))?'<span class="dim">—</span>':(Math.round(v*100)/100).toFixed(2)+'%';}
+/* 趋势点的 x 轴标签：日=11-15 / 周=11/09-11/15 / 月=2026-11 */
+function baoTrendLabel(dim,d){
+  d=String(d||'');
+  if(dim==='w')return baoWeekLabel(d);
+  if(dim==='m')return d.slice(0,7);
+  return d.slice(5);
+}
 /* 把一行的趋势登记进 BAO_TR，返回 key（单元格只带 data-baotr="key"，不塞长 JSON）
-   账号达标率的历史快照要新版才有 ok/bad 计数 → 不足 2 期时自动回落到「退款率」趋势，保证有图可看 */
+   账号达标率 / 退款总额的历史要新版快照才齐 → 不足 2 期时自动回落到「退款率」趋势，保证有图可看 */
 function baoTrendKey(x,metric,dim){
-  const want=(metric==='ok')?'ok':'rate';
+  const want=metric;
   const key=x.kind+'|'+x.name+'|'+dim+'|'+want;
   if(BAO_TR[key])return key;
   const cur=x.st[dim]||{};
   const at=String(baoMetaOf(dim).at||'');
+  /* 本期值并进序列：同一期（同一天 / 同一周 / 同一月）覆盖；日、周的新一期追加；
+     月只认「每月 1 日」那一期 —— 当月已有记录就不再追加今天这个月中值 */
+  const curDate=baoMetaDate(dim);
+  const kOf=function(d){
+    d=String(d||'');
+    return dim==='m'?d.slice(0,7):(dim==='w'?baoWeekKey(d):d.slice(0,10));
+  };
   const build=function(m){
     const pts=baoHistSeries(dim,x.kind,x.name,m);
-    const cv=(m==='ok')?cur.okRate:cur.rate;
-    if(cv!=null){
+    const cv=(m==='ok')?cur.okRate:(m==='amt'?cur.ref:cur.rate);
+    if(cv!=null&&cv!==0&&curDate){
       const last=pts[pts.length-1];
-      if(last&&String(last.at||'')===at)last.v=cv;
-      else pts.push({d:baoMetaDate(dim)||'本次',at:at,v:cv});
+      const has=kOf(curDate);
+      if(last&&kOf(last.d)===has)last.v=cv;
+      else if(dim!=='m')pts.push({d:curDate,at:at,v:cv});
+      else if(!pts.some(function(p){return kOf(p.d)===has;}))pts.push({d:curDate,at:at,v:cv});
     }
+    if(pts.length>(BAO_KEEP_N[dim]||12))pts=pts.slice(-(BAO_KEEP_N[dim]||12));
     return pts;
   };
-  const cap=BAO_TREND_N[dim]||12;
   let m=want,pts=build(want);
-  if(m==='ok'&&pts.length<2){m='rate';pts=build('rate');}
-  if(pts.length>cap)pts=pts.slice(-cap);
+  if(m!=='rate'&&pts.length<2){m='rate';pts=build('rate');}
+  const tone=BAO_TONE[dim]||BAO_TONE.w;
   BAO_TR[key]={nm:x.name,kindLbl:(x.kind==='cat'?'分类组':(x.kind==='all'?'汇总':'客服')),
-    dimLbl:BAO_KLBL[dim],metric:(m==='ok'?'账号达标率':'退款率'),
-    pts:pts,tgt:(m==='ok'?null:x.tgt),
-    line:(dim==='d'?'#2f7bbf':(dim==='w'?'#c2812f':'#c0507a')),
-    bg:(dim==='d'?'#e8f1fc':(dim==='w'?'#fdf3e4':'#fdeef2')),
-    fg:(dim==='d'?'#1d4e89':(dim==='w'?'#8a4a10':'#9b2c4c'))};
+    dim:dim,dimLbl:BAO_KLBL[dim],metric:(m==='ok'?'账号达标率':(m==='amt'?'退款总额':'退款率')),
+    unit:(m==='amt'?'€':'%'),pts:pts,tgt:(m==='rate'?x.tgt:null),
+    line:tone.line,bg:tone.chip,fg:tone.fg};
   return key;
 }
 /* 悬浮趋势小图 */
 function baoSparkHtml(t){
   const P=(t.pts||[]).slice();
+  const unit=t.unit||'%';
+  const fmt=function(v){
+    if(v==null||!isFinite(v))return '—';
+    return unit==='€'?fmtThou(Math.round(v)):baoPct(v);
+  };
   const head='<div class="bao-tip-hd"><span>'+esc(t.nm||'')+'</span>'
     +'<i class="bao-tip-tag" style="background:'+(t.bg||'#eef2fb')+';color:'+(t.fg||'#3a4560')+'">'+esc(t.dimLbl||'')+esc(t.metric||'')+'</i></div>';
+  const spanTxt={d:'近 30 天（每天一期）',w:'近 4 周（周末日一期）',m:'近 12 个月（每月 1 日一期）'}[t.dim]||'';
   if(P.length<2){
     return head+'<div class="bao-tip-sub">只有 '+P.length+' 期快照，攒够 2 期才画得出趋势</div>'
-      +(P.length?'<div class="bao-tip-ft"><span>最新 <b>'+baoPct(P[0].v)+'</b></span></div>':'');
+      +'<div class="bao-tip-ft"><span>'+esc(spanTxt)+'</span>'+(P.length?('<span>最新 <b>'+fmt(P[0].v)+'</b></span>'):'')+'</div>';
   }
   const W=214,H=54,PL=5,PR=5,PT=7,PB=12;
   const vs=P.map(function(x){return x.v;}).filter(function(v){return v!=null;});
@@ -13525,14 +13612,14 @@ function baoSparkHtml(t){
   P.forEach(function(p,i){
     const cx=PL+step*i,cy=y(p.v),last=(i===n-1);
     g+='<circle cx="'+cx.toFixed(1)+'" cy="'+cy.toFixed(1)+'" r="'+(last?2.8:1.9)+'" fill="#fff" stroke="'+(t.line||'#2f7bbf')+'" stroke-width="1.5"/>';
-    if(last)g+='<text x="'+Math.min(W-2,cx).toFixed(1)+'" y="'+(cy-5).toFixed(1)+'" text-anchor="end" class="bao-tip-v">'+baoPct(p.v)+'</text>';
+    if(last)g+='<text x="'+Math.min(W-2,cx).toFixed(1)+'" y="'+(cy-5).toFixed(1)+'" text-anchor="end" class="bao-tip-v">'+esc(fmt(p.v))+'</text>';
   });
   const svg='<svg width="'+W+'" height="'+H+'" viewBox="0 0 '+W+' '+H+'">'+g+'</svg>';
   const first=P[0],last=P[n-1];
-  const ft='<div class="bao-tip-ft"><span>'+(first.d?esc(String(first.d).slice(5)):'—')+' → '+(last.d?esc(String(last.d).slice(5)):'—')+'</span>'
-    +'<span>共 '+n+' 期</span><span>最新 <b>'+baoPct(last.v)+'</b></span>'
+  const ft='<div class="bao-tip-ft"><span>'+esc(spanTxt)+'</span><span>共 '+n+' 期</span>'
+    +'<span>最新 <b>'+fmt(last.v)+'</b></span>'
     +(t.tgt!=null?'<span>目标 <b>'+baoPctTgt(t.tgt)+'</b></span>':'')
-    +'</div>';
+    +'<span class="dim">'+esc(baoTrendLabel(t.dim,first.d))+' → '+esc(baoTrendLabel(t.dim,last.d))+'</span></div>';
   return head+svg+ft;
 }
 /* 悬浮提示节点（fixed 定位，避免被表格横向滚动容器裁掉） */
@@ -13547,7 +13634,7 @@ function baoTipNode(){
 function baoTipPlace(ev){
   const n=document.getElementById('baoTip');
   if(!n||!n.classList.contains('on'))return;
-  const w=n.offsetWidth||250,h=n.offsetHeight||90;
+  const w=n.offsetWidth||250,h=n.offsetHeight||96;
   let x=(ev.clientX||0)+14,y=(ev.clientY||0)+16;
   if(x+w>window.innerWidth-8)x=(ev.clientX||0)-w-14;
   if(y+h>window.innerHeight-8)y=(ev.clientY||0)-h-16;
@@ -13610,13 +13697,16 @@ function baoGo(kind,name,to,dim,st){
     const bar=document.getElementById('sumFilterBar');if(bar)bar.innerHTML=sumFilterBarInner();
   },0);
 }
-/* 一行（分类组 / 客服 / 汇总）：左固定区 + 日/周/月 三块 */
+/* 一行（分类组 / 客服 / 汇总）：左固定区 + 当前维度的 5 列（整组按维度配色） */
 function baoRowHtml(x,o){
   o=o||{};
-  const cur=x.st[baoDim]||{};
+  const k=baoDim;
+  const cur=x.st[k]||{};
   const cls=[o.cls||'','bao-r-'+x.kind].join(' ').trim().replace(/\s+/g,' ');
   const go=' data-baogo="'+esc(x.kind)+'" data-bagn="'+esc(x.name)+'"';
   const goTip='点击查看 AMZ汇总表 明细';
+  const tk=function(metric){return baoTrendKey(x,metric,k);};
+  const mc='bao-mc '+(BAO_MC[k]||BAO_MC.w);
   let h='<tr class="'+cls+'"'+(o.tint?' style="--tint:'+o.tint+'"':'')+go+'>'
     +'<th class="hk-reg'+(x.kind==='cs'?' bao-sub':'')+'" title="'+esc(goTip)+'">'+esc(x.name)+'</th>'
     +'<td class="bao-ctgt" data-bagy="sum" title="目标设置 · 退款率持平值">'+baoPctTgt(x.tgt)+'</td>'
@@ -13624,24 +13714,26 @@ function baoRowHtml(x,o){
       +(x.ach==null?'<span class="dim">—</span>':'<b>'+x.ach.toFixed(2)+'%</b>')+'</td>'
     +'<td class="bao-cchg">'+baoChgHtml(x.chg)+'</td>'
     +'<td class="bao-cgap">'+baoGapHtml(x.gap)+'</td>'
-    +'<td class="bao-crank" title="'+esc(x.kind==='cat'?'分类组之间排名（按达成率降序）':(x.kind==='cs'?'全体客服统一排名（按达成率降序，不按分类组分列）':'汇总行不参与排名'))+'">'+(x.rank==null?'<span class="dim">—</span>':x.rank)+'</td>'
-    +'<td class="bao-crate" data-bagy="sum" data-baotr="'+baoTrendKey(x,'rate',baoDim)+'" title="'+esc(BAO_KLBL[baoDim]+'退款率 = 退款额 ÷ 销售额；'+goTip+'；悬浮看趋势')+'">'
+    +'<td class="bao-crank" title="'+esc(x.kind==='cat'?'分类组之间排名（按达成率降序）':(x.kind==='cs'?'全体客服统一排名（按达成率降序，不按分类组分列）':'汇总行不参与排名'))+'">'
+      +(x.rank==null?'<span class="dim">—</span>':x.rank)+'</td>'
+    +'<td class="'+mc+' bao-m1" data-bagy="sum" data-baotr="'+tk('rate')+'"'
+      +' title="'+esc(BAO_KLBL[k]+'退款率 = 退款额 ÷ 销售额；'+goTip+'；悬浮看趋势')+'">'
       +(x.rate==null?'<span class="dim">—</span>':'<b>'+x.rate.toFixed(2)+'%</b>')+'</td>'
-    +'<td class="bao-cpart dim" data-bagy="sum" title="部分退款占比：数据源待接入（AMZ汇总表 · 部分退款额），暂时留空">—</td>'
-    +'<td class="bao-camt" data-bagy="sum" title="'+esc(BAO_KLBL[baoDim]+'退款额合计；'+goTip)+'">'
-      +((cur.ref)?('<b>'+fmtThou(Math.round(cur.ref*100)/100)+'</b>'):'<span class="dim">—</span>')+'</td>';
-  BAO_KINDS.forEach(function(p){
-    const dim=p[0],st2=x.st[dim]||{},c='bao-c-'+dim;
-    h+='<td class="'+c+' bao-cx" data-bagy="std:ok" data-bagk="'+dim+'" data-baotr="'+baoTrendKey(x,'ok',dim)+'"'
-      +' title="'+esc(BAO_KLBL[dim]+'：账号达标率 = 退款率 ≤ 客服持平值的账号占比；点击到 AMZ达标表 看明细；悬浮看趋势')+'">'
-      +(st2.okRate==null?'<span class="dim">—</span>':'<b>'+baoPct(st2.okRate)+'</b>')+'</td>'
-      +'<td class="'+c+'" data-bagy="std:fail" data-bagk="'+dim+'" data-baotr="'+baoTrendKey(x,'rate',dim)+'"'
-      +' title="'+esc(BAO_KLBL[dim]+'：不达标账号数（退款率 > 客服持平值）；点击到 AMZ达标表 看明细')+'">'
-      +(st2.bad?('<b class="bao-bad">'+st2.bad+'</b>'):(st2.nJ?'<span class="dim">0</span>':'<span class="dim">—</span>'))+'</td>';
-  });
-  return h+'</tr>';
+    +'<td class="'+mc+' bao-cpart" data-bagy="sum"'
+      +' title="部分退款占比：数据源待接入（AMZ汇总表 · 部分退款额），暂时留空">—</td>'
+    +'<td class="'+mc+' bao-camt" data-bagy="sum" data-baotr="'+tk('amt')+'"'
+      +' title="'+esc(BAO_KLBL[k]+'退款额合计；'+goTip+'；悬浮看趋势')+'">'
+      +((cur.ref)?('<b>'+fmtThou(Math.round(cur.ref*100)/100)+'</b>'):'<span class="dim">—</span>')+'</td>'
+    +'<td class="'+mc+' bao-m2 bao-cok" data-bagy="std:ok" data-bagk="'+k+'" data-baotr="'+tk('ok')+'"'
+      +' title="'+esc(BAO_KLBL[k]+'：账号达标率 = 退款率 ≤ 客服持平值的账号占比；点击到 AMZ达标表 看明细；悬浮看趋势')+'">'
+      +(cur.okRate==null?'<span class="dim">—</span>':'<b>'+baoPct(cur.okRate)+'</b>')+'</td>'
+    +'<td class="'+mc+' bao-cbad" data-bagy="std:fail" data-bagk="'+k+'"'
+      +' title="'+esc(BAO_KLBL[k]+'：不达标账号数（退款率 > 客服持平值）；点击到 AMZ达标表 看明细')+'">'
+      +(cur.bad?('<b class="bao-bad">'+cur.bad+'</b>'):(cur.nJ?'<span class="dim">0</span>':'<span class="dim">—</span>'))+'</td>'
+    +'</tr>';
+  return h;
 }
-/* 顶部卡片：跟随「日/周/月」选择显示整体数（三块表在下方同时展示） */
+/* 顶部卡片：跟随「日/周/月」选择显示整体数（三个按钮各自有固定颜色） */
 function baoCardHtml(){
   const k=baoDim;
   const st=baoStatOf(baoAcctRows(k),'');
@@ -13651,7 +13743,7 @@ function baoCardHtml(){
   const achG=(tg.g!=null&&rp!=null&&rp>0)?(tg.g/rp*100):null;
   const wow=baoWowOf(baoWowSeries(k,'all','',st.rate));
   const seg='<span class="bao-seg">'+BAO_KINDS.map(function(kp){
-    return '<button data-baodim="'+kp[0]+'" class="'+(baoDim===kp[0]?'on ':'')+'seg-'+kp[0]+'">'+kp[1]+'</button>';
+    return '<button data-baodim="'+kp[0]+'" class="seg-'+kp[0]+(baoDim===kp[0]?' on':'')+'">'+kp[1]+'</button>';
   }).join('')+'</span>';
   const kv=function(l,v,cls,tip){
     return '<div class="bao-c1-kv"><span>'+l+'</span><b'+(cls?' class="'+cls+'"':'')+(tip?(' title="'+esc(tip)+'"'):'')+'>'+v+'</b></div>';
@@ -13675,30 +13767,23 @@ function baoCardHtml(){
 }
 function baoInner(){
   const k=baoDim;
-  BAO_TR={};
-  const dimRows={};
-  BAO_KINDS.forEach(function(p){dimRows[p[0]]=baoAcctRows(p[0]);});
-  /* 客服 = 三个维度里有报损数据的并集（某维度没数据 → 该维度格子留空，不显示 0） */
-  const csSet={};
-  BAO_KINDS.forEach(function(p){dimRows[p[0]].forEach(function(r){if(r.cs)csSet[r.cs]=1;});});
-  const csList=Object.keys(csSet);
-  const rowsOfCs=function(dim,cs){return dimRows[dim].filter(function(r){return r.cs===cs;});};
-  const mk=function(kind,name,stMap){
-    const cur=stMap[k]||{};
-    const rp=(cur.rate==null)?null:cur.rate*100;
+  BAO_TR={};BAO_HC={};
+  const rows=baoAcctRows(k);
+  /* 客服 = 当前维度下有报损数据的客服（换维度时明细跟着换） */
+  const csList=Array.from(new Set(rows.map(function(r){return r.cs;}).filter(Boolean)));
+  const mk=function(kind,name){
+    const rs=(kind==='all')?rows:(kind==='cat'?rows.filter(function(r){return (r.cat||'')===(name==='未归类'?'':name);}):rows.filter(function(r){return r.cs===name;}));
+    const st=baoStatOf(rs,name);
     const tg=(kind==='all')?baoTgtOf('all').t:(kind==='cat'?baoTgtOf('cat',name).t:baoTgtOf('cs',name).t);
+    const rp=(st.rate==null)?null:st.rate*100;
     const ach=(tg!=null&&rp!=null&&rp>0)?(tg/rp*100):null;
-    const chg=baoWowOf(baoWowSeries(k,kind,name,cur.rate));
+    const chg=baoWowOf(baoWowSeries(k,kind,(kind==='all'?'':name),st.rate));
     const gap=(tg!=null&&rp!=null)?(tg-rp):null;
-    return {kind:kind,name:name,st:stMap,tgt:tg,rate:rp,ach:ach,chg:chg,gap:gap,rank:null};
+    return {kind:kind,name:name,st:(function(){const o={};o[k]=st;return o;})(),
+      rate:rp,okRate:st.okRate,bad:st.bad,nJ:st.nJ,ref:st.ref,tgt:tg,ach:ach,chg:chg,gap:gap,rank:null};
   };
   /* 客服行 */
-  const csEnt=[];
-  csList.forEach(function(cs){
-    const m={};
-    BAO_KINDS.forEach(function(p){m[p[0]]=baoStatOf(rowsOfCs(p[0],cs),cs);});
-    csEnt.push(mk('cs',cs,m));
-  });
+  const csEnt=csList.map(function(cs){return mk('cs',cs);});
   csEnt.sort(function(a,b){
     const av=(a.ach==null)?-1e9:a.ach,bv=(b.ach==null)?-1e9:b.ach;
     if(bv!==av)return bv-av;
@@ -13706,94 +13791,66 @@ function baoInner(){
   });
   csEnt.forEach(function(x,i){x.rank=i+1;});
   /* 分类组行 */
-  const catName={};
-  csList.forEach(function(cs){catName[csCatOf(cs)||'']=1;});
-  const catEnt=[];
-  Object.keys(catName).forEach(function(g){
-    const mem=csList.filter(function(cs){return (csCatOf(cs)||'')===g;});
-    if(!mem.length)return;
-    const m={};
-    BAO_KINDS.forEach(function(p){
-      const rows=dimRows[p[0]].filter(function(r){return mem.indexOf(r.cs)>=0;});
-      m[p[0]]=baoStatOf(rows,g||'未归类');
-    });
-    catEnt.push(mk('cat',g||'未归类',m));
-  });
+  const catSet={};
+  csList.forEach(function(cs){catSet[csCatOf(cs)||'']=1;});
+  const catEnt=Object.keys(catSet).map(function(g){return mk('cat',g||'未归类');});
   catEnt.sort(function(a,b){
     const av=(a.ach==null)?-1e9:a.ach,bv=(b.ach==null)?-1e9:b.ach;
     if(bv!==av)return bv-av;
     return a.name.localeCompare(b.name,'zh');
   });
   catEnt.forEach(function(x,i){x.rank=i+1;});
-  /* 全体汇总行 */
-  const allMap={};
-  BAO_KINDS.forEach(function(p){allMap[p[0]]=baoStatOf(dimRows[p[0]],'汇总');});
-  const allEnt=mk('all','汇总',allMap);
+  const allEnt=mk('all','汇总');
   /* 表体 */
+  const span=11;
   let body='';
-  const span=15;
   if(!csList.length){
     body='<tr><td colspan="'+span+'" class="dim">「'+BAO_KLBL[k]+'」还没有报损数据 —— 到「AMZ汇总表 · ⬆ 上传指标数据源」上传'+BAO_KLBL[k]+'退款明细后这里会自动出现</td></tr>';
   }else{
     catEnt.forEach(function(g,gi){
       const tint=CSF_GROUP_TINTS[gi%CSF_GROUP_TINTS.length];
-      const mem=csEnt.filter(function(x){return (csCatOf(x.name)||'')===(g.name==='未归类'?'':g.name);});
+      const nm=(g.name==='未归类')?'':g.name;
+      const mem=csEnt.filter(function(x){return (csCatOf(x.name)||'')===nm;});
       body+=baoRowHtml(g,{cls:'bao-ghead',tint:tint});
       body+=mem.length?mem.map(function(x){return baoRowHtml(x,{cls:'bao-sub',tint:tint});}).join('')
         :'<tr class="bao-sub" style="--tint:'+tint+'"><td colspan="'+span+'" class="dim">该分类组下暂无客服明细</td></tr>';
     });
     body+=baoRowHtml(allEnt,{cls:'bao-sum',tint:CSF_SUM_TINT.amber});
   }
-  /* 表头：左边固定区 rowspan 2 + 日/周/月 三块（各 2 列） */
-  const BH={
-    d:{t:'bao-hd-d',bg2:'#e8f1fc'},
-    w:{t:'bao-hd-w',bg2:'#fdf1dd'},
-    m:{t:'bao-hd-m',bg2:'#fbe9ee'}
-  };
-  const dimChip=function(){
-    return '<i class="bao-hdim hd-'+k+'">'+BAO_KLBL[k]+'</i>';
-  };
-  const dimTag=function(dim){
-    const dt=baoMetaDate(dim);
-    if(!dt)return BAO_KLBL[dim]+' · 未上传';
-    return BAO_KLBL[dim]+' · '+(dim==='m'?dt.slice(0,7):dt.slice(5));
-  };
-  let head='<thead><tr>'
+  /* 表头：左边固定区 + 当前维度整组（表头组名带快照日期） */
+  const tone=BAO_TONE[k]||BAO_TONE.w;
+  const dt=baoMetaDate(k);
+  const dtag=BAO_KLBL[k]+(dt?(' · '+(k==='m'?dt.slice(0,7):dt.slice(5))):' · 未上传');
+  const head='<thead><tr>'
     +'<th class="grp hk-reg" rowspan="2">项目</th>'
-    +'<th rowspan="2" class="bao-th-tgt" title="该行对应的「退款率持平值」（客服取目标设置·客服区，分类组取分类组区 / 组内客服均值）">月目标值</th>'
-    +'<th rowspan="2" class="bao-th-ach" title="目标 ÷ 实际退款率（按上方所选 日/周/月 口径；>100% 即优于目标）">达成率'+dimChip()+'</th>'
-    +'<th rowspan="2" title="与这张表上一次上传相比的退款率差（百分点）">环比</th>'
+    +'<th rowspan="2" class="bao-th-tgt" title="该行的「退款率持平值」（客服取目标设置·客服区；分类组取分类组区 / 组内客服均值）">月目标值</th>'
+    +'<th rowspan="2" class="bao-th-ach" title="目标 ÷ 实际退款率（按当前 日/周/月 口径；>100% 即优于目标）">达成率</th>'
+    +'<th rowspan="2" title="这张表上一期与本期相比的退款率差（百分点）">环比</th>'
     +'<th rowspan="2" title="持平目标 − 实际退款率（正数＝比目标更低，优于目标）">差距</th>'
     +'<th rowspan="2" title="全体客服统一排名（按达成率降序）">排名</th>'
-    +'<th rowspan="2" class="bao-th-rate" title="退款率 = 退款额 ÷ 销售额（上方所选口径）">退款率'+dimChip()+'</th>'
-    +'<th rowspan="2" title="部分退款占比（数据源待接入，暂时留空）">部分退款占比</th>'
-    +'<th rowspan="2" title="退款额合计（上方所选口径）">退款总额'+dimChip()+'</th>';
-  BAO_KINDS.forEach(function(p){
-    const dim=p[0];
-    head+='<th colspan="2" class="'+BH[dim].t+'" title="'+esc(dimTag(dim))+'">'+esc(dimTag(dim))+'</th>';
-  });
-  head+='</tr><tr>';
-  BAO_KINDS.forEach(function(p){
-    const dim=p[0],c='bao-c-'+dim;
-    head+='<th class="'+c+' bao-cx" title="退款率 ≤ 客服持平值的账号占比（'+BAO_KLBL[dim]+'口径）">达标率</th>'
-      +'<th class="'+c+'" title="退款率 > 客服持平值的账号数（'+BAO_KLBL[dim]+'口径）">不达标账号数</th>';
-  });
-  head+='</tr></thead>';
+    +'<th colspan="5" class="bao-hdg" style="background:'+tone.hd+';color:'+tone.fg+';border-left:3px solid '+tone.bd+'" title="当前 '+BAO_KLBL[k]+' 口径（快照 '+esc(dt||'未上传')+'）">'+esc(dtag)+'</th>'
+    +'</tr><tr>'
+    +'<th class="bao-mh" style="background:'+tone.hd+';color:'+tone.fg+';border-left:3px solid '+tone.bd+'" title="退款率 = 退款额 ÷ 销售额（'+BAO_KLBL[k]+'口径）">退款率</th>'
+    +'<th class="bao-mh" style="background:'+tone.hd+';color:'+tone.fg+'" title="部分退款占比（数据源待接入，暂时留空）">部分退款占比</th>'
+    +'<th class="bao-mh" style="background:'+tone.hd+';color:'+tone.fg+'" title="退款额合计（'+BAO_KLBL[k]+'口径）">退款总额</th>'
+    +'<th class="bao-mh bao-m2" style="background:'+tone.hd+';color:'+tone.fg+'" title="退款率 ≤ 客服持平值的账号占比（'+BAO_KLBL[k]+'口径）">达标率</th>'
+    +'<th class="bao-mh" style="background:'+tone.hd+';color:'+tone.fg+'" title="退款率 > 客服持平值的账号数（'+BAO_KLBL[k]+'口径）">不达标账号数</th>'
+    +'</tr></thead>';
   /* 口径说明（默认收起） */
   const note=baoNote
-    ?'<div class="bao-note">数据源：<b>AMZ汇总表 · 账号报损</b> 的 日 / 周 / 月 三张快照（在「⬆ 上传指标数据源」里上传），本表三块同时展示。'
+    ?'<div class="bao-note">数据源：<b>AMZ汇总表 · 账号报损</b> 的 日 / 周 / 月 三张快照（都在「⬆ 上传指标数据源」里上传），用上方 日/周/月 切换查看。'
       +'<b>退款率 = 退款额合计 ÷ 销售额合计</b>（不是各行退款率的平均）；'
       +'<b>账号达标</b> = 该账号退款率 ≤ 其客服「目标设置 · 退款率持平值」（没填目标或销售额为 0 的账号不计入达标率分母）；'
-      +'<b>达成率 = 目标 ÷ 实际</b>（越低越好，&gt;100% 即优于目标）；<b>差距</b> = 目标 − 实际（正数＝优于目标）；'
-      +'<b>环比</b> = 与这张表上一次上传相比的退款率差（百分点），首次上传显示「首期」。'
-      +'<br>行按「<b>分类组</b>」分层：分类组整体一行（组内客服汇总）→ 组内客服明细；客服排名为<b>全体客服统一排名</b>，分类组排名在分类组之间比。'
+      +'<b>达成率 = 目标 ÷ 实际</b>（越低越好，&gt;100% 即优于目标）；<b>差距</b> = 目标 − 实际（正数＝优于目标）。'
+      +'<br>行按「<b>分类组</b>」分层：分类组整体一行 → 组内客服明细；客服排名为<b>全体客服统一排名</b>，分类组在分类组之间比。'
       +'<b>部分退款占比</b>暂空，等「AMZ汇总表」补上部分退款额后自动出数。'
-      +'<br>鼠标悬浮任一数值 → 看该期趋势（<b>日留 30 天 / 周留 4 周 / 月留 12 个月</b>）；点项目名或退款率类数值 → 「AMZ汇总表」看金额明细，点达标率 / 不达标账号数 → 「AMZ达标表」看具体账号。</div>'
+      +'<br><b>历次快照</b>（悬浮数值可看趋势）：<b>日</b>一天记一期、留最新 30 天；<b>周</b>一周只留周期最后一天那期、留最新 4 周；'
+      +'<b>月</b>一月只留每月 1 日那期、留最新 12 个月。环比 = 上一期与本期的退款率差。'
+      +'<br>点 项目名 / 达成率 / 退款率 / 退款总额 → 「AMZ汇总表」看金额明细；点 达标率 / 不达标账号数 → 「AMZ达标表」看具体账号。</div>'
     :'';
-  const ats=BAO_KINDS.map(function(p){return baoMetaDate(p[0]);}).filter(Boolean).sort();
-  const metaTxt=ats.length?('快照：'+ats[ats.length-1]):'未上传';
+  const metaTxt=dt?('快照：'+dt):'未上传';
   return '<div class="bao-mhead"><span class="bao-mtag">五、客服报损情况</span>'
-    +'<span class="nt-scope" title="各期快照日期见表格右侧日/周/月三块表头">'+esc(metaTxt)+'</span>'
+    +'<span class="nt-scope" title="'+esc(BAO_KLBL[k]+' 快照日期；各维度的日期会随日/周/月 切换')+'">'+esc(metaTxt)+'</span>'
     +'<button class="bao-notebtn" data-baonote="1">'+(baoNote?'收起口径':'口径说明')+'</button>'
     +'</div>'+note
     +baoCardHtml()
