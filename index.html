@@ -2530,7 +2530,12 @@ function save(){
   const tip=document.getElementById('saveTip');
   /* Supabase 直连模式：本机留一份兜底，同时防抖推云端 */
   if(SB_SEC){
-    try{localStorage.setItem(STORE,packData());}catch(e){}
+    if(BOOT_STALE)BOOT_DIRTY=true;      /* 缓存渲染期改了数据 → 云端回来时不要覆盖本机 */
+    try{
+      localStorage.setItem(STORE,packData());
+      localStorage.setItem(SEC_CACHE_AT,String(Date.now()));
+      if(WB.scope)localStorage.setItem(SEC_SCOPE_KEY,JSON.stringify(WB.scope));
+    }catch(e){}
     if(tip)tip.textContent='已保存 · 同步中…';
     secScheduleSave();
     return true;
@@ -7597,12 +7602,59 @@ function secSaveNow(){
 }
 function secScheduleSave(){ if (SEC_TIMER) clearTimeout(SEC_TIMER); SEC_TIMER = setTimeout(secSaveNow, 1200); }
 /* 启动：拿 token → 拉核心数据 → 后台补合规明细 */
+/* ── 加载加速：本机快照缓存（首屏秒开）+ 云端后台同步 ──
+   · 首屏：localStorage 里的上一份快照先渲染（O(压缩包解压)，不碰网络）
+   · 后台：amz_pull 回来后静默替换并重绘（保留滚动位置）；本机有改动则不覆盖，提示手动刷新
+   · SB.BASE / 快照回写都延后到首帧之后，避免 10MB JSON.stringify 拖慢首屏 */
+const SEC_CACHE_AT='amz_cache_at_v1';
+const SEC_SCOPE_KEY='amz_scope_cache_v1';
+let BOOT_STALE=false, BOOT_DIRTY=false;
+function secCacheAt(){try{return Number(localStorage.getItem(SEC_CACHE_AT)||0)||0;}catch(e){return 0;}}
+function secCacheScope(){try{var o=JSON.parse(localStorage.getItem(SEC_SCOPE_KEY)||'null');return (o&&typeof o==='object')?o:null;}catch(e){return null;}}
+function secCacheSave(){
+  try{
+    localStorage.setItem(STORE,packData(DATA));
+    localStorage.setItem(SEC_CACHE_AT,String(Date.now()));
+    if(WB.scope)localStorage.setItem(SEC_SCOPE_KEY,JSON.stringify(WB.scope));
+  }catch(e){}
+}
+function secTip(txt,title){
+  try{var el=document.getElementById('saveTip');if(!el)return;el.textContent=txt||'';
+    el.title=title||'点击这里可立刻从云端同步最新数据';}catch(e){}
+}
 function secBoot(){
   SB.on = true;
+  BOOT_DIRTY = false;      /* 每次重新引导/手动同步都清掉「本机有改动」标记，保证云端最新能落地 */
   var app = document.getElementById('app');
-  if (app) app.innerHTML = '<div class="content"><div class="empty" id="sbLoading">正在从云端加载数据…</div></div>';
   var tk = secToken();
   if (!tk) { sbLoginGate(''); return; }
+  /* ① 先用本机快照秒开 */
+  var painted = false, cu = secUserCache(), cached = null;
+  var BT = { t0: Date.now() };   /* 首屏耗时拆解（调试用，不影响逻辑） */
+  try { cached = load(); } catch (e) { cached = null; }
+  BT.cache = Date.now();
+  if (cached && cu && cu.username) {
+    try {
+      DATA = migrateData(cached);
+      BT.mig = Date.now();
+      WB.user = secNormUser(cu); WB.ready = true; WB.token = '';
+      WB.scope = secCacheScope() || { visible: (DATA.accounts || []).length, total: (DATA.accounts || []).length };
+      if (!view || HASH_VIEWS.indexOf(view) < 0) view = 'health';
+      BOOT_STALE = true;
+      try { wbRenderWho(); } catch (e) {}
+      render();
+      sbBadge();
+      try { sbAdminPanel(); } catch (e) {}
+      BT.rend = Date.now(); window.__BOOT_T = BT;
+      var at = secCacheAt();
+      secTip('已显示本机缓存' + (at ? ('（' + new Date(at).toLocaleString() + '）') : '') + ' · 正在同步云端…',
+        '正在从云端同步最新数据，完成后会自动刷新');
+      painted = true;
+      /* 首帧之后再做重活：BASE 快照（10MB stringify） */
+      setTimeout(function () { try { SB.BASE = secSnap(DATA); } catch (e) {} }, 0);
+    } catch (e) { painted = false; try{window.__CACHE_ERR=String((e&&e.message)||e);console.warn('[boot] 缓存渲染失败：',e);}catch(_e){} }
+  }
+  if (!painted && app) app.innerHTML = '<div class="content"><div class="empty" id="sbLoading">正在从云端加载数据…</div></div>';
   var t0 = Date.now();
   var tick = setInterval(function () {
     var el = document.getElementById('sbLoading');
@@ -7612,7 +7664,18 @@ function secBoot(){
   }, 1000);
   secRpc('amz_pull', { p_token: tk }).then(function (j) {
     clearInterval(tick);
-    if (!j || !j.ok) { secClear(); sbLoginGate((j && j.msg) || '登录已失效，请重新登录'); return; }
+    if (!j || !j.ok) {
+      if (painted) { BOOT_STALE = false; secTip('云端同步失败（' + ((j && j.msg) || '登录已失效') + '）· 当前显示本机缓存', '点击重试'); return; }
+      secClear(); sbLoginGate((j && j.msg) || '登录已失效，请重新登录'); return;
+    }
+    var cu2 = secUserCache();
+    if (!cu2 || !cu2.username) { secClear(); sbLoginGate('登录信息已失效，请重新登录'); return; }
+    /* 本机在缓存期间改过数据 → 不覆盖，保留改动，让用户手动决定 */
+    if (BOOT_DIRTY && painted) {
+      BOOT_STALE = false;
+      secTip('云端有更新，但本机有未同步的改动 · 点这里用云端覆盖刷新', '点击会用云端最新数据覆盖本机未同步的改动');
+      return;
+    }
     var cfg = j.config || {}, d = {};
     Object.keys(cfg).forEach(function (k) { d[k] = cfg[k]; });
     d.accounts = j.accounts || [];
@@ -7621,25 +7684,31 @@ function secBoot(){
     d.otdIssues = [];
     d.ctrIssues = [];
     DATA = migrateData(d);
-    var cu = secUserCache();
-    if (!cu || !cu.username) { secClear(); sbLoginGate('登录信息已失效，请重新登录'); return; }
-    WB.user = secNormUser(cu);
+    WB.user = secNormUser(cu2);
     WB.ready = true; WB.token = '';
     WB.scope = j.scope ? { visible: j.scope.visible, total: j.scope.total } : null;
     SB.lastStats = { accounts: d.accounts.length };
     SB.at = ''; SB.lastTxt = '';
-    SB.BASE = secSnap(DATA);
-    OTD.state = 'unloaded';
-    CTR.state = 'unloaded';
+    BOOT_STALE = false;
     if (!view || HASH_VIEWS.indexOf(view) < 0) view = 'health';
+    var sy = 0;
+    try { sy = (typeof window !== 'undefined' && window.pageYOffset) || 0; } catch (e) {}
     try { wbRenderWho(); } catch (e) {}
     render();
+    try { if (sy) window.scrollTo(0, sy); } catch (e) {}
     sbBadge();
     try { sbAdminPanel(); } catch (e) {}
+    secTip('已同步云端 · ' + new Date().toLocaleTimeString(), '点击这里可立刻从云端同步最新数据');
+    /* 重活延后：BASE 快照 + 本机缓存回写 */
+    setTimeout(function () {
+      try { SB.BASE = secSnap(DATA); } catch (e) {}
+      try { secCacheSave(); } catch (e) {}
+    }, 0);
     /* 合规明细不在首屏加载：进「问题明细 / 政策知识解读」时再拉 */
     SEC.compState = '';
   }).catch(function (e) {
     clearInterval(tick);
+    if (painted) { BOOT_STALE = false; secTip('云端同步失败 · 当前显示本机缓存', '点击重试'); return; }
     if (app) app.innerHTML = '<div class="content"><div class="empty" style="line-height:2">数据加载失败：'
       + esc(String((e && e.message) || e)) + '<br><button class="btn" id="sbRetry">重试</button> '
       + '<button class="btn ghost" id="sbRelogin">重新登录</button></div></div>';
@@ -17252,6 +17321,7 @@ try{
       var el=e.target&&e.target.closest?e.target.closest('#saveTip'):null;
       if(!el)return;
       if(!WB.user){wbShowLogin('请先登录');return;}
+      if(SB_SEC){secBoot();return;}
       wbPull({}).then(function(r){
         if(r&&r.applied){ensureViewAllowed();render();
           alert('已从服务端同步最新数据'+(WB.scope?('（你可见 '+WB.scope.visible+' 个账号）'):'')+'。');}
