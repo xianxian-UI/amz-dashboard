@@ -1313,7 +1313,17 @@
   /* ── 账号报损（日/周/月退款）表头：绿色，跟其它分组不同色 ── */
   table.xl thead tr.grow th.bao{background:#cce8cf;color:#2c5f38;box-shadow:inset 0 -1px 0 #b7d9bb}
   table.xl thead tr.grow th.bao:hover{background:#cce8cf}
-  table.xl thead th.bcol{background:#e3f2e5;color:#2c5f38;box-shadow:inset 0 -1px 0 #cbe4cf}
+  /* 日 / 周 / 月 三种颜色区分（表头 + 数据格，带左分隔线） */
+  table.xl thead th.c-day{background:#d5e7fb;color:#1d4e89;box-shadow:inset 0 -1px 0 #b9d4f2;border-left:2px solid #b9d4f2}
+  table.xl thead th.c-week{background:#fde7c8;color:#8a4a10;box-shadow:inset 0 -1px 0 #f0d0a0;border-left:2px solid #f0d0a0}
+  table.xl thead th.c-month{background:#f9d9e2;color:#9b2c4c;box-shadow:inset 0 -1px 0 #efbfcd;border-left:2px solid #efbfcd}
+  table.xl thead th.c-day:hover{background:#c9e0f9}
+  table.xl thead th.c-week:hover{background:#fce0b8}
+  table.xl thead th.c-month:hover{background:#f7cdda}
+  table.xl tbody td.c-day{background:#eff7ff;border-left:2px solid #dbe9f9}
+  table.xl tbody td.c-week{background:#fff9ed;border-left:2px solid #f6e2c4}
+  table.xl tbody td.c-month{background:#fff3f6;border-left:2px solid #f6d8e2}
+  table.xl thead th.bcol{background:#e3f2e5;color:#2c5f38;box-shadow:inset 0 -1px 0 #cbe4cf;border-left:2px solid #cbe4cf}
   table.xl thead th.bcol:hover{background:#d8ecdb}
   /* ── 上传指标数据源面板：主表 + 日/周/月三张独立退款表 ── */
   .modal.srcpanel{width:min(980px,100%)}
@@ -1324,6 +1334,9 @@
   .sp-card.main{grid-column:1/-1}
   .sp-hd{padding:9px 12px;font-weight:700;font-size:13px;background:var(--psoft);color:#5a51cb;border-bottom:1px solid #e0dbfa}
   .sp-card.bao .sp-hd{background:#cce8cf;color:#2c5f38;border-bottom-color:#b7d9bb}
+  .sp-card.k-day .sp-hd{background:#d5e7fb;color:#1d4e89;border-bottom-color:#b9d4f2}
+  .sp-card.k-week .sp-hd{background:#fde7c8;color:#8a4a10;border-bottom-color:#f0d0a0}
+  .sp-card.k-month .sp-hd{background:#f9d9e2;color:#9b2c4c;border-bottom-color:#efbfcd}
   .sp-bd{padding:10px 12px;display:flex;flex-direction:column;gap:7px;align-items:flex-start;flex:1}
   .sp-cols{font-size:11.5px;color:#8a85a6;line-height:1.55}
   .sp-st{font-size:12px;color:#4a4560;line-height:1.5;flex:1}
@@ -6312,7 +6325,7 @@ function sumBodyInner(){
   const head1=`<tr class="grow"><th class="grp" rowspan="2">#</th>${gcSum.map(g=>`<th class="grp${g.name==='账号报损'?' bao':''}" colspan="${g.cols.length}">${esc(g.name)}</th>`).join('')}</tr>`;
   const head2=`<tr>${vcSum.map(([k,l])=>{
     const act=sumSortK===k?(sumSortDir===2?2:1):0;
-    return `<th data-sumsort="${k}" class="${SUM_BAO_KEYS.indexOf(k)>=0?'bcol':''}" title="点击切换排序：升序 → 降序 → 取消">${esc(l)}<span class="xlf${act?' on':''}"><i>${act===2?'▼':'▲'}</i></span></th>`;
+    return `<th data-sumsort="${k}" class="${baoCls(k)}" title="点击切换排序：升序 → 降序 → 取消">${esc(l)}<span class="xlf${act?' on':''}"><i>${act===2?'▼':'▲'}</i></span></th>`;
   }).join('')}</tr>`;
   const rows=pageList.map((a,idx)=>{
     const mSet={};STD_M_KEYS.forEach(k=>mSet[k]=1);
@@ -6333,8 +6346,9 @@ function sumBodyInner(){
         return '<td class="'+cls+'"'+mapped+'>'+v+'</td>';
       }
       let v;if(raw==='')v='<span class="dim">—</span>';else if(SUM_PCT_KEYS.indexOf(k)>=0)v=esc(fmtPct(raw));else v=esc(raw);
-      if(sumGoHit(k,raw))return `<td class="go">${sumGoLink(k,a.short,v)}</td>`;
-      return `<td>${v}</td>`;
+      const bc=baoCls(k);
+      if(sumGoHit(k,raw))return `<td class="go${bc?' '+bc:''}">${sumGoLink(k,a.short,v)}</td>`;
+      return `<td${bc?' class="'+bc+'"':''}>${v}</td>`;
     }).join('');
     return `<tr data-id="${a.id}"><td class="num">${start+idx+1}</td>${tds}</tr>`;
   }).join('');
@@ -6424,8 +6438,8 @@ function sumParseAoa(aoa){
    · 只取数值列，账号信息仍实时映射账号管理；率统一存小数（"6.2%" → 0.062），显示时 ×100 */
 const BAO_ALIAS={
   ord:['订单量','订单数','订单数量','总订单量','日订单量','周订单量','月订单量','订单'],
-  ref:['退款额','退款金额','退款总额','退款金额合计','日退款额','周退款额','月退款额'],
-  sale:['销售额','销售金额','销售总额','销售金额合计','日销售额','周销售额','月销售额','GMV','gmv'],
+  ref:['退款额','退款金额','退款总额','退款金额合计','退款额(RMB)','退款金额(RMB)','日退款额','周退款额','月退款额'],
+  sale:['销售额','销售金额','销售总额','销售金额合计','订单总金额(RMB)','订单总金额（RMB）','订单总金额','订单金额','订单总额','总金额','日销售额','周销售额','月销售额','GMV','gmv'],
   rate:['退款率','退款占比','退款比例','退款额占比','日退款率','周退款率','月退款率'],
   at:['更新时间','更新日期','数据更新时间','更新于','统计时间','数据时间']
 };
@@ -6447,20 +6461,35 @@ function sumBaoMetaStore(){
 /* 行上挂报损值：把 日/周/月 三套快照按列前缀摊平（渲染 / 排序 / 筛选 / 导出统一走行字段） */
 function sumBaoFields(key){
   const out={},st=sumBaoStore();
-  const SFX={ord:'Ord',ref:'Ref',sale:'Sale',rate:'Rate'};
+  const SFX={ord:'Ord',ref:'Ref',sale:'Sale'};
   SUM_BAO_KIND.forEach(function(kp){
     const rec=(st[kp[0]]||{})[key];if(!rec)return;
-    ['ord','ref','sale','rate'].forEach(function(f){
-      const v=rec[f];if(v==null||v==='')return;
-      out[kp[2]+SFX[f]]=v;
+    /* 该账号在这张表里有行 → 缺的数值一律按 0 显示（不是「—」），退款率现算 */
+    ['ord','ref','sale'].forEach(function(f){
+      const v=rec[f];out[kp[2]+SFX[f]]=(v==null||v==='')?0:v;
     });
+    out[kp[2]+'Rate']=baoRate(rec.ref,rec.sale);
     if(rec.at&&(!out.baoAt||String(rec.at)>String(out.baoAt)))out.baoAt=rec.at;
   });
   return out;
 }
+/* 退款率 = 退款额 ÷ 销售额；销售额没值/为 0 → 0（存小数，保留 4 位 = 百分比 2 位） */
+function baoRate(ref,sale){
+  const r=parseFloat(ref),s2=parseFloat(sale);
+  if(!isFinite(r)||!isFinite(s2)||s2<=0)return 0;
+  return Number((r/s2).toFixed(4));
+}
+/* 日/周/月列 → 配色 class（表头与数据格共用） */
+function baoCls(k){
+  if(k==='baoAt')return 'bcol';
+  if(k.indexOf('baoD')===0)return 'c-day';
+  if(k.indexOf('baoW')===0)return 'c-week';
+  if(k.indexOf('baoM')===0)return 'c-month';
+  return '';
+}
 /* 金额/数量/率：去千分位与币种符号；率带 % 转小数 */
 function baoNum(v){
-  let s=String(v==null?'':v).replace(/[\s,]/g,'').replace(/[€$£¥￥]/g,'').replace(/％/g,'%');
+  let s=String(v==null?'':v).replace(/[\s,]/g,'').replace(/[€$£¥￥]/g,'').replace(/(rmb|cny|元)/gi,'').replace(/％/g,'%');
   if(!s)return '';
   if(SUM_NA_VALS.indexOf(s.toLowerCase())>=0)return '';
   const pct=s.indexOf('%')>=0;s=s.replace(/%/g,'');
@@ -6486,30 +6515,31 @@ function baoParseAoa(aoa){
   }
   if(hi<0)return {ok:false,msg:'没有找到表头行（需含「账号」列）'};
   const head=(aoa[hi]||[]).map(function(x){return String(x==null?'':x).trim();});
-  const map={acct:-1,ord:-1,ref:-1,sale:-1,rate:-1,at:-1};
+  const map={acct:-1,ord:-1,ref:-1,sale:-1,at:-1};
   head.forEach(function(c,i){
     if(!c)return;
     if(map.acct<0&&SUM_ACCT_ALIAS.some(function(a){return c===a||c.toLowerCase()===a.toLowerCase();})){map.acct=i;return;}
-    ['ord','ref','sale','rate','at'].forEach(function(f){
+    ['ord','ref','sale','at'].forEach(function(f){
       if(map[f]>=0)return;
       if(BAO_ALIAS[f].some(function(a){return c===a;}))map[f]=i;
     });
   });
   if(map.acct<0)return {ok:false,msg:'表头缺少「账号」列'};
-  const got=['ord','ref','sale','rate'].filter(function(f){return map[f]>=0;});
-  if(!got.length)return {ok:false,msg:'表头未识别到 订单量 / 退款额 / 销售额 / 退款率 中的任何一列'};
+  const got=['ord','ref','sale'].filter(function(f){return map[f]>=0;});
+  if(!got.length)return {ok:false,msg:'表头未识别到 订单量 / 退款额 / 销售额(订单总金额) 中的任何一列'};
   const recs={};let n=0;
   for(let i=hi+1;i<aoa.length;i++){
     const row=aoa[i]||[];
     const key=String(row[map.acct]==null?'':row[map.acct]).trim().toUpperCase();
     if(!key||badShort(key))continue;
-    const o=recs[key]||(recs[key]={});
+    const o=recs[key]||(recs[key]={ord:0,ref:0,sale:0,rate:0});
     let add=0;
     got.forEach(function(f){const num=baoNum(row[map[f]]);if(num==='')return;o[f]=num;add++;});
+    o.rate=baoRate(o.ref,o.sale);          /* 退款率不取源表，一律 退款额÷销售额 */
     if(map.at>=0){const t=String(row[map.at]==null?'':row[map.at]).trim();if(t)o.at=t;}
     if(add)n++;
   }
-  return {ok:true,recs:recs,n:n,got:got,missing:['ord','ref','sale','rate'].filter(function(f){return map[f]<0;})};
+  return {ok:true,recs:recs,n:n,got:got,missing:['ord','ref','sale'].filter(function(f){return map[f]<0;})};
 }
 /* 表头行：含「账号」别名，或命中指标/退款列关键字 */
 function sumHeadLine(aoa){
@@ -6580,7 +6610,8 @@ function sumBaoCommit(aoa,sheet,kind,fileName){
   sumBaoMetaStore()[kind]={file:fileName,at:stamp,n:n,sheet:sheet||''};
   DATA.sumBaoMeta=sumBaoMetaStore();
   out.push('✓ '+klab+'：'+fileName+'（'+n+' 个账号'+(sheet?('·工作表「'+sheet+'」'):'')+'）');
-  if(p.missing.length)out.push('　缺列（保持为空）：'+p.missing.map(function(f){return BAO_COL_LABEL[f];}).join('、'));
+  if(p.missing.length)out.push('　文件里没有这些列（按 0 计）：'+p.missing.map(function(f){return BAO_COL_LABEL[f];}).join('、'));
+  out.push('　退款率 = 退款额 ÷ 销售额（自动计算，2 位小数百分比；销售额为 0 时显示 0%）');
   return out;
 }
 /* 单张表上传：点某个卡片 → 直接落到该卡片对应的表 */
@@ -6634,7 +6665,7 @@ function sumSrcModal(){
     const m=mt[kind];
     const st=m?('已导入 <b>'+m.n+'</b> 个账号 · '+esc(m.at||'')+(m.file?('<br>'+esc(m.file)):'')):'<span class="dim">还没导入</span>';
     return card(kp[1]+'退款明细','账号 · 订单量 · 退款额 · 销售额 · 退款率 · 更新时间',st,
-      '<button class="btn ghost xs" data-baoup="'+kind+'">选择文件</button>','bao');
+      '<button class="btn ghost xs" data-baoup="'+kind+'">选择文件</button>','bao k-'+(kind==='d'?'day':(kind==='w'?'week':'month')));
   };
   return '<div class="mask" id="sumSrcMask"><div class="modal srcpanel">'
     +'<header><h2>⬆ 上传指标数据源</h2><button class="btn ghost xs" id="sumSrcClose">关闭</button></header>'
