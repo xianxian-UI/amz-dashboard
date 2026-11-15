@@ -863,11 +863,11 @@
   .bao-tbl b.bao-bad{color:#c0392b}
   .bao-tbl b.bao-ok{color:#1f8a5b}
   /* 行层次：分类组整行（色带）/ 组内客服（缩进）/ 汇总 */
-  .bao-tbl tr.bao-ghead th,.bao-tbl tr.bao-ghead td{background:var(--tint,#f4ead8);font-weight:800;color:#4a3418;border-top:2px solid #e6d5b6}
+  .bao-tbl tr.bao-ghead th,.bao-tbl tr.bao-ghead td{background:var(--tint,#f4ead8);font-weight:800;color:#3f3a33;border-top:1px solid rgba(120,110,95,.18)}
   .bao-tbl tr.bao-ghead th.hk-reg{font-size:12.5px;letter-spacing:.3px}
-  .bao-tbl tr.bao-sub th.hk-reg{font-weight:600;color:#4d4436;background:var(--tint,#faf4ea)}
-  .bao-tbl tr.bao-sub td{background:var(--tint,#faf4ea)}
-  .bao-tbl tr.bao-sum th,.bao-tbl tr.bao-sum td{background:var(--tint,#fdf4e7);font-weight:800;color:#4a3418;border-top:2px solid #e0c398}
+  .bao-tbl tr.bao-sub th.hk-reg{font-weight:600;color:#4a4437;background:var(--tint2,var(--tint,#faf4ea))}
+  .bao-tbl tr.bao-sub td{background:var(--tint2,var(--tint,#faf4ea))}
+  .bao-tbl tr.bao-sum th,.bao-tbl tr.bao-sum td{background:var(--tint,#fdf4e7);font-weight:800;color:#3f3a33;border-top:2px solid rgba(120,110,95,.28)}
   /* 可点单元格（跳 AMZ汇总表 / AMZ达标表）+ 悬浮趋势 */
   .bao-tbl tr[data-baogo] th.hk-reg{cursor:pointer}
   .bao-tbl tr[data-baogo] th.hk-reg:hover{color:#a2591a;text-decoration:underline;text-underline-offset:3px}
@@ -906,6 +906,8 @@
   .bao-tip-hd{display:flex;align-items:baseline;gap:7px;font-size:12px;font-weight:800;color:#2f3a52;margin-bottom:3px}
   .bao-tip-tag{font-style:normal;font-size:10.5px;font-weight:700;border-radius:20px;padding:1px 7px;white-space:nowrap}
   .bao-tip-sub{font-size:11px;color:#8a93a8}
+  .bao-tip-rule{max-width:252px;line-height:1.6;color:#5b6478}
+  .bao-tbl.csf-tbl thead th.bao-hcell{cursor:help}
   .bao-tip svg{display:block;margin:2px 0 1px}
   .bao-tip .bao-tip-v{font-size:9.5px;fill:#5b6478;font-weight:700}
   .bao-tip-ft{display:flex;gap:9px;flex-wrap:wrap;font-size:10.5px;color:#8a93a8;border-top:1px dashed #eceff6;padding-top:4px}
@@ -13321,6 +13323,15 @@ const BAO_TONE={
   w:{hd:'#fbe0ba',fg:'#7d4310',bd:'#e8bf85',line:'#c2812f',chip:'#fbdfba',cbg:'#fff7ea',cbd:'#eed3a2',cfg:'#7d4310'},
   m:{hd:'#f8cfda',fg:'#8e2745',bd:'#e9aabd',line:'#c0507a',chip:'#f8d2dd',cbg:'#fff4f8',cbd:'#f2c4d4',cfg:'#8e2745'}
 };
+/* 把维度色按比例混白：表格里分类组的行底色都用它生成，保证与表头同色系 */
+function baoMix(hex,w){
+  const h=String(hex||'').replace('#','');
+  const r=parseInt(h.slice(0,2),16),g=parseInt(h.slice(2,4),16),b=parseInt(h.slice(4,6),16);
+  if(!isFinite(r)||!isFinite(g)||!isFinite(b))return '#fff';
+  const f=function(x){return Math.round(x+(255-x)*w);};
+  return 'rgb('+f(r)+','+f(g)+','+f(b)+')';
+}
+const BAO_BAND_MIX=[0.52,0.64,0.57,0.70,0.60];   /* 相邻分类组深浅错开，但都在同一色系里 */
 function baoMetaOf(k){return sumBaoMetaStore()[k]||{};}
 /* 该维度快照的日期（只取年月日） */
 function baoMetaDate(k){
@@ -13705,7 +13716,22 @@ function baoTipPlace(ev){
   n.style.top=Math.max(6,y)+'px';
 }
 function baoHoverIn(ev){
-  const el=ev.target&&ev.target.closest?ev.target.closest('[data-baotr]'):null;
+  const tg0=ev.target;
+  if(!tg0||!tg0.closest)return;
+  /* 表头：只弹口径说明（纯文字） */
+  const th=tg0.closest('[data-baotip]');
+  if(th){
+    const n=baoTipNode();
+    const tone=BAO_TONE[baoDim]||BAO_TONE.w;
+    n.innerHTML='<div class="bao-tip-hd"><span>'+esc(th.getAttribute('data-baoth')||'')+'</span>'
+      +'<i class="bao-tip-tag" style="background:'+tone.chip+';color:'+tone.fg+'">口径</i></div>'
+      +'<div class="bao-tip-sub bao-tip-rule">'+esc(th.getAttribute('data-baotip')||'')+'</div>';
+    n.classList.add('on');
+    baoTipPlace(ev);
+    return;
+  }
+  /* 数据格：趋势小图 */
+  const el=tg0.closest('[data-baotr]');
   if(!el)return;
   const t=BAO_TR[el.getAttribute('data-baotr')];
   if(!t)return;
@@ -13719,10 +13745,8 @@ function baoHoverMove(ev){
   if(n&&n.classList.contains('on'))baoTipPlace(ev);
 }
 function baoHoverOut(ev){
-  const el=ev.target&&ev.target.closest?ev.target.closest('[data-baotr]'):null;
-  if(!el)return;
   const to=ev.relatedTarget;
-  if(to&&to.closest&&to.closest('[data-baotr]'))return;
+  if(to&&to.closest&&(to.closest('[data-baotip]')||to.closest('[data-baotr]')))return;
   const n=document.getElementById('baoTip');
   if(n)n.classList.remove('on');
 }
@@ -13771,7 +13795,10 @@ function baoRowHtml(x,o){
   const goTip='点击查看 AMZ汇总表 明细';
   const tk=function(metric){return baoTrendKey(x,metric,k);};
   const achCls=function(v){return v==null?'':(v>=100?' ok':' bad');};
-  return '<tr class="'+cls+'"'+(o.tint?' style="--tint:'+o.tint+'"':'')+go+'>'
+  const stl=[];
+  if(o.tint)stl.push('--tint:'+o.tint);
+  if(o.tint2)stl.push('--tint2:'+o.tint2);
+  return '<tr class="'+cls+'"'+(stl.length?' style="'+stl.join(';')+'"':'')+go+'>'
     +'<th class="hk-reg'+(x.kind==='cs'?' bao-sub':'')+'" title="'+esc(goTip)+'">'+esc(x.name)+'</th>'
     +'<td class="bao-ctgt" data-bagy="sum" title="目标设置 · 退款率持平值">'+baoPctTgt(x.tgt)+'</td>'
     +'<td class="bao-crate" data-bagy="sum" data-baotr="'+tk('rate')+'" title="'+esc(BAO_KLBL[k]+'退款率 = 退款额 ÷ 销售额；'+goTip+'；悬浮看趋势')+'">'
@@ -13929,25 +13956,28 @@ function baoInner(){
   if(!csList.length){
     body='<tr><td colspan="'+span+'" class="dim">「'+BAO_KLBL[k]+'」还没有报损数据 —— 到「AMZ汇总表 · ⬆ 上传指标数据源」上传'+BAO_KLBL[k]+'退款明细后这里会自动出现</td></tr>';
   }else{
+    const tone0=BAO_TONE[k]||BAO_TONE.w;
     catEnt.forEach(function(g,gi){
-      const tint=CSF_GROUP_TINTS[gi%CSF_GROUP_TINTS.length];
+      const r=BAO_BAND_MIX[gi%BAO_BAND_MIX.length];
+      const tint=baoMix(tone0.hd,r), tint2=baoMix(tone0.hd,Math.min(0.9,r+0.26));
       const nm=(g.name==='未归类')?'':g.name;
       const mem=csEnt.filter(function(x){return (csCatOf(x.name)||'')===nm;});
-      body+=baoRowHtml(g,{cls:'bao-ghead',tint:tint});
-      body+=mem.length?mem.map(function(x){return baoRowHtml(x,{cls:'bao-sub',tint:tint});}).join('')
-        :'<tr class="bao-sub" style="--tint:'+tint+'"><td colspan="'+span+'" class="dim">该分类组下暂无客服明细</td></tr>';
+      body+=baoRowHtml(g,{cls:'bao-ghead',tint:tint,tint2:tint2});
+      body+=mem.length?mem.map(function(x){return baoRowHtml(x,{cls:'bao-sub',tint:tint2,tint2:tint2});}).join('')
+        :'<tr class="bao-sub" style="--tint:'+tint2+'"><td colspan="'+span+'" class="dim">该分类组下暂无客服明细</td></tr>';
     });
-    body+=baoRowHtml(allEnt,{cls:'bao-sum',tint:CSF_SUM_TINT.amber});
+    body+=baoRowHtml(allEnt,{cls:'bao-sum',tint:baoMix(tone0.hd,0.30),tint2:baoMix(tone0.hd,0.30)});
   }
   /* 表头：一行到底，整行按当前维度换色 */
   const tone=BAO_TONE[k]||BAO_TONE.w;
   const dt=baoMetaDate(k);
   const hs='background:'+tone.hd+';color:'+tone.fg+';';
   const hd=function(label,tip,cls){
-    return '<th class="bao-hcell'+(cls?' '+cls:'')+'" style="'+hs+'" title="'+esc(tip)+'">'+label+'</th>';
+    return '<th class="bao-hcell'+(cls?' '+cls:'')+'" style="'+hs+'"'
+      +' data-baoth="'+esc(label)+'" data-baotip="'+esc(tip)+'">'+label+'</th>';
   };
   const head='<thead><tr>'
-    +'<th class="grp hk-reg bao-hcell" style="'+hs+'" title="点击行名可跳 AMZ汇总表">项目</th>'
+    +'<th class="grp hk-reg bao-hcell" style="'+hs+'" data-baoth="项目" data-baotip="点行名 → 跳 AMZ汇总表 看该行明细；分组行为该分类组合计，客服行为该客服合计，末尾为全体汇总">项目</th>'
     +hd('月目标值','该行的「退款率持平值」（客服取目标设置·客服区；分类组取分类组区 / 组内客服均值）')
     +hd('退款率','退款率 = 退款额 ÷ 销售额（'+BAO_KLBL[k]+'口径，快照 '+esc(dt||'未上传')+'）；悬浮看趋势')
     +hd('达成率','持平目标 ÷ 实际退款率（>100% 即优于目标）')
