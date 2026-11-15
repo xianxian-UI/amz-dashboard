@@ -6632,15 +6632,18 @@ function baoKindOfName(n){
   if(/月|month/i.test(s))return 'm';
   return '';
 }
-/* 一个文件该落到哪儿：主表指标列 → 主表；账号 + 报损数值列 → 报损表（日周月自动拆） */
+/* 一个文件该落到哪儿：主表指标列 → 主表；账号 + 报损数值列 → 按文件名里的 日/周/月，认不出就用点的那张卡 */
 function sumKindGuess(aoa,fallback,fileName){
   const h=sumHeadLine(aoa);
   if(!h.length)return '';
   const line=h.join('|');
   if(/订单缺陷率|缺陷订单数|发票缺陷率|店铺评分|账户评级|账户评分|账户状况|政策合规性|准时交货率|准时交付率|有效追踪率|迟发率|取消率|问题数量/.test(line))return 'main';
   const ks=h.map(baoHeadKind);
-  if(ks.indexOf('acct')>=0&&(ks.indexOf('ref')>=0||ks.indexOf('sale')>=0||ks.indexOf('ord')>=0))return 'bao';
-  return '';
+  if(ks.indexOf('acct')<0)return '';
+  if(!(ks.indexOf('ref')>=0||ks.indexOf('sale')>=0||ks.indexOf('ord')>=0))return '';
+  const nk=baoKindOfName(fileName);
+  if(nk)return nk;
+  return (fallback==='d'||fallback==='w'||fallback==='m')?fallback:'';
 }
 /* 读文件 → 二维数组（xlsx 取第一个有表头的 sheet；csv/txt 走引号感知切分） */
 function sumReadSrcAoa(f){
@@ -6670,44 +6673,27 @@ function sumReadSrcAoa(f){
   });
 }
 /* 提交一张报损表（不弹窗，返回消息） */
-/* 一个文件进来 → 有日期列就拆 日/周/月（日=最新一天，周=最新 7 天，月=全部）；没有日期列就只写「月」 */
-function sumBaoCommit(aoa,sheet,fileName,kindHint){
-  const out=[];
+/* 提交一张报损表：整表按账号聚合，直接写进点的那张卡（日/周/月三份格式一样，不做日期拆分）
+   只保留汇总表里存在的账号 —— 表里没有的账号本来就显示 0，不必占云端体积 */
+function sumBaoCommit(aoa,sheet,fileName,kind){
+  const out=[],klab=SUM_KIND_LABEL[kind]||'退款明细';
   const p=baoParseAoa(aoa);
-  if(!p.ok){out.push('✗ 「'+fileName+'」：'+p.msg);return out;}
-  if(!p.rows.length){out.push('✗ 「'+fileName+'」：表头认出来了，但没有有效数据行');return out;}
-  const stamp=sumStamp(),plan={};
-  const lab={d:'日',w:'周',m:'月'};
-  if(p.hasDate){
-    const mx=p.dateMax,lo=baoShift(mx,-6);
-    plan.d={recs:baoAgg(p.rows,function(r){return r.d===mx;}),from:mx,to:mx};
-    plan.w={recs:baoAgg(p.rows,function(r){return r.d>=lo&&r.d<=mx;}),from:lo,to:mx};
-    plan.m={recs:baoAgg(p.rows,function(r){return !!r.d;}),from:p.dateMin,to:mx};
-  }else{
-    const only=(kindHint==='d'||kindHint==='w'||kindHint==='m')?kindHint:'m';
-    plan[only]={recs:baoAgg(p.rows,function(){return true;}),from:'',to:''};
-  }
-  Object.keys(plan).forEach(function(k){
-    const recs=plan[k].recs,n=Object.keys(recs).length;
-    sumBaoStore()[k]=recs;
-    sumBaoMetaStore()[k]={file:fileName,at:stamp,n:n,sheet:sheet||'',from:plan[k].from,to:plan[k].to};
-  });
+  if(!p.ok){out.push('✗ '+klab+'「'+fileName+'」：'+p.msg);return out;}
+  if(!p.rows.length){out.push('✗ '+klab+'「'+fileName+'」：表头认出来了，但没有有效数据行');return out;}
+  const keep={};
+  (DATA.accounts||[]).forEach(function(a){if(a&&a.short)keep[String(a.short).trim().toUpperCase()]=1;});
+  const useKeep=Object.keys(keep).length>0;
+  const recs={};
+  Object.keys(p.recs).forEach(function(k){if(!useKeep||keep[k])recs[k]=p.recs[k];});
+  const n=Object.keys(recs).length,raw=Object.keys(p.recs).length;
+  const stamp=sumStamp();
+  DATA.sumBao=sumBaoStore();DATA.sumBao[kind]=recs;
   DATA.sumBaoMeta=sumBaoMetaStore();
-  if(p.hasDate){
-    const span=function(a,b){return (a&&b&&a!==b)?(a+' ~ '+b):(a||b||'');};
-    out.push('✓ 已导入「'+fileName+'」，按日期自动拆成三份：');
-    ['d','w','m'].forEach(function(k){
-      const m=sumBaoMetaStore()[k]||{};
-      out.push('　'+lab[k]+'　'+(m.n||0)+' 个账号　'+span(m.from,m.to));
-    });
-    if(p.dayN<7)out.push('　（文件里只有 '+p.dayN+' 天数据，「周」实际是这 '+p.dayN+' 天的合计）');
-  }else{
-    const k2=(kindHint==='d'||kindHint==='w'||kindHint==='m')?kindHint:'m';
-    out.push('✓ 已导入「'+fileName+'」→ 只更新「'+lab[k2]+'」（'+Object.keys(plan[k2].recs).length+' 个账号）');
-    out.push('　文件里没有「日期」列，拆不出日/周；想要三份都有，请导带日期的明细表。');
-  }
+  DATA.sumBaoMeta[kind]={file:fileName,at:stamp,n:n,raw:raw,sheet:sheet||''};
+  out.push('✓ '+klab+'：'+fileName+'（命中汇总表 '+n+' 个账号'+(raw!==n?(' / 文件里 '+raw+' 行'):'')+(sheet?(' · 工作表「'+sheet+'」'):'')+'）');
   if(p.missing.length)out.push('　文件里没有这些列（按 0 计）：'+p.missing.map(function(f){return BAO_COL_LABEL[f];}).join('、'));
-  if(p.n>=65000)out.push('⚠ 读到 '+p.n+' 行，已顶到 .xls 的 65536 行上限 —— 文件末尾很可能被截断（最新一天会缺账号）。建议导出 CSV 或 .xlsx 再传。');
+  if(p.hasDate)out.push('　文件里带「日期」列（'+p.dateMin+' ~ '+p.dateMax+'，'+p.dayN+' 天）：已按整表合计，不做日期拆分');
+  if(p.n>=65000)out.push('⚠ 读到 '+p.n+' 行，已顶到 .xls 的 65536 行上限，末尾可能被截断 —— 建议导 CSV 或 .xlsx');
   out.push('　退款率 = 退款额 ÷ 销售额（自动算，2 位小数百分比）');
   return out;
 }
@@ -6729,7 +6715,7 @@ function sumUploadFiles(files,fallback){
       return sumReadSrcAoa(f).then(function(r){
         if(!r.aoa){msgs.push('✗ 「'+f.name+'」：表头里既没有「账号」也没有指标列，已跳过');return;}
         const kind=sumKindGuess(r.aoa,fallback,f.name);
-        if(!kind){msgs.push('✗ 「'+f.name+'」：既有账号列又认不出数值列，已跳过');return;}
+        if(!kind){msgs.push('✗ 「'+f.name+'」：看不出是主表还是日/周/月（三份格式相同），请点对应卡片单独上传');return;}
         if(kind==='main'){sumUseSrcFile(f,msgs);return;}
         sumBaoCommit(r.aoa,r.sheet,f.name,fallback).forEach(function(m){msgs.push(m);});
       });
@@ -6757,28 +6743,23 @@ function sumSrcModal(){
     return '<div class="sp-card'+(cls?' '+cls:'')+'"><div class="sp-hd">'+esc(title)+'</div>'
       +'<div class="sp-bd"><div class="sp-cols">识别列：'+esc(cols)+'</div><div class="sp-st">'+status+'</div>'+btn+'</div></div>';
   };
-  const baoCard=function(){
-    const lab={d:'日',w:'周',m:'月'},rows=[];
-    let any='',fileAt='';
-    ['d','w','m'].forEach(function(k){
-      const m=mt[k];if(!m)return;
-      any=k;fileAt=fileAt||((m.file||'')+(m.at?(' · '+m.at):''));
-      const sp=(m.from&&m.to&&m.from!==m.to)?(m.from+' ~ '+m.to):(m.from||'');
-      rows.push('<span class="bb-'+k+'">'+lab[k]+'</span> '+m.n+' 个账号'+(sp?('　'+sp):''));
-    });
-    const st=any?(rows.join('<br>')+(fileAt?('<br><span class="dim">'+esc(fileAt)+'</span>'):'')):'<span class="dim">还没导入</span>';
-    return card('账号报损（一个文件，自动拆日 / 周 / 月）','账号简称 · 日期 · 订单量 · 订单总金额 · 退款金额',st,
-      '<button class="btn ghost xs" data-baoup="bao">选择文件</button>','bao');
+  const baoCard=function(kind){
+    const kp=SUM_BAO_KIND.filter(function(x){return x[0]===kind;})[0]||['d','',''];
+    const m=mt[kind];
+    const st=m?('命中 <b>'+m.n+'</b> 个账号'+(m.raw&&m.raw>m.n?(' <span class="dim">/ 文件 '+m.raw+' 行</span>'):'')
+      +' · '+esc(m.at||'')+(m.file?('<br><span class="dim">'+esc(m.file)+'</span>'):'')):'<span class="dim">还没导入</span>';
+    return card(kp[1]+'退款明细','账号简称 · 订单量 · 订单总金额(RMB) · 退款金额(RMB) · 退款率',st,
+      '<button class="btn ghost xs" data-baoup="'+kind+'">选择文件</button>','bao k-'+(kind==='d'?'day':(kind==='w'?'week':'month')));
   };
   return '<div class="mask" id="sumSrcMask"><div class="modal srcpanel">'
     +'<header><h2>⬆ 上传指标数据源</h2><button class="btn ghost xs" id="sumSrcClose">关闭</button></header>'
     +'<div class="body one-col">'
-    +'<p style="margin:0 0 10px;font-size:13px;color:#4a4560">按<b>表头字段名</b>自动匹配（不看列顺序、<b>不看文件名</b>，全角括号和单位后缀也认）。账号报损<b>只传 1 个文件</b>：带「日期」列会自动拆成 日 / 周 / 月，没有日期列就只更新「月」。</p>'
-    +'<div class="sp-top"><button class="btn" id="sumUpAll">选择文件（1 个或 2 个，自动分派）</button>'
-    +'<span class="sp-tip">拆法：日 = 表里最新一天；周 = 最新 7 天合计；月 = 全部数据合计。</span></div>'
+    +'<p style="margin:0 0 10px;font-size:13px;color:#4a4560">按<b>表头字段名</b>自动匹配（不看列顺序、<b>不看文件名</b>，全角括号和单位后缀也认）。日 / 周 / 月 三份表<b>格式一样</b>，各自独立上传，只传其中一个也可以。</p>'
+    +'<div class="sp-top"><button class="btn" id="sumUpAll">一次选择多个文件</button>'
+    +'<span class="sp-tip">多选时按文件名里的 日/周/月（或 daily/weekly/monthly）分派；文件格式相同认不出，就单独点对应的卡片传。</span></div>'
     +'<div class="sp-grid">'
     +card('Amazon汇总表（指标主表）','账号 · 订单缺陷率 / 缺陷订单数 / 店铺评分 / 政策合规性 / 物流考核 等',mainSt,'<button class="btn ghost xs" data-baoup="main">选择文件</button>','main')
-    +baoCard()
+    +baoCard('d')+baoCard('w')+baoCard('m')
     +'</div>'
     +'<p style="margin:12px 0 0;font-size:12px;color:#8a85a6">汇总表里「账号报损」分组默认只显示 日/周/月退款额 + 退款率，订单量 / 销售额 / 更新时间到「🧩 显示字段」里勾选才出现。</p>'
     +'</div><footer><button class="btn" id="sumSrcClose2">关闭</button></footer></div></div>';
