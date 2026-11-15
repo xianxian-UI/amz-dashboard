@@ -6460,11 +6460,13 @@ function sumBaoMetaStore(){
 }
 /* 行上挂报损值：把 日/周/月 三套快照按列前缀摊平（渲染 / 排序 / 筛选 / 导出统一走行字段） */
 function sumBaoFields(key){
-  const out={},st=sumBaoStore();
+  const out={},st=sumBaoStore(),mt=sumBaoMetaStore();
   const SFX={ord:'Ord',ref:'Ref',sale:'Sale'};
   SUM_BAO_KIND.forEach(function(kp){
-    const rec=(st[kp[0]]||{})[key];if(!rec)return;
-    /* 该账号在这张表里有行 → 缺的数值一律按 0 显示（不是「—」），退款率现算 */
+    /* 这张表还没上传过 → 整列留空（显示「—」），避免全表 0 被误读成「真的没退款」；
+       上传过就与其它指标同口径：每个账号都取值，表里没有这个账号 → 0 / 0% */
+    if(!mt[kp[0]]&&!Object.keys(st[kp[0]]||{}).length)return;
+    const rec=(st[kp[0]]||{})[key]||{};
     ['ord','ref','sale'].forEach(function(f){
       const v=rec[f];out[kp[2]+SFX[f]]=(v==null||v==='')?0:v;
     });
