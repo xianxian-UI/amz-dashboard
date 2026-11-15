@@ -1481,6 +1481,9 @@
   .tgt-tot td{background:#f7f8fc}
   .tgt-tot .tgt-in{font-weight:400;color:#4a4f63;background:#fbfbfe}
   .tgt-tot .tgt-in.manual{font-weight:700;color:#3a3550;background:#fff}
+  /* 组长目标：组字段列 + 由组字段带出的只读单元格 */
+  .tgt-tbl .tgt-grp{width:64px;text-align:center;background:#fff}
+  .tgt-tbl .tgt-lock{background:#f4f3fb;color:#4a4f63;border-style:dashed}
   .cfg-empty{display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:13px;color:#4a4f63;margin-top:6px}
   .cfg-empty .cfg-num{width:96px}
   .cfg-radios{display:flex;flex-direction:column;gap:8px}
@@ -9519,6 +9522,11 @@ document.getElementById('app').addEventListener('change',e=>{
     tgtSet(e.target.getAttribute('data-tgt'),e.target.getAttribute('data-tgtname'),e.target.getAttribute('data-tgtf'),v===''?'':parseFloat(v));
     save();render();return;
   }
+  /* 目标设置：组长的「组字段」（填 2组 → 该组长目标取客服区 2组 那一行） */
+  if(e.target.hasAttribute&&e.target.hasAttribute('data-tgtgroup')){
+    tgtSetLeaderGroup(e.target.getAttribute('data-tgtgroup'),e.target.value);
+    save();render();return;
+  }
   /* 目标设置：导入文件 */
   if(e.target.id==='tgtFile'){
     const f=e.target.files&&e.target.files[0];if(f)targetImportFile(f);
@@ -16862,7 +16870,33 @@ function tgtNormHead(c){
     .replace(/\((百分)?%?\)$/,'').replace(/%$/,'').toLowerCase();
 }
 function tgtBlockOf(block){const t=DATA.targetCfg||{};return t[block]||(t[block]={});}
+/* 组长 ↔ 组字段：组长目标不手填，直接取上传表格里「N组」那一行（该组的合计目标）。
+   业务给定的默认对应：李肖 = 2组、尹玉婷 = 1组（可在「组长目标」表的「组字段」列改）。 */
+const TGT_LEADER_GROUP_DEF={'李肖':'2组','尹玉婷':'1组'};
+function tgtLeaderGroup(nm){
+  const k=String(nm==null?'':nm).trim();
+  const row=tgtBlockOf('leader')[k]||{};
+  const g=String(row.group==null?'':row.group).trim();
+  return g||TGT_LEADER_GROUP_DEF[k]||'';
+}
+/* 该组长从组字段取到的值；取不到返回 ''（回落到组长自己的手填值） */
+function tgtLeaderGrpVal(nm,f){
+  const g=tgtLeaderGroup(nm);if(!g)return '';
+  const row=tgtBlockOf('cs')[g];
+  if(!row)return '';
+  const v=row[f];
+  return (v==null||v===''||isNaN(Number(v)))?'':Number(v);
+}
+function tgtSetLeaderGroup(nm,val){
+  nm=String(nm==null?'':nm).trim();if(!nm)return;
+  const b=tgtBlockOf('leader');
+  const row=b[nm]||(b[nm]={});
+  const v=String(val==null?'':val).trim();
+  if(v)row.group=v;else delete row.group;
+  if(!Object.keys(row).length)delete b[nm];
+}
 function tgtGet(block,name,f){
+  if(block==='leader'){const gv=tgtLeaderGrpVal(name,f);if(gv!=='')return gv;}   /* 组字段优先 */
   const row=tgtBlockOf(block)[String(name==null?'':name).trim()];
   if(!row)return '';
   const v=row[f];
@@ -16927,6 +16961,22 @@ function targetCfgView(){
       return '<tr><td class="tgt-name">'+esc(n)+'</td>'+TGT_FIELDS.map(function(f){return cell(block,n,f[0]);}).join('')+'</tr>';
     }).join('');
   };
+  /* 组长行：「组字段」填了（如 2组）→ 目标直接取客服区该组那一行的数值（只读）；清空组字段才回到手填 */
+  const leaderBody=function(list){
+    if(!list.length)return '<tr><td colspan="'+(2+TGT_FIELDS.length)+'" class="dim">暂无数据（先在「达标设置 ②」里维护组长）</td></tr>';
+    return list.map(function(n){
+      const g=tgtLeaderGroup(n),fromRow=!!(g&&tgtBlockOf('cs')[g]);
+      const tds=TGT_FIELDS.map(function(f){
+        if(!fromRow)return cell('leader',n,f[0]);
+        const v=tgtGet('leader',n,f[0]);
+        const show=(v===''?'':(Math.round(Number(v)*100)/100).toFixed(2));
+        return '<td class="tgt-cell"><input class="cfg-num tgt-in tgt-lock" value="'+esc(show)+'" readonly title="取自上传表格「'+esc(g)+'」这一行；清空左侧组字段即可改手填"><i>%</i></td>';
+      }).join('');
+      return '<tr><td class="tgt-name">'+esc(n)+'</td>'
+        +'<td class="tgt-cell"><input class="cfg-num tgt-grp" data-tgtgroup="'+esc(n)+'" value="'+esc(g)+'" placeholder="如 2组" title="填组字段（如 2组）：上传表格里该组那一行的数值会作为这位组长的目标"></td>'
+        +tds+'</tr>';
+    }).join('');
+  };
   /* 总计行：口径 = 导入表格里的「合计 / 总计」行（也支持手改）；没有合计行才回落到客服均值 */
   const totalRow='<tr class="tgt-tot"><td class="tgt-name"><b>总计</b></td>'+TGT_FIELDS.map(function(f){
     const m=tgtTotGet('cs',f[0]),a=tgtAvg('cs',f[0]);
@@ -16947,7 +16997,8 @@ function targetCfgView(){
     +'</div>'
     +'<div class="cfg-sec">'
       +'<h3>组长目标（'+lds.length+' 人）</h3>'
-      +'<table class="cfg-table tgt-tbl"><thead><tr><th>组长</th>'+TGT_FIELDS.map(function(f){return '<th>'+f[1]+'</th>';}).join('')+'</tr></thead><tbody>'+body(lds,'leader')+'</tbody></table>'
+      +'<div class="cfg-tip">组长的目标不用手填：在「组字段」里填该组长负责的组（如 <b>2组</b>），导入表格里这一组的数值就会成为他的目标（灰底只读）；清空组字段则恢复手填。</div>'
+      +'<table class="cfg-table tgt-tbl"><thead><tr><th>组长</th><th>组字段</th>'+TGT_FIELDS.map(function(f){return '<th>'+f[1]+'</th>';}).join('')+'</tr></thead><tbody>'+leaderBody(lds)+'</tbody></table>'
     +'</div>'
     +'<div class="cfg-sec">'
       +'<h3>分类组目标（'+cats.length+' 组）</h3>'
@@ -16977,9 +17028,9 @@ function targetApplyAoa(aoa,apply){
     if(m.name!=null&&(m.mainHealth!=null||m.mainAcct!=null||m.subAcct!=null||m.shopScore!=null||m.refRate!=null||m.refRateGood!=null)){hi=i;map=m;break;}
   }
   if(hi<0||!map)return {ok:false,msg:'没找到表头（需要「客服」+ 至少一个持平值列）'};
-  if(apply===false)return {ok:true,cs:0,ld:0,tot:0,skip:0};   /* 仅探测表头，不落库 */
+  if(apply===false)return {ok:true,cs:0,ld:0,tot:0,grp:0,skip:0};   /* 仅探测表头，不落库 */
   const csSet=new Set(csLsAll(DATA.stdCfg)),ldSet=new Set(tgtLeaderList());
-  let nCs=0,nLd=0,nTot=0,skip=0;
+  let nCs=0,nLd=0,nTot=0,nGrp=0,skip=0;
   for(let i=hi+1;i<aoa.length;i++){
     const row=aoa[i]||[];const nm=String(row[map.name]==null?'':row[map.name]).trim();
     if(!nm){skip++;continue;}
@@ -16995,16 +17046,18 @@ function targetApplyAoa(aoa,apply){
       continue;
     }
     const block=(map.leader!=null&&String(row[map.leader]==null?'':row[map.leader]).trim()===nm)||(!csSet.has(nm)&&ldSet.has(nm))?'leader':'cs';
+    /* 「N组」这类组行：存进客服区（组长用「组字段」按名字取），不计入客服人数 */
+    const isGrp=/^\d+组$/.test(nm);
     let hit=0;
     TGT_FIELDS.forEach(function(f){
       if(map[f[0]]==null)return;
       const v=tgtNum(row[map[f[0]]]);
-      if(isFinite(v)){tgtSet(block,nm,f[0],v);hit++;}
+      if(isFinite(v)){tgtSet(block==='leader'&&!isGrp?'leader':'cs',nm,f[0],v);hit++;}
     });
-    if(hit){if(block==='leader')nLd++;else nCs++;}
+    if(hit){if(isGrp)nGrp++;else if(block==='leader')nLd++;else nCs++;}
     else skip++;
   }
-  return {ok:true,cs:nCs,ld:nLd,tot:nTot,skip:skip};
+  return {ok:true,cs:nCs,ld:nLd,tot:nTot,grp:nGrp,skip:skip};
 }
 function targetImportFile(f){
   const isX=/\.(xlsx|xls)$/i.test(f.name)&&window.XLSX;
@@ -17027,7 +17080,7 @@ function targetImportFile(f){
     const r=targetApplyAoa(aoa);
     if(!r.ok){alert('目标未导入：'+r.msg);return;}
     save();render();
-    alert('目标已导入：客服 '+r.cs+' 人、组长 '+r.ld+' 人'+(r.tot?('，总计取表格「合计」行'):'')+(r.skip?('，跳过 '+r.skip+' 行'):''));
+    alert('目标已导入：客服 '+r.cs+' 人、组长 '+r.ld+' 人'+(r.grp?('、组字段 '+r.grp+' 行'):'')+(r.tot?('，总计取表格「合计」行'):'')+(r.skip?('，跳过 '+r.skip+' 行'):''));
   };
   if(isX)rd.readAsArrayBuffer(f);else rd.readAsText(f,'UTF-8');
 }
