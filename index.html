@@ -6026,6 +6026,28 @@ const SUM_M_KEYS=SUM_M_COLS.map(c=>c[0]);
 /* 率字段（小数分数存储 → 显示/导出时 ×100 加 %；缺陷订单数/订单总数/评分等保持原值） */
 const SUM_PCT_KEYS=['fbmOdr','invDefRate','late10','late30','cancelRate','trackRate','ontimeRate'].concat(SUM_BAO_RATE);
 function fmtPct(v){if(v==null)return '—';const s=String(v).trim();if(s==='')return '—';if(s.indexOf('%')>=0)return s;const n=parseFloat(s);if(isNaN(n))return s;const p=n*100;return (p%1===0?p:Math.round(p*100)/100)+'%';}
+/* 金额/数量加千位符：只作用于显示层（排序、达标判定、导出仍用原始数值）。
+   口径：退款额 / 销售额是用户点名的「两列要好看」，同分组的订单量一并加，
+   否则「订单量 12345 / 退款额 12,345」三列格式不统一，反而更乱。 */
+const SUM_THOU_KEYS=['baoDOrd','baoDRef','baoDSale','baoWOrd','baoWRef','baoWSale','baoMOrd','baoMRef','baoMSale'];
+function fmtThou(v){
+  if(v==null)return '—';
+  const s=String(v).trim();
+  if(s==='')return '—';
+  const n=parseFloat(s.replace(/[,\s¥￥$€£]/g,''));
+  if(!isFinite(n))return s;                                  /* 非数值原样返回（如「暂无」） */
+  const dot=s.indexOf('.');
+  const dec=(dot>=0)?Math.min(4,s.slice(dot+1).replace(/[^\d]/g,'').length):0;   /* 保留原有小数位 */
+  const parts=Math.abs(n).toFixed(dec).split('.');
+  parts[0]=parts[0].replace(/\B(?=(\d{3})+(?!\d))/g,',');
+  return (n<0?'-':'')+parts.join('.');
+}
+/* 汇总表 / 达标表统一的单元格显示：金额数量 → 千位符，率 → 百分比，其余原样 */
+function sumDisp(k,v){
+  if(SUM_THOU_KEYS.indexOf(k)>=0)return fmtThou(v);
+  if(SUM_PCT_KEYS.indexOf(k)>=0)return fmtPct(v);
+  return String(v==null?'':v);
+}
 /* 上传解析：只取指标字段的数值。率字段统一存小数（"0.24%"→0.0024）；「账户评级」等文本字段按原文 */
 const SUM_NUM_KEYS=['fbmOdr','odrCnt','ordTotal','invDefRate','shopScore','acctScore','probCnt','late10','late30','cancelRate','trackRate','ontimeRate'];
 const SUM_NA_VALS=['—','–','-','－','/','\\','n/a','na','null','nil','无','暂无','#n/a','#value!','#div/0!'];
@@ -6345,7 +6367,7 @@ function sumBodyInner(){
         const isMapped=!rowEmpty&&isFinite(zt)&&(raw===''||stdIsZero(raw));
         if(raw===''&&!isMapped)return '<td class="dim">—</td>';
         const showRaw=isMapped?String(ztr):raw;
-        let v=(k==='acctGrade')?esc(acctGradeFromScore(a.acctScore,(DATA.stdCfg||{}))||raw):(SUM_PCT_KEYS.indexOf(k)>=0?esc(fmtPct(showRaw)):esc(showRaw));
+        let v=(k==='acctGrade')?esc(acctGradeFromScore(a.acctScore,(DATA.stdCfg||{}))||raw):esc(sumDisp(k,showRaw));
         const lv=stdLevel(k,raw,a);
         const cls=(lv==='ok')?'sok':((lv==='fail')?'sbad':((lv==='warn')?'swarn':''));
         const ztTxt=(SUM_PCT_KEYS.indexOf(k)>=0)?(zt+'%'):zt;
@@ -6353,7 +6375,7 @@ function sumBodyInner(){
         if(sumGoHit(k,showRaw))return '<td class="'+cls+' go">'+sumGoLink(k,a.short,v)+'</td>';
         return '<td class="'+cls+'"'+mapped+'>'+v+'</td>';
       }
-      let v;if(raw==='')v='<span class="dim">—</span>';else if(SUM_PCT_KEYS.indexOf(k)>=0)v=esc(fmtPct(raw));else v=esc(raw);
+      let v;if(raw==='')v='<span class="dim">—</span>';else v=esc(sumDisp(k,raw));
       const bc=baoCls(k);
       if(sumGoHit(k,raw))return `<td class="go${bc?' '+bc:''}">${sumGoLink(k,a.short,v)}</td>`;
       return `<td${bc?' class="'+bc+'"':''}>${v}</td>`;
@@ -16638,12 +16660,12 @@ function stdBodyInner(){
         }
         const lv=a.stdPassMap?a.stdPassMap[k]:undefined;
         const txt=lv==='ok'?'达标':(lv==='warn'?'临界':(lv==='fail'?'不达标':'—'));
-        const valTxt=(SUM_PCT_KEYS.indexOf(k)>=0)?fmtPct(raw):String(raw);
+        const valTxt=sumDisp(k,raw);
         let tip=(STD_M_LABEL[k]||k)+'：'+valTxt+(txt&&txt!=='—'?('（'+txt+'）'):'');
         const zt2=stdZeroTo(k);if(isFinite(zt2)&&(stdIsZero(raw)||String(raw==null?'':raw).trim()===''))tip+='（'+(String(raw==null?'':raw).trim()===''?'无数据':'0')+' → 按映射值 '+(SUM_PCT_KEYS.indexOf(k)>=0?(zt2+'%'):zt2)+' 判定）';
         return '<td class="std-cell click" data-stdtip="'+esc(tip)+'" data-stdid="'+esc(a.id)+'" data-stdk="'+esc(k)+'" title="点击查看具体数值">'+txt+'</td>';
       }
-      return '<td>'+((raw==null||raw==='')?'<span class="dim">—</span>':esc(SUM_PCT_KEYS.indexOf(k)>=0?fmtPct(raw):raw))+'</td>';
+      return '<td>'+((raw==null||raw==='')?'<span class="dim">—</span>':esc(sumDisp(k,raw)))+'</td>';
     }).join('');
     return `<tr data-id="${a.id}"><td class="num">${start+idx+1}</td>${tds}</tr>`;
   }).join('');
@@ -16820,16 +16842,25 @@ function csApplyCat(){
   });
   return n;
 }
-/* ===== 目标设置（🎯 目标设置页）：客服/组长 4 项目标 + 导入自动匹配 ===== */
-const TGT_FIELDS=[['mainHealth','主健康率持平值'],['mainAcct','主账号持平值'],['subAcct','小账号持平值'],['shopScore','店铺评分持平值']];
+/* ===== 目标设置（🎯 目标设置页）：客服/组长 目标项 + 导入自动匹配 =====
+   四项「持平值」= 月度达标线；退款率另有「优秀值」= 冲刺线（退款率越低越好，两者都是上限值） */
+const TGT_FIELDS=[['mainHealth','主健康率持平值'],['mainAcct','主账号持平值'],['subAcct','小账号持平值'],['shopScore','店铺评分持平值'],['refRate','退款率持平值'],['refRateGood','退款率优秀值']];
 const TGT_ALIAS={
   name:['客服','客服名称','客服姓名','姓名','名称'],
   leader:['组长','客服组长','所属组长','组长姓名'],
   mainHealth:['主健康率持平值','主健康率','主健康率目标'],
   mainAcct:['主账号持平值','主账号','主账号健康率'],
   subAcct:['小账号持平值','小账号','小账号健康率'],
-  shopScore:['店铺评分持平值','店铺评分','店铺评分均值','评分持平值']
+  shopScore:['店铺评分持平值','店铺评分','店铺评分均值','评分持平值'],
+  refRate:['退款率持平值','退款率','退款率目标','退款率达标值','退款率基准值'],
+  refRateGood:['退款率优秀值','退款率优秀','优秀退款率','退款率优秀目标','退款率冲刺值']
 };
+/* 表头归一：全角括号→半角、去空格、去尾部 (%) / % —— 「退款率持平值（%）」也能认出来 */
+function tgtNormHead(c){
+  return String(c==null?'':c).replace(/[\s\u3000]/g,'')
+    .replace(/\uff08/g,'(').replace(/\uff09/g,')')
+    .replace(/\((百分)?%?\)$/,'').replace(/%$/,'').toLowerCase();
+}
 function tgtBlockOf(block){const t=DATA.targetCfg||{};return t[block]||(t[block]={});}
 function tgtGet(block,name,f){
   const row=tgtBlockOf(block)[String(name==null?'':name).trim()];
@@ -16891,7 +16922,7 @@ function targetCfgView(){
     return '<td class="tgt-cell"><input class="cfg-num tgt-in" data-tgt="'+block+'" data-tgtname="'+esc(name)+'" data-tgtf="'+f+'" value="'+esc(show)+'" placeholder="—"><i>%</i></td>';
   };
   const body=function(list,block){
-    if(!list.length)return '<tr><td colspan="5" class="dim">暂无数据（先在「达标设置 ②」里维护客服/组长）</td></tr>';
+    if(!list.length)return '<tr><td colspan="'+(1+TGT_FIELDS.length)+'" class="dim">暂无数据（先在「达标设置 ②」里维护客服/组长）</td></tr>';
     return list.map(function(n){
       return '<tr><td class="tgt-name">'+esc(n)+'</td>'+TGT_FIELDS.map(function(f){return cell(block,n,f[0]);}).join('')+'</tr>';
     }).join('');
@@ -16906,11 +16937,12 @@ function targetCfgView(){
   }).join('')+'</tr>';
   return '<div class="panel">'
     +cfgTabBar()
-    +'<div class="meta">维护<b>客服 / 组长</b>的四项「持平值」目标；客服与组长名单实时同步「达标设置 ②」的映射内容。支持导入 Excel/CSV，按表头字段自动匹配。</div>'
+    +'<div class="meta">维护<b>客服 / 组长</b>的「持平值」目标（主健康率 / 主账号 / 小账号 / 店铺评分 / 退款率）与退款率的「优秀值」目标；客服与组长名单实时同步「达标设置 ②」的映射内容。支持导入 Excel/CSV，按表头字段自动匹配。</div>'
+    +'<div class="cfg-tip">退款率 = 退款额 ÷ 销售额，<b>越低越好</b>：达标值 / 优秀值都是「上限」，填 3 表示 3%。其余各项为「越高越好」的达成线。</div>'
     +'<div class="cfg-sec">'
       +'<h3>客服目标（'+cs.length+' 人）</h3>'
       +'<div class="tgt-bar"><label class="btn ghost tgt-imp">⬆ 导入目标<input type="file" id="tgtFile" accept=".xlsx,.xls,.csv,.txt" hidden></label>'
-        +'<span class="cfg-tip">表头需含「客服」+ 四个持平值列；数值可写 94.34% 或 0.9434</span></div>'
+        +'<span class="cfg-tip">表头需含「客服」+ 任一目标列（主健康率 / 主账号 / 小账号 / 店铺评分 / 退款率的持平值、退款率优秀值）；数值可写 94.34% 或 0.9434</span></div>'
       +'<table class="cfg-table tgt-tbl"><thead><tr><th>客服</th>'+TGT_FIELDS.map(function(f){return '<th>'+f[1]+'</th>';}).join('')+'</tr></thead><tbody>'+body(cs,'cs')+totalRow+'</tbody></table>'
     +'</div>'
     +'<div class="cfg-sec">'
@@ -16936,9 +16968,13 @@ function targetApplyAoa(aoa,apply){
     const m={};
     row.forEach(function(c,j){
       if(!c)return;
-      Object.keys(TGT_ALIAS).forEach(function(k){if(m[k]==null&&TGT_ALIAS[k].indexOf(c)>=0)m[k]=j;});
+      const nc=tgtNormHead(c);
+      Object.keys(TGT_ALIAS).forEach(function(k){
+        if(m[k]!=null)return;
+        if(TGT_ALIAS[k].some(function(a){return tgtNormHead(a)===nc;}))m[k]=j;
+      });
     });
-    if(m.name!=null&&(m.mainHealth!=null||m.mainAcct!=null||m.subAcct!=null||m.shopScore!=null)){hi=i;map=m;break;}
+    if(m.name!=null&&(m.mainHealth!=null||m.mainAcct!=null||m.subAcct!=null||m.shopScore!=null||m.refRate!=null||m.refRateGood!=null)){hi=i;map=m;break;}
   }
   if(hi<0||!map)return {ok:false,msg:'没找到表头（需要「客服」+ 至少一个持平值列）'};
   if(apply===false)return {ok:true,cs:0,ld:0,skip:0};   /* 仅探测表头，不落库 */
