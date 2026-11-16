@@ -15518,6 +15518,7 @@ const REF_BY_KEY=(function(){const o={};REF_COLS.forEach(function(c){o[c.k]=c;})
 /* 表里出现但不需要入库的列（「标题」已按要求删除）→ 静默忽略，不计入「未识别」 */
 const REF_IGNORE=['标题','商品标题','产品标题'];
 const REF_KEEP_DAYS=30;              /* 退款时间只保留最新 30 天 */
+const REF_PARTIAL_MAX=0.8;           /* 退款金额 ÷ 订单总金额 ≤ 80% 视为「部分退款」 */
 function refNormHead(s){
   return String(s==null?'':s).replace(/\s/g,'').replace(/（/g,'(').replace(/）/g,')')
     .replace(/[＊*:：]/g,'').toLowerCase();
@@ -15545,7 +15546,7 @@ function refHeadIdx(label){
 /* ── 状态 ── */
 let refSearch='',refColSel='',refExact=false,refPage=1,refOnlyOn=false,refSort='refTimeDesc';
 let refF={site:'',acc:'',issueCat:'',refReason:'',region:'',cat1:'',d1:'',d2:''};
-let REF={rows:[],state:'idle',meta:{file:'',at:'',hit:0,miss:[]},err:'',sync:'',src:''};
+let REF={rows:[],state:'idle',meta:{file:'',at:'',hit:0,miss:[]},err:'',sync:'',src:'',ver:0};
 /* ── 取值 / 归一 ── */
 function refVal(r,k){
   const i=REF_IDX[k];
@@ -15662,7 +15663,7 @@ function refPrune(rows){
      按「筛选条件签名」缓存一次结果，避免重复过滤 + 重复排序。 ── */
 let _refCache=new Map();
 function refSig(except,noSort){
-  return [REF.rows.length,(REF.meta&&REF.meta.at)||'',refOnlyOn?'1':'0',
+  return [REF.rows.length,'v'+(REF.ver||0),(REF.meta&&REF.meta.at)||'',refOnlyOn?'1':'0',
     refF.site,refF.acc,refF.issueCat,refF.refReason,refF.region,refF.cat1,refF.d1,refF.d2,
     refSearch,refColSel,refExact?'1':'0',noSort?'n':refSort,except||''].join('\u0001');
 }
@@ -15738,14 +15739,13 @@ function refSortRows(rows,noSort){
 function refKpiHtml(rows){
   rows=rows||refList();
   const st=refStats(rows);
-  const rate=st.amtO>0?(st.amtR/st.amtO*100):null;
   const cards=[
     {label:'退款笔数',val:refFmtNum(st.n),unit:' 条'},
     {label:'涉及账号',val:refFmtNum(st.accs),unit:' 个'},
     {label:'涉及 SKU',val:refFmtNum(st.skus),unit:' 个'},
     {label:'订单金额（RMB）',val:refFmtNum(st.amtO,2),unit:'',tip:'「订单总金额（RMB）」列合计'},
     {label:'退款金额（RMB）',val:refFmtNum(st.amtR,2),unit:'',tip:'「退款金额（RMB）」列合计'},
-    {label:'退款额/订单额',val:(rate==null?'—':refFmtNum(rate,2)),unit:(rate==null?'':' %'),tip:'退款金额合计 ÷ 订单总金额合计（均为 RMB）'}
+    {label:'部分退款占比',val:(st.nV?refFmtNum(st.nP/st.nV*100,2):'—'),unit:(st.nV?' %':''),tip:'部分退款（退款金额 ÷ 订单总金额 ≤ 80%）的退款单量 ÷ 有订单金额的退款单量'}
   ];
   return '<div class="is-kpi">'+cards.map(function(x){
     return isKpiCard({label:x.label,val:x.val+(x.unit||''),color:'#2f6f5b'});
@@ -15753,15 +15753,17 @@ function refKpiHtml(rows){
 }
 function refStats(rows){
   const accs={},skus={},sites={};
-  let amtR=0,amtO=0;
+  let amtR=0,amtO=0,nP=0,nV=0;
   rows.forEach(function(r){
     const a=refVal(r,'acc');if(a)accs[a.toUpperCase()]=1;
     const s=refVal(r,'sku');if(s)skus[s]=1;
     const st=refSiteOf(r);if(st)sites[st]=1;
-    amtR+=refNumK(refVal(r,'refAmt'));
-    amtO+=refNumK(refVal(r,'orderAmt'));
+    const f=refNumK(refVal(r,'refAmt')),o=refNumK(refVal(r,'orderAmt'));
+    amtR+=f;amtO+=o;
+    if(o>0){nV++;if(f/o<=REF_PARTIAL_MAX)nP++;}
   });
-  return {n:rows.length,accs:Object.keys(accs).length,skus:Object.keys(skus).length,sites:Object.keys(sites).length,amtR:amtR,amtO:amtO};
+  return {n:rows.length,accs:Object.keys(accs).length,skus:Object.keys(skus).length,sites:Object.keys(sites).length,
+    amtR:amtR,amtO:amtO,nV:nV,nP:nP};
 }
 /* ── 排名卡（点某行 = 按该维度筛明细，再点取消） ── */
 const REF_RANK_DIMS=[['refReason','退款原因'],['issueCat','问题归类'],['cat1','星耀一级分类'],['site','站点'],['acc','账号简称']];
@@ -16035,7 +16037,21 @@ function refImportRows(rows,fname){
     out.push(arr);
   }
   if(!out.length)return '没有可用数据行';
-  /* ④ 合并（主键：平台单号 + SKU + 退款时间；空值不覆盖已有值） */
+  /* ④ 同区间整体替换：本次表格覆盖的「退款日期区间」里的旧行一律让位给新数据。
+     否则改了源表（比如退款金额从原币换成 RMB）重传时，旧行还在表里，合并不动、KPI 也不变。 */
+  const newDays=out.map(function(r){return refDayKey(refVal(r,'refTime'));}).filter(Boolean).sort();
+  let replaced=0,winTxt='';
+  if(newDays.length){
+    const d1=newDays[0],d2=newDays[newDays.length-1];
+    const keep=[];
+    (REF.rows||[]).forEach(function(r){
+      const d=refDayKey(refVal(r,'refTime'));
+      if(d&&d>=d1&&d<=d2)replaced++;else keep.push(r);
+    });
+    if(replaced)REF.rows=keep;
+    winTxt=(d1===d2?d1:(d1+' ~ '+d2));
+  }
+  /* ⑤ 合并（主键：平台单号 + SKU + 退款时间；空值不覆盖已有值） */
   const idx=new Map();
   (REF.rows||[]).forEach(function(r){const k=refKeyOf(r);let a=idx.get(k);if(!a){a=[];idx.set(k,a);}a.push(r);});
   let ins=0,upd=0;
@@ -16055,10 +16071,12 @@ function refImportRows(rows,fname){
   REF.win={cut:pr.cut,dropped:pr.dropped};
   REF.meta={file:String(fname||''),at:todayStr(),hit:hitN,miss:missLabels.slice(0,20)};
   REF.state='loaded';
+  REF.ver=(REF.ver||0)+1;
   refSave();
   return '导入完成：识别 '+hitN+'/'+REF_N+' 个字段'
     +(missLabels.length?('（未识别 '+missLabels.length+' 个表头，字段留空：'+missLabels.slice(0,5).join('、')+(missLabels.length>5?' 等':'')+'）'):'')
     +'；新增 '+ins+' 条，更新 '+upd+' 条'+(skipped?('，跳过空行 '+skipped):'')
+    +(replaced?('；按退款时间 '+winTxt+' 整体替换，清掉旧行 '+replaced+' 条'):'')
     +(pr.dropped?('；按「退款时间最新 '+REF_KEEP_DAYS+' 天」自动删除 '+pr.dropped+' 条更早的明细'):'')
     +'，现共 '+REF.rows.length+' 条';
 }
@@ -16074,7 +16092,7 @@ function refClearAll(){
   const n=(REF.rows||[]).length;
   if(!n){alert('当前没有数据');return;}
   if(!confirm('将【清空】当前 '+n+' 条退款明细（本机缓存与云端快照一起清空），确定继续？'))return;
-  REF.rows=[];REF.meta={file:'',at:'',hit:0,miss:[]};REF.state='empty';REF.sync='';
+  REF.rows=[];REF.meta={file:'',at:'',hit:0,miss:[]};REF.state='empty';REF.sync='';REF.ver=(REF.ver||0)+1;
   refPage=1;
   try{refIdbSet(null);}catch(e){}
   refPushCloud();
@@ -16233,6 +16251,7 @@ function refApply(o,src){
   REF.win={cut:pr.cut,dropped:pr.dropped};
   REF.meta=o.meta||{file:'',at:'',hit:REF_N,miss:[]};
   REF.src=src||'';
+  REF.ver=(REF.ver||0)+1;
   REF.state=REF.rows.length?'loaded':'empty';
   return true;
 }
