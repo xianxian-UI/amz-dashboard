@@ -15947,7 +15947,8 @@ function refLoadingHtml(){
 const REF_SLOW_HOURS=48;
 const REF_ANA_TABS=[['time','时间'],['org','人员组织'],['reason','原因'],['cat','品类'],['logi','物流'],['goods','商品']];
 const REF_ANA_DIMS={
-  time:[{k:'refDay',label:'退款日期',bar:1,part:1},{k:'payDay',label:'付款日期',part:1},{k:'listMonth',label:'刊登时间',month:1,part:1}],
+  time:[{k:'refDay',label:'退款日期',bar:1,part:1},{k:'payDay',label:'付款日期',part:1},
+        {k:'listMonth',label:'刊登时间',month:1,part:1,style:'bar'}],
   org:[{k:'cs',label:'客服',part:1},{k:'region',label:'区域',part:1},{k:'team',label:'团队',part:1},{k:'dev',label:'开发',part:1}],
   reason:[{k:'issueCat',label:'问题归类',skipOther:1},{k:'refReason',label:'退款原因',skipOther:1}],
   cat:[{k:'cat1',label:'星耀一级分类',skuMin:2,amt:1},{k:'cat2',label:'星耀二级分类',skuMin:2,amt:1}],
@@ -16012,39 +16013,50 @@ function refAnaRowHtml(o,i,d,canClick){
 }
 function refAnaCard(rows,d){
   const st=refAnaStat(rows,d);
-  const canClick=!!(REF_IDX[d.k]!=null||d.k==='region');
-  const byDay=!!d.bar;
-  let arr=st.arr;
-  if(byDay)arr=arr.slice().sort(function(a,b){return String(a.k).localeCompare(String(b.k));});
+  const canClick=!!(REF_IDX[d.k]!=null||d.k==='region'||d.k==='refDay');
+  const arr=st.arr;
   const open=!!refAnaOpen[d.k];
-  const show=(byDay||open)?arr:arr.slice(0,5);
-  const body=show.length
-    ? show.map(function(o,i){return refAnaRowHtml(o,i,d,canClick);}).join('')
-    : '<div class="dim" style="font-size:12px;padding:8px 0">没有数据</div>';
-  const more=(!byDay&&arr.length>5)?('<button class="otd-rmore" data-refanamore="'+d.k+'">'+(open?'收起 ▴':'展开全部 '+arr.length+' 项 ▾')+'</button>'):'';
-  const sub=byDay?('共 '+arr.length+' 天 · 合计 '+refFmtNum(st.total)+' 单')
-    :(arr.length+' 项 · 按'+(d.month?'月':'单量')+'排'+(d.skipOther?' · 其他类不参与排序':'')+(d.skuMin?(' · 仅退款≥'+d.skuMin+'单的SKU'):''));
+  const LIMIT=3;
+  const show=open?arr:arr.slice(0,LIMIT);
+  const chart=d.bar?refAnaMiniBars(rows,d):'';
+  let list='';
+  if(!show.length){
+    list='<div class="dim" style="font-size:12px;padding:8px 0">没有数据</div>';
+  }else if(d.style==='bar'){
+    list=show.map(function(o){return refAnaBarRow(o,d,canClick);}).join('');
+  }else{
+    list=show.map(function(o,i){return refAnaRowHtml(o,i,d,canClick);}).join('');
+  }
+  const more=(arr.length>LIMIT)?('<button class="otd-rmore" data-refanamore="'+d.k+'">'+(open?'收起 ▴':'展开全部 '+arr.length+' 项 ▾')+'</button>'):'';
+  const sub=(d.bar?('共 '+arr.length+' 天'):(d.month?(arr.length+' 个月'):(arr.length+' 项')))+' · 按单量排'
+    +(d.bar?(' · 合计 '+refFmtNum(st.total)+' 单'):'')
+    +(d.skipOther?' · 其他类不参与排序':'')+(d.skuMin?(' · 仅退款≥'+d.skuMin+'单的SKU'):'');
   return '<div class="otd-rk"><div class="otd-rk-h"><span>'+esc(d.label)+'</span><span class="dim">'+sub+'</span></div>'
-    +body+more+'</div>';
+    +chart+list+more+'</div>';
 }
-function refAnaDayChart(rows,d){
+function refAnaMiniBars(rows,d){
   const st=refAnaStat(rows,d);
   const arr=st.arr.slice().sort(function(a,b){return String(a.k).localeCompare(String(b.k));});
-  const head='<div class="otd-rk-h"><span>'+esc(d.label)+'</span>'
-    +'<span class="dim">共 '+arr.length+' 天 · 合计 '+refFmtNum(st.total)+' 单 · 点柱子＝筛这一天</span></div>';
-  if(!arr.length)return '<div class="otd-rk">'+head+'<div class="dim" style="font-size:12px;padding:8px 0">没有数据</div></div>';
+  if(!arr.length)return '';
   const max=Math.max.apply(null,arr.map(function(o){return o.n;}))||1;
-  const step=Math.max(1,Math.ceil(arr.length/7));
-  const bars=arr.map(function(o,i){
-    const h=Math.max(6,Math.round(o.n/max*84));
+  const bars=arr.map(function(o){
+    const h=Math.max(3,Math.round(o.n/max*52));
     const sel=!!(refF.d1&&refF.d1===o.k&&refF.d2===o.k);
-    const lab=(i===0||i===arr.length-1||i%step===0)?o.k.slice(5):'';
-    return '<div data-refday="'+esc(o.k)+'" title="'+esc(o.k)+' · '+refFmtNum(o.n)+' 单 · 占比 '+o.share+'% · 部分退款 '+(o.part==null?'—':o.part+'%')+'"'
-      +' style="flex:1;min-width:0;display:flex;flex-direction:column;justify-content:flex-end;align-items:center;gap:4px;cursor:pointer">'
-      +'<i style="width:100%;height:'+h+'px;background:'+(sel?'#1D9E75':'#9FE1CB')+';border-radius:3px 3px 0 0;display:block"></i>'
-      +'<span style="font-size:10.5px;color:#9aa1ad;white-space:nowrap">'+esc(lab)+'</span></div>';
+    return '<i data-refday="'+esc(o.k)+'" title="'+esc(o.k)+' · '+refFmtNum(o.n)+' 单 · 占比 '+o.share+'%'
+      +(o.part==null?'':' · 部分退款 '+o.part+'%')+'" style="flex:1;min-width:0;height:'+h+'px;'
+      +'background:'+(sel?'#1D9E75':'#9FE1CB')+';border-radius:2px 2px 0 0;cursor:pointer;display:block"></i>';
   }).join('');
-  return '<div class="otd-rk">'+head+'<div style="display:flex;align-items:flex-end;gap:3px;padding:2px 0 0">'+bars+'</div></div>';
+  return '<div style="display:flex;align-items:flex-end;gap:2px;height:56px;margin:2px 0 8px">'+bars+'</div>';
+}
+function refAnaBarRow(o,d,canClick){
+  const sel=canClick&&(String(refF[d.k]||'')===o.k);
+  const w=Math.max(2,Math.min(100,Math.round(o.share)));
+  return '<div'+(canClick?(' data-refrk="'+esc(d.k)+'" data-refrv="'+esc(o.k)+'" title="点击＝按「'+esc(d.label)+' = '+esc(o.k)+'」筛选（再点取消）"'):'')
+    +' style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid #f1f4f2;cursor:'+(canClick?'pointer':'default')+'">'
+    +'<span style="width:56px;flex:0 0 56px;font-size:12px;color:#31424e;font-variant-numeric:tabular-nums">'+esc(o.k)+(sel?' ✕':'')+'</span>'
+    +'<span style="flex:1;height:8px;background:#eef4f0;border-radius:4px;position:relative;overflow:hidden">'
+    +'<i style="position:absolute;left:0;top:0;bottom:0;width:'+w+'%;background:#9FE1CB;border-radius:4px;display:block"></i></span>'
+    +'<span style="font-size:11.5px;color:#6b7a86;white-space:nowrap"><b>'+refFmtNum(o.n)+'</b> 单 · '+o.share+'%</span></div>';
 }
 function refAnaHtml(){
   const rows=refList();
@@ -16058,9 +16070,8 @@ function refAnaHtml(){
   const dims=REF_ANA_DIMS[tab]||[];
   let body='';
   if(tab==='time'){
-    body='<div style="margin-bottom:12px">'+refAnaDayChart(rows,dims[0])+'</div>'
-      +'<div class="otd-rkgrid" style="grid-template-columns:1fr 1fr">'
-      +dims.slice(1).map(function(d){return refAnaCard(rows,d);}).join('')+'</div>';
+    body='<div class="otd-rkgrid" style="grid-template-columns:1fr 1fr 1fr">'
+      +dims.map(function(d){return refAnaCard(rows,d);}).join('')+'</div>';
   }else{
     const cls=dims.length>=4?'rk4':(dims.length===3?'':' ');
     body='<div class="otd-rkgrid'+(cls==='rk4'?' rk4':(cls===' '?'':' rk3'))+'">'
