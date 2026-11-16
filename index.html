@@ -6148,9 +6148,9 @@ const SUM_BASE_COLS=[['short','账号'],['site','站点'],['bigGroup','核算分
 /* 账号报损：日 / 周 / 月三张退款明细表（三个独立上传入口，各存最近一次快照）。
    列顺序按业务给定表头，紧跟在「准时交货率」（= 业务口中的「准时送达率」）后面。 */
 const SUM_BAO_COLS=[
-  ['baoDOrd','日订单量'],['baoDRef','日退款额'],['baoDSale','日销售额'],['baoDRate','日退款率'],
-  ['baoWOrd','周订单量'],['baoWRef','周退款额'],['baoWSale','周销售额'],['baoWRate','周退款率'],
-  ['baoMOrd','月订单量'],['baoMRef','月退款额'],['baoMSale','月销售额'],['baoMRate','月退款率'],
+  ['baoDOrd','日订单量'],['baoDRqty','日退款量'],['baoDRef','日退款额'],['baoDSale','日销售额'],['baoDRate','日退款率'],
+  ['baoWOrd','周订单量'],['baoWRqty','周退款量'],['baoWRef','周退款额'],['baoWSale','周销售额'],['baoWRate','周退款率'],
+  ['baoMOrd','月订单量'],['baoMRqty','月退款量'],['baoMRef','月退款额'],['baoMSale','月销售额'],['baoMRate','月退款率'],
   ['baoAt','更新时间']
 ];
 const SUM_BAO_KEYS=SUM_BAO_COLS.map(function(c){return c[0];});
@@ -6176,7 +6176,7 @@ function fmtPct(v){if(v==null)return '—';const s=String(v).trim();if(s==='')re
 /* 金额/数量加千位符：只作用于显示层（排序、达标判定、导出仍用原始数值）。
    口径：退款额 / 销售额是用户点名的「两列要好看」，同分组的订单量一并加，
    否则「订单量 12345 / 退款额 12,345」三列格式不统一，反而更乱。 */
-const SUM_THOU_KEYS=['baoDOrd','baoDRef','baoDSale','baoWOrd','baoWRef','baoWSale','baoMOrd','baoMRef','baoMSale'];
+const SUM_THOU_KEYS=['baoDOrd','baoDRqty','baoDRef','baoDSale','baoWOrd','baoWRqty','baoWRef','baoWSale','baoMOrd','baoMRqty','baoMRef','baoMSale'];
 function fmtThou(v){
   if(v==null)return '—';
   const s=String(v).trim();
@@ -6345,7 +6345,11 @@ function sumFiltered(){
   if(q){a=a.filter(x=>{const blob=SUM_COLS.map(([k])=>String(x[k]==null?'':x[k])).join('\x01').toLowerCase();return searchBatch(blob,q);});}
   return sumSorted(a);
 }
-function sumView(){return `<div class="panel">${sumToolbar()}<div id="sumTableWrap">${sumBodyInner()}</div></div>`;}
+function sumView(){
+  /* 汇总表要算「日/周/月退款量」，进这一页顺手把退款明细拉起来（已载入就不再拉） */
+  try{if(REF.state==='idle'||REF.state==='error')refEnsure();}catch(e){}
+  return `<div class="panel">${sumToolbar()}<div id="sumTableWrap">${sumBodyInner()}</div></div>`;
+}
 /* 筛选栏（多选）：勾选项实时从「启用且纳入考核」账号中去重取值，可多字段叠加 */
 /* ——— 维度归组公共件（同类维度收起） ——— */
 function msFieldHTML(k,label,vs,sel,open){
@@ -6711,7 +6715,48 @@ function sumBaoFields(key){
     const mtAt=(mt[kp[0]]||{}).at||rec.at;
     if(mtAt&&(!out.baoAt||String(mtAt)>String(out.baoAt)))out.baoAt=mtAt;
   });
+  /* 日/周/月退款量（单量）：取值一律来自「问题明细 · 退款明细」，与报损表是否上传无关；
+     明细还没载入 → 这几个字段干脆不写（单元格显示「—」），别用 0 冒充「没有退款」 */
+  const q=refQtyMap();
+  if(q){
+    out.baoDRqty=refQtyOf(q,'D',key);
+    out.baoWRqty=refQtyOf(q,'W',key);
+    out.baoMRqty=refQtyOf(q,'M',key);
+  }
   return out;
+}
+/* ── 日/周/月退款量：按账号简称聚合「问题明细 · 退款明细」（已自动清洗的启用+纳入考核账号）
+     日 = 明细里最新那一天退款日期的退款单量；周 = 最新 7 天（含最新那天）；月 = 全部日期
+     大表 2~3 万行 × 每行一次 sumBaoFields，所以按「行数 + 版本 + 清洗口径」缓存，只在明细变动后重算 ── */
+let _refQtyCache={sig:'',val:null};
+const REF_QTY_EMPTY={max:'',D:{},W:{},M:{}};
+function refQtyMap(){
+  if(typeof REF==='undefined'||!REF)return null;
+  const rowsAll=REF.rows||[];
+  if(!rowsAll.length)return (REF.state==='loaded'||REF.state==='empty')?REF_QTY_EMPTY:null;
+  const sig=rowsAll.length+'|'+(REF.ver||0)+'|'+refAccSet().stamp;
+  if(_refQtyCache.sig===sig)return _refQtyCache.val;
+  const rows=refBaseRows();
+  let max='';
+  rows.forEach(function(r){const d=refDayKey(refVal(r,'refTime'));if(d&&d>max)max=d;});
+  let cut='';
+  if(max){const t=refEpoch(max);if(t!=null)cut=refDayKey(new Date(t-6*86400000).toISOString().slice(0,10));}
+  const D={},W={},M={};
+  rows.forEach(function(r){
+    const acc=String(refVal(r,'acc')==null?'':refVal(r,'acc')).trim().toUpperCase();
+    if(!acc)return;
+    const d=refDayKey(refVal(r,'refTime'));
+    M[acc]=(M[acc]||0)+1;
+    if(d&&d===max)D[acc]=(D[acc]||0)+1;
+    if(d&&cut&&d>=cut)W[acc]=(W[acc]||0)+1;
+  });
+  _refQtyCache={sig:sig,val:{max:max,D:D,W:W,M:M}};
+  return _refQtyCache.val;
+}
+function refQtyOf(map,f,key){
+  if(!map)return '';
+  const v=(map[f]||{})[key];
+  return v==null?0:v;
 }
 /* 退款率 = 退款额 ÷ 销售额；销售额没值/为 0 → 0（存小数，保留 4 位 = 百分比 2 位） */
 function baoRate(ref,sale){
@@ -11177,7 +11222,15 @@ function colPersist(){
 function colLoad(){
   try{
     const o=JSON.parse(localStorage.getItem(COL_KEEP_KEY)||'null');if(!o)return;
-    if(Array.isArray(o.sum)){sumColsSel=o.sum.filter(k=>SUM_COLS.some(c=>c[0]===k));sumColsKeep=true;}
+    if(Array.isArray(o.sum)){
+      sumColsSel=o.sum.filter(k=>SUM_COLS.some(c=>c[0]===k));
+      /* 老设置里没有新加的「日/周/月退款量」：凡是原来开了对应周期「订单量」的，顺手补上（口径一致，别让人以为没做） */
+      ['D','W','M'].forEach(function(d){
+        if(sumColsSel.indexOf('bao'+d+'Ord')>=0&&sumColsSel.indexOf('bao'+d+'Rqty')<0
+           &&SUM_COLS.some(function(c){return c[0]==='bao'+d+'Rqty';}))sumColsSel.push('bao'+d+'Rqty');
+      });
+      sumColsKeep=true;
+    }
     if(Array.isArray(o.std)){stdColsSel=o.std.filter(k=>STD_COLS.some(c=>c[0]===k));stdColsKeep=true;}
   }catch(e){}
 }
@@ -13848,7 +13901,7 @@ function baoGo(kind,name,to,dim,st){
   /* 列也一并筛好：只展示这张报损快照用得上的源字段（账号/客服/组长 + 该维度的订单量·退款额·销售额·退款率） */
   const D=(dim==='d'?'D':(dim==='m'?'M':'W'));
   try{ colSetSel('sum',['short','account','cs','csLeader','site',
-        'bao'+D+'Ord','bao'+D+'Ref','bao'+D+'Sale','bao'+D+'Rate']); }catch(e){ sumColsSel=null; }
+        'bao'+D+'Ord','bao'+D+'Rqty','bao'+D+'Ref','bao'+D+'Sale','bao'+D+'Rate']); }catch(e){ sumColsSel=null; }
   curPage=1;view='summary';render();
   setTimeout(function(){
     if(view!=='summary')return;
@@ -16589,6 +16642,10 @@ function refApply(o,src){
   REF.state=REF.rows.length?'loaded':'empty';
   return true;
 }
+/* 退款明细加载完成 / 口径变化后：只有在看「退款明细」或「AMZ汇总表」时才重渲染（汇总表要刷退款量） */
+function refRenderIfVisible(){
+  try{if((view==='issue'&&isTab==='ref')||view==='summary')render();}catch(e){}
+}
 function refEnsure(){
   if(REF.state==='loading'||REF.state==='loaded'||REF.state==='empty')return;
   REF.state='loading';REF.err='';REF.migrated=false;
@@ -16606,7 +16663,7 @@ function refEnsure(){
     if(REF.tick<5){REF.watchdog=setTimeout(watch,5000);return;}
     REF.state='error';
     REF.err='读取超时：云端快照没有继续下载（可能是网络问题）。可以点「重试」，或直接上传原表。';
-    if(view==='issue'&&isTab==='ref')render();
+    refRenderIfVisible();
   };
   REF.watchdog=setTimeout(watch,5000);
   var rec=null;
@@ -16621,7 +16678,7 @@ function refEnsure(){
       /* 本机已有缓存：只发一个 HEAD，看云端是否被别人更新过；变了再整份重拉 */
       if(REF.etag)refCloudEtag().then(function(e){
         if(e&&e!==REF.etag){
-          refReloadCloud().then(function(ok){if(ok&&view==='issue'&&isTab==='ref')render();});
+          refReloadCloud().then(function(ok){if(ok)refRenderIfVisible();});
         }
       });
       return true;
@@ -16631,11 +16688,11 @@ function refEnsure(){
     if(REF.watchdog){clearTimeout(REF.watchdog);REF.watchdog=null;}
     REF.lastGot=0;
     if(!ok&&REF.state==='loading')REF.state='empty';
-    if(view==='issue'&&isTab==='ref')render();
+    refRenderIfVisible();
   }).catch(function(e){
     if(REF.watchdog){clearTimeout(REF.watchdog);REF.watchdog=null;}
     if(REF.state==='loading'){REF.state='error';REF.err=String((e&&e.message)||e);}
-    if(view==='issue'&&isTab==='ref')render();
+    refRenderIfVisible();
   });
 }
 function refReloadCloud(){
