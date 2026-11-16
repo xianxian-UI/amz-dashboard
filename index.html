@@ -15459,20 +15459,20 @@ function ctrExport(){
 }
 /* ══════════════════════════════════════════════════════════════════════════
    问题明细 · 退款明细（ref）
-   ── 表结构：按「退款明细」导出原表的 38 个表头字段固定（顺序同原表）
+   ── 表结构：原表 37 个字段（已去掉「标题」）+ 2 个自动计算列（发货时长 / 部分退款比例）
    ── 导入：按「表头字段名」自动识别（精确 → 最长别名包含），不按列顺序；
-            识别不到的字段保留列位、值留空；未识别的多余列不入库
+            识别不到的字段保留列位、值留空；不要的列（标题）静默忽略
+   ── 时间：入库保留原始时间（算发货时长要用时分），页面与导出**一律只显示年月日**
+   ── 保留期：只留退款时间最新 30 天，超窗的老记录在导入/加载时自动删除
    ── 存储：IndexedDB 本机缓存（gzip 压缩，约 1/5 体积）
             + Storage 云端快照 amz2026/refund.json.gz（与整包同桶同前缀，可跨设备共享）
-   ── 口径：默认只统计「账号管理 → 启用 且 纳入考核」的账号（与其它 tab 一致），
-            勾「含全部账号」可放开
+   ── 口径：默认按原表全部账号；勾「仅启用且纳入考核」与其它 tab 同口径
    ══════════════════════════════════════════════════════════════════════════ */
 const REF_COLS=[
   {k:'acc',label:'账号简称',w:132,a:['账号简称','账号','店铺名称','店铺']},
   {k:'site',label:'站点',w:62,a:['站点','国家','站点代码']},
   {k:'mgr',label:'管理销售',w:84,a:['管理销售','销售员','销售']},
   {k:'team',label:'团队',w:130,a:['团队','小组','核算分组']},
-  {k:'title',label:'标题',w:210,a:['商品标题','产品标题','标题']},
   {k:'spu',label:'SPU',w:110,a:['SPU','SPU编码']},
   {k:'sku',label:'SKU',w:130,a:['SKU','SKU编码']},
   {k:'wmsNo',label:'分仓单号',w:200,a:['分仓单号','分仓订单号']},
@@ -15480,17 +15480,17 @@ const REF_COLS=[
   {k:'platNo',label:'平台单号',w:150,a:['平台单号','亚马逊订单号','AMZ订单号','订单编号','订单号']},
   {k:'listing',label:'刊登来源',w:92,a:['刊登来源','刊登方式']},
   {k:'platState',label:'平台状态',w:84,a:['平台状态','刊登状态','listing状态']},
-  {k:'listTime',label:'刊登时间',w:142,a:['刊登时间','上架时间']},
+  {k:'listTime',label:'刊登时间',w:108,d:1,a:['刊登时间','上架时间']},
   {k:'dev',label:'开发员',w:80,a:['开发员','开发']},
   {k:'maint',label:'维护员',w:80,a:['维护员','维护']},
   {k:'attr',label:'物品属性',w:84,a:['物品属性','物品类型']},
   {k:'goodsState',label:'商品状态',w:84,a:['商品状态']},
   {k:'ipState',label:'侵权状态',w:84,a:['侵权状态']},
   {k:'goodsType',label:'商品类型',w:84,a:['商品类型']},
-  {k:'devTime',label:'开发时间',w:142,a:['开发时间']},
-  {k:'payTime',label:'付款时间',w:142,a:['付款时间','付款日期']},
-  {k:'shipTime',label:'发货时间',w:142,a:['发货时间','发货日期']},
-  {k:'doneTime',label:'完成时间',w:142,a:['完成时间','妥投时间']},
+  {k:'devTime',label:'开发时间',w:108,d:1,a:['开发时间']},
+  {k:'payTime',label:'付款时间',w:108,d:1,a:['付款时间','付款日期']},
+  {k:'shipTime',label:'发货时间',w:108,d:1,a:['发货时间','发货日期']},
+  {k:'doneTime',label:'完成时间',w:108,d:1,a:['完成时间','妥投时间']},
   {k:'orderState',label:'订单状态',w:92,a:['订单状态']},
   {k:'cat1',label:'星耀一级分类',w:110,a:['星耀一级分类','一级分类']},
   {k:'cat2',label:'星耀二级分类',w:124,a:['星耀二级分类','二级分类']},
@@ -15500,15 +15500,24 @@ const REF_COLS=[
   {k:'wh',label:'仓库',w:84,a:['仓库','发货仓','发货仓库']},
   {k:'logi',label:'物流渠道',w:200,a:['物流渠道','物流方式','渠道']},
   {k:'markNo',label:'标记单号',w:150,a:['标记单号','跟踪号','运单号','物流单号']},
-  {k:'orderAmt',label:'订单总金额（RMB）',w:122,a:['订单总金额(RMB)','订单总金额','订单金额','订单总额']},
-  {k:'refAmt',label:'退款金额（原币）',w:118,a:['退款金额(原币)','退款金额','退款额']},
-  {k:'refTime',label:'退款时间',w:142,a:['退款时间','退款日期']},
+  {k:'orderAmt',label:'订单总金额（RMB）',w:122,right:1,a:['订单总金额(RMB)','订单总金额','订单金额','订单总额']},
+  {k:'refAmt',label:'退款金额（RMB）',w:118,right:1,a:['退款金额(RMB)','退款金额(原币)','退款金额','退款额']},
+  {k:'refTime',label:'退款时间',w:108,d:1,a:['退款时间','退款日期']},
   {k:'region',label:'区域',w:72,a:['区域','收件区域']},
   {k:'issueCat',label:'问题归类',w:96,a:['问题归类','问题分类','归类']},
-  {k:'refReason',label:'退款原因',w:190,a:['退款原因','退款理由','原因']}
+  {k:'refReason',label:'退款原因',w:190,a:['退款原因','退款理由','原因']},
+  /* ── 自动计算列：不入库，取数时实时算 ── */
+  {k:'shipHours',label:'发货时长（小时）',w:112,calc:1,right:1},
+  {k:'partialRate',label:'部分退款比例',w:110,calc:1,right:1}
 ];
-const REF_N=REF_COLS.length;
-const REF_IDX=(function(){const o={};REF_COLS.forEach(function(c,i){o[c.k]=i;});return o;})();
+const REF_STORE=REF_COLS.filter(function(c){return !c.calc;});
+const REF_N=REF_STORE.length;        /* 入库字段数 = 37 */
+const REF_VIEW_N=REF_COLS.length;    /* 表格 / 导出列数 = 39 */
+const REF_IDX=(function(){const o={};REF_STORE.forEach(function(c,i){o[c.k]=i;});return o;})();
+const REF_BY_KEY=(function(){const o={};REF_COLS.forEach(function(c){o[c.k]=c;});return o;})();
+/* 表里出现但不需要入库的列（「标题」已按要求删除）→ 静默忽略，不计入「未识别」 */
+const REF_IGNORE=['标题','商品标题','产品标题'];
+const REF_KEEP_DAYS=30;              /* 退款时间只保留最新 30 天 */
 function refNormHead(s){
   return String(s==null?'':s).replace(/\s/g,'').replace(/（/g,'(').replace(/）/g,')')
     .replace(/[＊*:：]/g,'').toLowerCase();
@@ -15517,7 +15526,7 @@ function refNormHead(s){
    （否则「退款原因」会被短别名「原因」抢走、「订单总金额(RMB)」会被「订单金额」抢走） */
 const REF_ALIAS=(function(){
   const list=[];
-  REF_COLS.forEach(function(c,i){
+  REF_STORE.forEach(function(c,i){
     [c.label].concat(c.a||[]).forEach(function(x){
       const t=refNormHead(x);
       if(t&&t.length>=2)list.push([t,i]);
@@ -15595,6 +15604,59 @@ function refCellVal(v){
   if(typeof v==='number'){return String(Math.round(v*1e6)/1e6);}
   return String(v).trim();
 }
+/* ── 时间一律只显示年月日（入库仍保留原始时间，「发货时长」要用到时分） ── */
+function refEpoch(v){
+  const s=String(v==null?'':v).trim();
+  if(!s)return null;
+  const m=s.match(/(\d{4})[-/.](\d{1,2})[-/.](\d{1,2})(?:[ T](\d{1,2}):(\d{1,2})(?::(\d{1,2}))?)?/);
+  if(!m)return null;
+  const t=Date.UTC(+m[1],+m[2]-1,+m[3],+(m[4]||0),+(m[5]||0),+(m[6]||0));
+  return isFinite(t)?t:null;
+}
+/* 自动计算列：发货时长（小时）= 发货时间 − 付款时间；部分退款比例 = 退款金额 ÷ 订单总金额（整数百分比） */
+function refCalc(r,k){
+  if(k==='shipHours'){
+    const a=refEpoch(refVal(r,'payTime')),b=refEpoch(refVal(r,'shipTime'));
+    if(a==null||b==null||b<a)return '';
+    const h=(b-a)/3600000;
+    return String(Math.round(h*10)/10);
+  }
+  if(k==='partialRate'){
+    const amt=refNumK(refVal(r,'refAmt')),ord=refNumK(refVal(r,'orderAmt'));
+    if(!(ord>0))return '';
+    return Math.round(amt/ord*100)+'%';
+  }
+  return '';
+}
+/* 单元格显示值：计算列现算；日期列裁到年月日 */
+function refShow(r,k){
+  const c=REF_BY_KEY[k];
+  if(c&&c.calc)return refCalc(r,k);
+  const v=refVal(r,k);
+  if(c&&c.d){const d=refDayKey(v);return d||v;}
+  return v;
+}
+/* 只保留退款时间最新 N 天：以数据内最新退款日为基准往前推；没有退款时间的行保留（判不了） */
+function refPrune(rows){
+  const list=rows||[];
+  let maxMs=null;
+  list.forEach(function(r){
+    const d=refDayKey(refVal(r,'refTime'));
+    if(!d)return;
+    const t=refEpoch(d);
+    if(t!=null&&(maxMs==null||t>maxMs))maxMs=t;
+  });
+  if(maxMs==null)return {rows:list,cut:'',dropped:0};
+  const cutMs=maxMs-(REF_KEEP_DAYS-1)*86400000;
+  const cut=refDayKey(new Date(cutMs).toISOString().slice(0,10));
+  const kept=[];let dropped=0;
+  list.forEach(function(r){
+    const d=refDayKey(refVal(r,'refTime'));
+    const t=d?refEpoch(d):null;
+    if(t==null||t>=cutMs)kept.push(r);else dropped++;
+  });
+  return {rows:kept,cut:cut,dropped:dropped};
+}
 /* ── 明细筛选（except：排名卡自己那一维不参与筛选，方便在榜上切换取值）
      大表（2~3 万行）一次 render 里 KPI / 排名 / 表格 / 分页各调一次，
      按「筛选条件签名」缓存一次结果，避免重复过滤 + 重复排序。 ── */
@@ -15663,6 +15725,10 @@ function refSortRows(rows,noSort){
     out.sort(function(a,b){return refNumK(refVal(b,'refAmt'))-refNumK(refVal(a,'refAmt'));});
   }else if(refSort==='orderAmtDesc'){
     out.sort(function(a,b){return refNumK(refVal(b,'orderAmt'))-refNumK(refVal(a,'orderAmt'));});
+  }else if(refSort==='partialDesc'||refSort==='shipHoursDesc'){
+    const _k=(refSort==='partialDesc'?'partialRate':'shipHours');
+    const _n=function(r){const x=parseFloat(String(refCalc(r,_k)).replace('%',''));return isFinite(x)?x:-1;};
+    out.sort(function(a,b){return _n(b)-_n(a);});
   }else if(refSort==='acc'){
     out.sort(function(a,b){return refVal(a,'acc').localeCompare(refVal(b,'acc'));});
   }
@@ -15678,8 +15744,8 @@ function refKpiHtml(rows){
     {label:'涉及账号',val:refFmtNum(st.accs),unit:' 个'},
     {label:'涉及 SKU',val:refFmtNum(st.skus),unit:' 个'},
     {label:'订单金额（RMB）',val:refFmtNum(st.amtO,2),unit:'',tip:'「订单总金额（RMB）」列合计'},
-    {label:'退款金额（原币）',val:refFmtNum(st.amtR,2),unit:'',tip:'「退款金额（原币）」列合计；各站点币种不同，合计仅供参考'},
-    {label:'退款额/订单额',val:(rate==null?'—':refFmtNum(rate,2)),unit:(rate==null?'':' %'),tip:'退款金额合计 ÷ 订单总金额（RMB）合计；跨币种，仅供参考'}
+    {label:'退款金额（RMB）',val:refFmtNum(st.amtR,2),unit:'',tip:'「退款金额（RMB）」列合计'},
+    {label:'退款额/订单额',val:(rate==null?'—':refFmtNum(rate,2)),unit:(rate==null?'':' %'),tip:'退款金额合计 ÷ 订单总金额合计（均为 RMB）'}
   ];
   return '<div class="is-kpi">'+cards.map(function(x){
     return isKpiCard({label:x.label,val:x.val+(x.unit||''),color:'#2f6f5b'});
@@ -15747,19 +15813,18 @@ function refTableHtml(){
   const page=Math.min(Math.max(1,refPage),pages);refPage=page;
   const part=rows.slice((page-1)*isPageSize,page*isPageSize);
   const head='<thead><tr>'+REF_COLS.map(function(c){
-    return '<th class="fbm-th" style="min-width:'+c.w+'px">'+esc(c.label)+'</th>';
+    return '<th class="fbm-th" style="min-width:'+c.w+'px"'+(c.calc?' title="自动计算列"':'')+'>'+esc(c.label)+'</th>';
   }).join('')+'</tr></thead>';
   const body=part.map(function(r){
-    return '<tr>'+REF_COLS.map(function(c,i){
-      const v=String(r[i]==null?'':r[i]);
-      const num=(c.k==='orderAmt'||c.k==='refAmt');
+    return '<tr>'+REF_COLS.map(function(c){
+      const v=refShow(r,c.k);
       const long=(c.w>=150);
       return '<td class="fbm-td"'
-        +(num?' style="text-align:right;font-variant-numeric:tabular-nums"':'')
+        +(c.right?' style="text-align:right;font-variant-numeric:tabular-nums"':'')
         +(long?' style="max-width:'+c.w+'px;overflow:hidden;text-overflow:ellipsis"':'')
         +' title="'+esc(v)+'">'+(v?esc(v):'<span class="fbm-nil">—</span>')+'</td>';
     }).join('')+'</tr>';
-  }).join('')||('<tr><td colspan="'+REF_N+'" style="text-align:center;padding:30px" class="fbm-nil">没有匹配的记录</td></tr>');
+  }).join('')||('<tr><td colspan="'+REF_VIEW_N+'" style="text-align:center;padding:30px" class="fbm-nil">没有匹配的记录</td></tr>');
   return '<table class="fbm-tbl">'+head+'<tbody>'+body+'</tbody></table>';
 }
 function refPagerHtml(){
@@ -15805,12 +15870,12 @@ function refOpts(kind,cur){
   }).join('');
 }
 function refBarHtml(){
-  const colOpts='<option value="">全部字段</option>'+REF_COLS.map(function(c){
+  const colOpts='<option value="">全部字段</option>'+REF_STORE.map(function(c){
     return '<option value="'+c.k+'"'+(refColSel===c.k?' selected':'')+'>'+esc(c.label)+'</option>';
   }).join('');
   const exactBtn=refColSel?'<button id="refExactBtn" class="acc-scope-btn" title="切换匹配方式：包含（默认）/ 精确（字段值完全相等）">匹配：'+(refExact?'精确':'包含')+'</button>':'';
   const sortSel='<span class="is-sel"><label>排序</label><select id="refSortSel">'
-    +[['refTimeDesc','退款时间 ↓'],['refTimeAsc','退款时间 ↑'],['refAmtDesc','退款金额 ↓'],['orderAmtDesc','订单金额 ↓'],['acc','账号']].map(function(o){
+    +[['refTimeDesc','退款时间 ↓'],['refTimeAsc','退款时间 ↑'],['refAmtDesc','退款金额 ↓'],['orderAmtDesc','订单金额 ↓'],['partialDesc','部分退款比例 ↓'],['shipHoursDesc','发货时长 ↓'],['acc','账号']].map(function(o){
       return '<option value="'+o[0]+'"'+(refSort===o[0]?' selected':'')+'>'+o[1]+'</option>';
     }).join('')+'</select></span>';
   const siteSel='<span class="is-sel"><label>站点</label><select id="refSiteSel">'+refOpts('site',refF.site)+'</select></span>';
@@ -15823,7 +15888,7 @@ function refBarHtml(){
   /* 两行：① 搜索 + 右侧操作按钮  ② 维度筛选 */
   return '<div class="toolbar is-bar">'
     +'<span class="is-sel"><label>搜索列</label><select id="refColSel">'+colOpts+'</select></span>'
-    +'<input id="refSearch" class="search" style="width:380px;flex:0 0 auto;min-width:200px" placeholder="🔍 '+(refColSel?('在「'+esc((REF_COLS[REF_IDX[refColSel]]||{}).label||refColSel)+'」中搜索（空格/逗号分隔多个词）'):'搜索全部字段（空格/逗号分隔多个词，任一命中）')+'" value="'+esc(refSearch)+'">'
+    +'<input id="refSearch" class="search" style="width:380px;flex:0 0 auto;min-width:200px" placeholder="🔍 '+(refColSel?('在「'+esc((REF_BY_KEY[refColSel]||{}).label||refColSel)+'」中搜索（空格/逗号分隔多个词）'):'搜索全部字段（空格/逗号分隔多个词，任一命中）')+'" value="'+esc(refSearch)+'">'
     +exactBtn
     +'<span style="flex:1 1 auto"></span>'
     +'<button class="btn ghost" id="refExportBtn">⬇ 导出</button>'
@@ -15864,8 +15929,10 @@ function refSection(){
   }
   const mt=REF.meta||{};
   const miss=(mt.miss||[]).length;
+  const win=REF.win||{};
   const note='<div class="fbm-note">数据来源：'+(mt.file?esc(mt.file)+' · '+esc(mt.at||''):'本机缓存')
     +' · 共 '+rows.length+' 条 · 字段识别 '+(mt.hit||REF_N)+'/'+REF_N+(miss?('（未识别 '+miss+' 个，已留空）'):'')
+    +' · 只保留退款时间最新 '+REF_KEEP_DAYS+' 天'+(win.cut?('（≥ '+win.cut+'）'):'')+(win.dropped?('，已自动删除更早的 '+win.dropped+' 条'):'')
     +' · <span id="refSyncTip">'+(REF.sync==='cloud'?'云端已同步':(REF.sync==='local'?'仅本机（云端未同步）':(REF.src==='cloud'?'来自云端快照':(REF.src==='idb'?'来自本机缓存':''))))+'</span></div>';
   return refBarHtml()
     +'<div id="refKpi">'+refKpiHtml()+'</div>'
@@ -15933,11 +16000,12 @@ function refImportRows(rows,fname){
   const map=[],used={},missLabels=[];
   for(let j=0;j<head.length;j++){
     const idx=refHeadIdx(head[j]);
+    const raw0=String(head[j]==null?'':head[j]).trim();
     if(idx>=0&&!used[idx]){map[j]=idx;used[idx]=1;}
     else{
       map[j]=-1;
-      const t=String(head[j]==null?'':head[j]).trim();
-      if(t&&idx<0)missLabels.push(t);
+      /* 「标题」这类已删掉/不需要的列静默忽略，不计入「未识别」 */
+      if(raw0&&idx<0&&REF_IGNORE.indexOf(raw0)<0)missLabels.push(raw0);
     }
   }
   const hitN=Object.keys(used).length;
@@ -15958,6 +16026,9 @@ function refImportRows(rows,fname){
       if(v)any=true;
     }
     if(!any){skipped++;continue;}
+    /* 表中间重复出现的表头行（例如退款时间格里写着「商品单价（RMB）」）→ 退款时间不是日期，丢掉 */
+    const _rt=arr[REF_IDX.refTime];
+    if(_rt&&!refDayKey(_rt)){skipped++;continue;}
     out.push(arr);
   }
   if(!out.length)return '没有可用数据行';
@@ -15975,19 +16046,25 @@ function refImportRows(rows,fname){
       REF.rows.push(n);ins++;
     }
   });
-  REF.meta={file:String(fname||''),at:(new Date()).toLocaleString('zh-CN',{hour12:false}).slice(0,16),hit:hitN,miss:missLabels.slice(0,20)};
+  /* ⑤ 只保留退款时间最新 30 天：超出窗口的老记录自动删除 */
+  const pr=refPrune(REF.rows);
+  REF.rows=pr.rows;
+  REF.win={cut:pr.cut,dropped:pr.dropped};
+  REF.meta={file:String(fname||''),at:todayStr(),hit:hitN,miss:missLabels.slice(0,20)};
   REF.state='loaded';
   refSave();
   return '导入完成：识别 '+hitN+'/'+REF_N+' 个字段'
     +(missLabels.length?('（未识别 '+missLabels.length+' 个表头，字段留空：'+missLabels.slice(0,5).join('、')+(missLabels.length>5?' 等':'')+'）'):'')
-    +'；新增 '+ins+' 条，更新 '+upd+' 条'+(skipped?('，跳过空行 '+skipped):'')+'，现共 '+REF.rows.length+' 条';
+    +'；新增 '+ins+' 条，更新 '+upd+' 条'+(skipped?('，跳过空行 '+skipped):'')
+    +(pr.dropped?('；按「退款时间最新 '+REF_KEEP_DAYS+' 天」自动删除 '+pr.dropped+' 条更早的明细'):'')
+    +'，现共 '+REF.rows.length+' 条';
 }
 function refExport(){
   const rows=refList();
   if(!rows.length){alert('当前没有可导出的数据');return;}
   const q=function(v){const t=v==null?'':String(v);return /[",\n]/.test(t)?('"'+t.replace(/"/g,'""')+'"'):t;};
   const lines=[REF_COLS.map(function(c){return q(c.label);}).join(',')];
-  rows.forEach(function(r){lines.push(REF_COLS.map(function(c,i){return q(r[i]);}).join(','));});
+  rows.forEach(function(r){lines.push(REF_COLS.map(function(c){return q(refShow(r,c.k));}).join(','));});
   downloadBlob(new Blob(['\uFEFF'+lines.join('\r\n')],{type:'text/csv;charset=utf-8'}),'退款明细_'+rows.length+'条_'+todayStr()+'.csv');
 }
 function refClearAll(){
@@ -16046,7 +16123,7 @@ function refGunzipBlob(blob){
 }
 function refSave(){
   REF.sync='saving';refSyncTip();
-  var json=JSON.stringify({v:1,meta:REF.meta,rows:REF.rows});
+  var json=JSON.stringify({v:2,meta:REF.meta,rows:REF.rows});
   refGzipBlob(json).then(function(blob){
     return refPushCloud(blob).then(function(etag){
       return refIdbSet({at:Date.now(),meta:REF.meta,blob:blob,etag:etag||''});
@@ -16056,7 +16133,7 @@ function refSave(){
   });
 }
 function refIdbSaveCache(){
-  var json=JSON.stringify({v:1,meta:REF.meta,rows:REF.rows});
+  var json=JSON.stringify({v:2,meta:REF.meta,rows:REF.rows});
   return refGzipBlob(json).then(function(blob){
     return refIdbSet({at:Date.now(),meta:REF.meta,blob:blob,etag:REF.etag||''});
   }).catch(function(){});
@@ -16073,7 +16150,7 @@ function refPushCloud(blob){
   if(typeof SB_URL==='undefined'||!SB_URL)return Promise.resolve('');
   if(typeof CompressionStream==='undefined'){REF.sync='local';refSyncTip();return Promise.resolve('');}
   var p=blob?Promise.resolve(blob):
-    refGzipBlob(JSON.stringify({v:1,meta:REF.meta,rows:REF.rows}));
+    refGzipBlob(JSON.stringify({v:2,meta:REF.meta,rows:REF.rows}));
   return p.then(function(b){
     return fetch(SB_URL+'/storage/v1/object/'+SB_BUCKET+'/'+REF_PATH,{
       method:'POST',
@@ -16108,11 +16185,15 @@ function refFetchCloud(){
 }
 function refApply(o,src){
   if(!o||!Array.isArray(o.rows))return false;
+  if(o.v&&o.v!==2)return false;      /* 旧结构（含「标题」列）不兼容，直接忽略，等重新上传 */
   REF.rows=o.rows.map(function(r){
     const arr=new Array(REF_N);
     for(let k=0;k<REF_N;k++)arr[k]=r&&r[k]!=null?r[k]:'';
     return arr;
   });
+  const pr=refPrune(REF.rows);
+  REF.rows=pr.rows;
+  REF.win={cut:pr.cut,dropped:pr.dropped};
   REF.meta=o.meta||{file:'',at:'',hit:REF_N,miss:[]};
   REF.src=src||'';
   REF.state=REF.rows.length?'loaded':'empty';
