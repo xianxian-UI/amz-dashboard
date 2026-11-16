@@ -6158,7 +6158,7 @@ const SUM_BAO_RATE=['baoDRate','baoWRate','baoMRate'];
 /* 日/周/月退款占比（紧挨在「退款量」右侧，不再单独成组）：
    退款占比 = 退款量 ÷ 订单量 —— 量口径的退款率，看「退了多少单」；
    与「退款率」（退款额 ÷ 销售额，额口径）互补，两列并排一眼看出「单量多但金额小」还是反之。
-   按账号实时算，不从上传文件读：退款明细没载入 / 订单量缺值或为 0 → 该格留空显示「—」。 */
+   按账号实时算，不从上传文件读；**没有可比订单量时记 0%，不留「—」**（订单量 0 / 缺值 / 表没上传都算）。 */
 const SUM_BAO_SHARE=['baoDQtyShare','baoWQtyShare','baoMQtyShare'];
 /* 日/周/月三套快照的键：d/w/m → 列前缀 */
 const SUM_BAO_KIND=[['d','日','baoD'],['w','周','baoW'],['m','月','baoM']];
@@ -6733,14 +6733,11 @@ function sumBaoFields(key){
     out.baoMRqty=refQtyOf(q,'M',key);
   }
   /* 日/周/月退款占比（紧挨退款量那列）：退款量 ÷ 订单量，存小数（0.0123 = 1.23%）。
-     分母为 0 / 缺值 → 该格留空（显示「—」），别拿 0% 冒充「没退款」 */
+     口径：**永远给数值，不留「—」** —— 订单量为 0 / 缺值 / 报损表还没上传 / 退款明细没载入，一律记 0%（用户 2026-11-16 定） */
   SUM_BAO_KIND.forEach(function(kp){
     const P=kp[2];
-    const ord=out[P+'Ord'],qty=out[P+'Rqty'];
-    if(ord!=null&&qty!=null){
-      const o=Number(ord);
-      out[P+'QtyShare']=(isFinite(o)&&o>0)?Number((Number(qty)/o).toFixed(4)):'';
-    }
+    const ord=Number(out[P+'Ord']),qty=Number(out[P+'Rqty']);
+    out[P+'QtyShare']=(isFinite(ord)&&ord>0&&isFinite(qty))?Number((qty/ord).toFixed(4)):0;
   });
   return out;
 }
