@@ -9876,6 +9876,16 @@ document.getElementById('app').addEventListener('change',e=>{
   if(id==='otdCarrierSel'){otdCarrier=e.target.value;otdPage=1;otdRefresh();return;}
   if(id==='otdLateChk'){otdOnlyLate=!!e.target.checked;otdPage=1;otdRefresh();return;}
   if(id==='ctrColSel'){ctrColSel=e.target.value;ctrSearch='';isPage=1;render();return;}
+  if(id==='refFile'){const _rf=e.target.files&&e.target.files[0];e.target.value='';if(_rf)refReadFile(_rf);return;}
+  if(id==='refColSel'){refColSel=e.target.value;refSearch='';refPage=1;render();return;}
+  if(id==='refSortSel'){refSort=e.target.value||'refTimeDesc';refPage=1;refRefresh();return;}
+  if(id==='refSiteSel'){refF.site=e.target.value;refPage=1;render();return;}
+  if(id==='refCatSel'){refF.issueCat=e.target.value;refPage=1;render();return;}
+  if(id==='refReasonSel'){refF.refReason=e.target.value;refPage=1;render();return;}
+  if(id==='refAccSel'){refF.acc=e.target.value;refPage=1;render();return;}
+  if(id==='refD1'){refF.d1=e.target.value;refPage=1;render();return;}
+  if(id==='refD2'){refF.d2=e.target.value;refPage=1;render();return;}
+  if(id==='refOnlyOnChk'){refOnlyOn=!!e.target.checked;refPage=1;render();return;}
   if(id==='otdFile'){const f=e.target.files&&e.target.files[0];e.target.value='';if(f)otdReadFile(f);return;}
   if(id==='isUpClearChk'){isUpClear=!!e.target.checked;return;}
   if(id==='isUpFile'){const f=e.target.files&&e.target.files[0];e.target.value='';if(f){const _t=isUpTab,_c=isUpClear;isUpOpen=false;if(_t==='fbm')fbmReadFile(f,_c);else if(_t==='otd')otdReadFile(f,_c);else ctrReadFile(f,_c);}return;}
@@ -10005,7 +10015,7 @@ document.getElementById('app').addEventListener('input',e=>{
     if(l)l.innerHTML=umScopeListHtml();
   }
 });
-let isSearchTimer=null,otdSearchTimer=null,ctrSearchTimer=null;
+let isSearchTimer=null,otdSearchTimer=null,ctrSearchTimer=null,refSearchTimer=null;
 document.getElementById('app').addEventListener('input',e=>{
   if(e.target.id==='isSearch'){
     isSearch=e.target.value;
@@ -10022,6 +10032,12 @@ document.getElementById('app').addEventListener('input',e=>{
     ctrSearch=e.target.value;
     if(ctrSearchTimer)clearTimeout(ctrSearchTimer);
     ctrSearchTimer=setTimeout(function(){isPage=1;ctrRefresh();},260);
+    return;
+  }
+  if(e.target.id==='refSearch'){
+    refSearch=e.target.value;
+    if(refSearchTimer)clearTimeout(refSearchTimer);
+    refSearchTimer=setTimeout(function(){refPage=1;refRefresh();},260);
     return;
   }
   if(e.target.classList&&e.target.classList.contains('kb-kw')){
@@ -10045,7 +10061,7 @@ document.getElementById('app').addEventListener('click',e=>{
   if(e.target.id==='ctrExactBtn'){ctrExact=!ctrExact;isPage=1;ctrRefresh();const b=document.getElementById('ctrExactBtn');if(b)b.innerHTML='匹配：'+(ctrExact?'精确':'包含');return;}
   /* 写权限守卫：非管理员一切写操作直接拦掉（服务端同样会 403，这里只是给个明确提示，不让人白点） */
   if(!wbCanWrite()){
-    const w=t2=>t2&&t2.closest?t2.closest('[data-wkdel],[data-edit],[data-toggle],[data-delacc],[data-editpc],[data-delpc],[data-delkb],[data-delcase],#addBtn,#quickBtn,#uploadBtn,#pcUploadBtn,#pcAddBtn,#kbAddBtn,#sumSrcBtn,#fbmUploadBtn,#otdUploadBtn,[data-baoup],#sumUpAll,[data-editissue],[data-delissue],#umAdd,#umAddSave,#umPwSave,#umScopeSave,[data-umpw],[data-umdel],[data-umv],[data-ume],#umBulkSave,#umBulkMod,#umBulkScope,#umBulkRO,#umReqApprove,#umReqReject,#umApSave,[data-umreqok],[data-umreqno],[data-kbsave],[data-kbdel],#kbSearchBtn,#kbSearchClear,#kbAddCatBtn,#kbBatchSaveBtn,#kbBatchClearBtn,#kbCheckAll,[data-kbcheck],#kbSmartBtn,#kbSmartApply,#kbSmartClear,#stopSave'):null;
+    const w=t2=>t2&&t2.closest?t2.closest('[data-wkdel],[data-edit],[data-toggle],[data-delacc],[data-editpc],[data-delpc],[data-delkb],[data-delcase],#addBtn,#quickBtn,#uploadBtn,#pcUploadBtn,#pcAddBtn,#kbAddBtn,#sumSrcBtn,#fbmUploadBtn,#otdUploadBtn,#refUploadBtn,#refClearBtn,[data-baoup],#sumUpAll,[data-editissue],[data-delissue],#umAdd,#umAddSave,#umPwSave,#umScopeSave,[data-umpw],[data-umdel],[data-umv],[data-ume],#umBulkSave,#umBulkMod,#umBulkScope,#umBulkRO,#umReqApprove,#umReqReject,#umApSave,[data-umreqok],[data-umreqno],[data-kbsave],[data-kbdel],#kbSearchBtn,#kbSearchClear,#kbAddCatBtn,#kbBatchSaveBtn,#kbBatchClearBtn,#kbCheckAll,[data-kbcheck],#kbSmartBtn,#kbSmartApply,#kbSmartClear,#stopSave'):null;
     if(w(e.target)){
       e.preventDefault();e.stopPropagation();
       alert('你当前是「'+wbRoleName((WB.user||{}).role)+'」，只能查看数据，不能修改。\n如需调整请联系管理员。');
@@ -10621,6 +10637,32 @@ document.getElementById('app').addEventListener('click',e=>{
   if(e.target.id==='otdUploadBtn'){openIsUp('otd');return;}
   if(e.target.id==='ctrUploadBtn'){openIsUp('ctr');return;}
   if(e.target.id==='ctrExportBtn'){ctrExport();return;}
+  /* ── 退款明细交互 ── */
+  const _rfp=e.target.closest&&e.target.closest('[data-refpage]');
+  if(_rfp){refPageGo(_rfp.getAttribute('data-refpage'));return;}
+  const _rfr=e.target.closest&&e.target.closest('[data-refrk]');
+  if(_rfr){
+    const _rd=_rfr.getAttribute('data-refrk'),_rv=_rfr.getAttribute('data-refrv');
+    if(String(refF[_rd]||'')===_rv)refF[_rd]='';else refF[_rd]=_rv;
+    refPage=1;render();return;
+  }
+  const _rfm=e.target.closest&&e.target.closest('[data-refrankmore]');
+  if(_rfm){
+    const _rd=_rfm.getAttribute('data-refrankmore');
+    refRankOpen[_rd]=!refRankOpen[_rd];
+    const _rr=document.getElementById('refRank');if(_rr)_rr.innerHTML=refRankHtml();
+    return;
+  }
+  if(e.target.id==='refUploadBtn'){const _f=document.getElementById('refFile');if(_f)_f.click();return;}
+  if(e.target.id==='refExportBtn'){refExport();return;}
+  if(e.target.id==='refClearBtn'){refClearAll();return;}
+  if(e.target.id==='refRetryBtn'){REF.state='idle';REF.err='';refEnsure();render();return;}
+  if(e.target.id==='refExactBtn'){refExact=!refExact;refPage=1;refRefresh();const _b=document.getElementById('refExactBtn');if(_b)_b.innerHTML='匹配：'+(refExact?'精确':'包含');return;}
+  if(e.target.id==='refFilterClear'){
+    refF={site:'',acc:'',issueCat:'',refReason:'',region:'',cat1:'',d1:'',d2:''};
+    refSearch='';refColSel='';refPage=1;
+    refRefresh();render();return;
+  }
   if(e.target.id==='otdRetryBtn'){OTD.state='unloaded';OTD.err='';otdEnsure();return;}
   if(e.target.id==='ctrRetryBtn'){CTR.state='unloaded';CTR.err='';ctrEnsure();return;}
   if(e.target.id==='otdExportBtn'){otdExport();return;}
@@ -14090,8 +14132,8 @@ function hkTabCur(){for(let i=0;i<HK_TABS.length;i++){if(HK_TABS[i].k===hkTab)re
      L 站点 / M 账号状态（最新一周 ODR：>0.8 超标、≥0.6 临界、其余安全）
      N–S 管理经理 / 管理主管 / 销售 / 客服 / 区域 / 客服组长 ← 账号管理映射
      T–AH 需在网页侧查（客诉日期 / 分仓 / 物流），留空 */
-const IS_TABS=[['fbm','FBM订单缺陷率'],['policy','政策合规性'],['otd','准时送达率'],['ctr','有效追踪率']];
-const IS_ICON={fbm:'📋',policy:'🛡️',otd:'🚚',ctr:'🔎'};
+const IS_TABS=[['fbm','FBM订单缺陷率'],['policy','政策合规性'],['otd','准时送达率'],['ctr','有效追踪率'],['ref','退款明细']];
+const IS_ICON={fbm:'📋',policy:'🛡️',otd:'🚚',ctr:'🔎',ref:'💸'};
 const FBM_WIN=74;
 const FBM_COLS=[
   ['A','acc','账号',150,'up'],
@@ -15415,12 +15457,711 @@ function ctrExport(){
   rows.forEach(function(r){lines.push(cols.map(function(c){return q(r[c.k]);}).join(','));});
   downloadBlob(new Blob(['\uFEFF'+lines.join('\r\n')+''],{type:'text/csv;charset=utf-8'}),'有效追踪率明细_'+rows.length+'条_'+todayStr()+'.csv');
 }
+/* ══════════════════════════════════════════════════════════════════════════
+   问题明细 · 退款明细（ref）
+   ── 表结构：按「退款明细」导出原表的 38 个表头字段固定（顺序同原表）
+   ── 导入：按「表头字段名」自动识别（精确 → 最长别名包含），不按列顺序；
+            识别不到的字段保留列位、值留空；未识别的多余列不入库
+   ── 存储：IndexedDB 本机缓存（gzip 压缩，约 1/5 体积）
+            + Storage 云端快照 amz2026/refund.json.gz（与整包同桶同前缀，可跨设备共享）
+   ── 口径：默认只统计「账号管理 → 启用 且 纳入考核」的账号（与其它 tab 一致），
+            勾「含全部账号」可放开
+   ══════════════════════════════════════════════════════════════════════════ */
+const REF_COLS=[
+  {k:'acc',label:'账号简称',w:132,a:['账号简称','账号','店铺名称','店铺']},
+  {k:'site',label:'站点',w:62,a:['站点','国家','站点代码']},
+  {k:'mgr',label:'管理销售',w:84,a:['管理销售','销售员','销售']},
+  {k:'team',label:'团队',w:130,a:['团队','小组','核算分组']},
+  {k:'title',label:'标题',w:210,a:['商品标题','产品标题','标题']},
+  {k:'spu',label:'SPU',w:110,a:['SPU','SPU编码']},
+  {k:'sku',label:'SKU',w:130,a:['SKU','SKU编码']},
+  {k:'wmsNo',label:'分仓单号',w:200,a:['分仓单号','分仓订单号']},
+  {k:'sumNo',label:'汇总单号',w:185,a:['汇总单号']},
+  {k:'platNo',label:'平台单号',w:150,a:['平台单号','亚马逊订单号','AMZ订单号','订单编号','订单号']},
+  {k:'listing',label:'刊登来源',w:92,a:['刊登来源','刊登方式']},
+  {k:'platState',label:'平台状态',w:84,a:['平台状态','刊登状态','listing状态']},
+  {k:'listTime',label:'刊登时间',w:142,a:['刊登时间','上架时间']},
+  {k:'dev',label:'开发员',w:80,a:['开发员','开发']},
+  {k:'maint',label:'维护员',w:80,a:['维护员','维护']},
+  {k:'attr',label:'物品属性',w:84,a:['物品属性','物品类型']},
+  {k:'goodsState',label:'商品状态',w:84,a:['商品状态']},
+  {k:'ipState',label:'侵权状态',w:84,a:['侵权状态']},
+  {k:'goodsType',label:'商品类型',w:84,a:['商品类型']},
+  {k:'devTime',label:'开发时间',w:142,a:['开发时间']},
+  {k:'payTime',label:'付款时间',w:142,a:['付款时间','付款日期']},
+  {k:'shipTime',label:'发货时间',w:142,a:['发货时间','发货日期']},
+  {k:'doneTime',label:'完成时间',w:142,a:['完成时间','妥投时间']},
+  {k:'orderState',label:'订单状态',w:92,a:['订单状态']},
+  {k:'cat1',label:'星耀一级分类',w:110,a:['星耀一级分类','一级分类']},
+  {k:'cat2',label:'星耀二级分类',w:124,a:['星耀二级分类','二级分类']},
+  {k:'cat3',label:'星耀三级分类',w:124,a:['星耀三级分类','三级分类']},
+  {k:'cat4',label:'星耀四级分类',w:124,a:['星耀四级分类','四级分类']},
+  {k:'cat5',label:'星耀五级分类',w:124,a:['星耀五级分类','五级分类']},
+  {k:'wh',label:'仓库',w:84,a:['仓库','发货仓','发货仓库']},
+  {k:'logi',label:'物流渠道',w:200,a:['物流渠道','物流方式','渠道']},
+  {k:'markNo',label:'标记单号',w:150,a:['标记单号','跟踪号','运单号','物流单号']},
+  {k:'orderAmt',label:'订单总金额（RMB）',w:122,a:['订单总金额(RMB)','订单总金额','订单金额','订单总额']},
+  {k:'refAmt',label:'退款金额（原币）',w:118,a:['退款金额(原币)','退款金额','退款额']},
+  {k:'refTime',label:'退款时间',w:142,a:['退款时间','退款日期']},
+  {k:'region',label:'区域',w:72,a:['区域','收件区域']},
+  {k:'issueCat',label:'问题归类',w:96,a:['问题归类','问题分类','归类']},
+  {k:'refReason',label:'退款原因',w:190,a:['退款原因','退款理由','原因']}
+];
+const REF_N=REF_COLS.length;
+const REF_IDX=(function(){const o={};REF_COLS.forEach(function(c,i){o[c.k]=i;});return o;})();
+function refNormHead(s){
+  return String(s==null?'':s).replace(/\s/g,'').replace(/（/g,'(').replace(/）/g,')')
+    .replace(/[＊*:：]/g,'').toLowerCase();
+}
+/* 别名表：按别名长度倒序 —— 包含匹配时先命中更具体的别名
+   （否则「退款原因」会被短别名「原因」抢走、「订单总金额(RMB)」会被「订单金额」抢走） */
+const REF_ALIAS=(function(){
+  const list=[];
+  REF_COLS.forEach(function(c,i){
+    [c.label].concat(c.a||[]).forEach(function(x){
+      const t=refNormHead(x);
+      if(t&&t.length>=2)list.push([t,i]);
+    });
+  });
+  list.sort(function(p,q){return q[0].length-p[0].length;});
+  return list;
+})();
+function refHeadIdx(label){
+  const t=refNormHead(label);
+  if(!t)return -1;
+  for(let i=0;i<REF_ALIAS.length;i++){if(REF_ALIAS[i][0]===t)return REF_ALIAS[i][1];}
+  for(let i=0;i<REF_ALIAS.length;i++){if(t.indexOf(REF_ALIAS[i][0])>=0)return REF_ALIAS[i][1];}
+  return -1;
+}
+/* ── 状态 ── */
+let refSearch='',refColSel='',refExact=false,refPage=1,refOnlyOn=false,refSort='refTimeDesc';
+let refF={site:'',acc:'',issueCat:'',refReason:'',region:'',cat1:'',d1:'',d2:''};
+let REF={rows:[],state:'idle',meta:{file:'',at:'',hit:0,miss:[]},err:'',sync:'',src:''};
+/* ── 取值 / 归一 ── */
+function refVal(r,k){
+  const i=REF_IDX[k];
+  if(i==null)return '';
+  const v=r[i];
+  return String(v==null?'':v).trim();
+}
+let _REF_ADM=null,_REF_ADM_REF=null;
+function refAccDim(){
+  const src=DATA.accounts||[];
+  if(_REF_ADM&&_REF_ADM_REF===src)return _REF_ADM;
+  const m={};
+  src.forEach(function(a){
+    const k=String(a.short==null?'':a.short).trim().toUpperCase();
+    if(!k)return;
+    let site=String(a.site==null?'':a.site).trim();
+    if(!site){const p=k.split('-');site=p.length>1?String(p[1]).trim():'';}
+    const cur=m[k];
+    if(!cur||(cur.status!=='启用'&&a.status==='启用'))m[k]={site:site,region:String(a.region==null?'':a.region).trim(),status:String(a.status==null?'':a.status)};
+  });
+  _REF_ADM=m;_REF_ADM_REF=src;return m;
+}
+function refSiteOf(r){
+  const v=refVal(r,'site');
+  if(v&&v!=='-')return v;
+  const d=refAccDim()[refVal(r,'acc').toUpperCase()];
+  return (d&&d.site)||'';
+}
+function refRegionOf(r){
+  const v=refVal(r,'region');
+  if(v&&v!=='-')return v;
+  const d=refAccDim()[refVal(r,'acc').toUpperCase()];
+  return (d&&d.region)||'';
+}
+function refNumK(v){
+  const s=String(v==null?'':v).replace(/[,\s¥$€£]/g,'');
+  const n=parseFloat(s);
+  return isFinite(n)?n:0;
+}
+function refFmtNum(n,dec){
+  if(n==null||!isFinite(n))return '—';
+  const d=(dec==null?0:dec);
+  return Number(n).toLocaleString('zh-CN',{minimumFractionDigits:d,maximumFractionDigits:d});
+}
+function refDayKey(v){
+  const s=String(v==null?'':v).trim();
+  const m=s.match(/(\d{4})[-\/.](\d{1,2})[-\/.](\d{1,2})/);
+  return m?(m[1]+'-'+('0'+m[2]).slice(-2)+'-'+('0'+m[3]).slice(-2)):'';
+}
+function refCellVal(v){
+  if(v==null)return '';
+  if(v instanceof Date){
+    const p=function(n){return ('0'+n).slice(-2);};
+    return v.getFullYear()+'/'+p(v.getMonth()+1)+'/'+p(v.getDate())+' '+p(v.getHours())+':'+p(v.getMinutes());
+  }
+  if(typeof v==='number'){return String(Math.round(v*1e6)/1e6);}
+  return String(v).trim();
+}
+/* ── 明细筛选（except：排名卡自己那一维不参与筛选，方便在榜上切换取值）
+     大表（2~3 万行）一次 render 里 KPI / 排名 / 表格 / 分页各调一次，
+     按「筛选条件签名」缓存一次结果，避免重复过滤 + 重复排序。 ── */
+let _refCache=new Map();
+function refSig(except,noSort){
+  return [REF.rows.length,(REF.meta&&REF.meta.at)||'',refOnlyOn?'1':'0',
+    refF.site,refF.acc,refF.issueCat,refF.refReason,refF.region,refF.cat1,refF.d1,refF.d2,
+    refSearch,refColSel,refExact?'1':'0',noSort?'n':refSort,except||''].join('\u0001');
+}
+function refList(except,noSort){
+  const _sig=refSig(except,noSort);
+  if(_refCache.has(_sig))return _refCache.get(_sig);
+  let rows=REF.rows||[];
+  /* 默认「全部账号」：退款明细原表本来就含停用账号与未映射账号，强过滤会让整张表突然空掉；
+     需要跟其它 tab 同口径时勾「仅启用且纳入考核」。 */
+  if(refOnlyOn){
+    const on=accOnMap();
+    rows=rows.filter(function(r){return accIsOn(on,refVal(r,'acc'));});
+  }
+  const F=refF;
+  Object.keys(F).forEach(function(k){
+    if(k===except)return;
+    const v=String(F[k]==null?'':F[k]).trim();
+    if(!v)return;
+    if(k==='d1'){rows=rows.filter(function(r){const t=refDayKey(refVal(r,'refTime'));return !t||t>=v;});return;}
+    if(k==='d2'){rows=rows.filter(function(r){const t=refDayKey(refVal(r,'refTime'));return !t||t<=v;});return;}
+    if(k==='site'){rows=rows.filter(function(r){return refSiteOf(r)===v;});return;}
+    if(k==='region'){rows=rows.filter(function(r){return refRegionOf(r)===v;});return;}
+    if(REF_IDX[k]==null)return;
+    rows=rows.filter(function(r){return refVal(r,k)===v;});
+  });
+  const q=String(refSearch||'').trim();
+  if(q){
+    const terms=q.split(/[\s,，;；]+/).map(function(s){return s.trim().toLowerCase();}).filter(Boolean);
+    if(refColSel&&REF_IDX[refColSel]!=null){
+      const i=REF_IDX[refColSel];
+      rows=rows.filter(function(r){
+        const v=String(r[i]==null?'':r[i]).trim().toLowerCase();
+        if(refExact)return terms.some(function(t){return v===t;});
+        return terms.some(function(t){return searchVariants(t).some(function(vv){return v.indexOf(vv)>=0;});});
+      });
+    }else{
+      rows=rows.filter(function(r){
+        const vals=r.map(function(x){return String(x==null?'':x).trim().toLowerCase();});
+        if(refExact)return terms.some(function(t){return vals.indexOf(t)>=0;});
+        return terms.some(function(t){
+          const vs=searchVariants(t);
+          return vals.some(function(v){return vs.some(function(vv){return v.indexOf(vv)>=0;});});
+        });
+      });
+    }
+  }
+  const _out=refSortRows(rows,noSort);
+  /* 排名卡 5 个维度 + 表格/分页各一次，缓存上限 10 条足够，超了整体清空重来 */
+  if(_refCache.size>10)_refCache.clear();
+  _refCache.set(_sig,_out);
+  return _out;
+}
+function refSortRows(rows,noSort){
+  if(noSort)return rows;
+  const out=rows.slice();
+  if(refSort==='refTimeDesc'||refSort==='refTimeAsc'){
+    const dir=refSort==='refTimeDesc'?-1:1;
+    out.sort(function(a,b){const x=refDayKey(refVal(a,'refTime')),y=refDayKey(refVal(b,'refTime'));return x===y?0:(x<y?-dir:dir);});
+  }else if(refSort==='refAmtDesc'){
+    out.sort(function(a,b){return refNumK(refVal(b,'refAmt'))-refNumK(refVal(a,'refAmt'));});
+  }else if(refSort==='orderAmtDesc'){
+    out.sort(function(a,b){return refNumK(refVal(b,'orderAmt'))-refNumK(refVal(a,'orderAmt'));});
+  }else if(refSort==='acc'){
+    out.sort(function(a,b){return refVal(a,'acc').localeCompare(refVal(b,'acc'));});
+  }
+  return out;
+}
+/* ── KPI ── */
+function refKpiHtml(rows){
+  rows=rows||refList();
+  const st=refStats(rows);
+  const rate=st.amtO>0?(st.amtR/st.amtO*100):null;
+  const cards=[
+    {label:'退款笔数',val:refFmtNum(st.n),unit:' 条'},
+    {label:'涉及账号',val:refFmtNum(st.accs),unit:' 个'},
+    {label:'涉及 SKU',val:refFmtNum(st.skus),unit:' 个'},
+    {label:'订单金额（RMB）',val:refFmtNum(st.amtO,2),unit:'',tip:'「订单总金额（RMB）」列合计'},
+    {label:'退款金额（原币）',val:refFmtNum(st.amtR,2),unit:'',tip:'「退款金额（原币）」列合计；各站点币种不同，合计仅供参考'},
+    {label:'退款额/订单额',val:(rate==null?'—':refFmtNum(rate,2)),unit:(rate==null?'':' %'),tip:'退款金额合计 ÷ 订单总金额（RMB）合计；跨币种，仅供参考'}
+  ];
+  return '<div class="is-kpi">'+cards.map(function(x){
+    return isKpiCard({label:x.label,val:x.val+(x.unit||''),color:'#2f6f5b'});
+  }).join('')+'</div>';
+}
+function refStats(rows){
+  const accs={},skus={},sites={};
+  let amtR=0,amtO=0;
+  rows.forEach(function(r){
+    const a=refVal(r,'acc');if(a)accs[a.toUpperCase()]=1;
+    const s=refVal(r,'sku');if(s)skus[s]=1;
+    const st=refSiteOf(r);if(st)sites[st]=1;
+    amtR+=refNumK(refVal(r,'refAmt'));
+    amtO+=refNumK(refVal(r,'orderAmt'));
+  });
+  return {n:rows.length,accs:Object.keys(accs).length,skus:Object.keys(skus).length,sites:Object.keys(sites).length,amtR:amtR,amtO:amtO};
+}
+/* ── 排名卡（点某行 = 按该维度筛明细，再点取消） ── */
+const REF_RANK_DIMS=[['refReason','退款原因'],['issueCat','问题归类'],['cat1','星耀一级分类'],['site','站点'],['acc','账号简称']];
+function refDimVal(r,dim){
+  if(dim==='site')return refSiteOf(r);
+  if(dim==='region')return refRegionOf(r);
+  return refVal(r,dim);
+}
+function refRankHtml(){
+  const cols=REF_RANK_DIMS.map(function(d){
+    const dim=d[0],label=d[1];
+    const rows=refList(dim,true);
+    if(!rows.length)return '<div class="otd-rk"><div class="otd-rk-h"><span>'+esc(label)+'</span><span class="dim">—</span></div>'
+      +'<div class="dim" style="font-size:12px;padding:2px 0 6px">暂无数据</div></div>';
+    const m={},order=[];
+    rows.forEach(function(r){
+      const v=refDimVal(r,dim)||'（未填）';
+      if(!(v in m)){m[v]=0;order.push(v);}
+      m[v]++;
+    });
+    const arr=order.map(function(k){return {k:k,n:m[k]};}).sort(function(a,b){return (b.n-a.n)||String(a.k).localeCompare(String(b.k));});
+    const open=!!refRankOpen[dim];
+    const show=open?arr:arr.slice(0,3);
+    const body=show.map(function(o,i){
+      const sel=(String(refF[dim]||'')===o.k);
+      const cls=(i===0?'top1':(i===1?'top2':(i===2?'top3':'')));
+      const share=(rows.length?Math.round(o.n/rows.length*1000)/10:0);
+      const w=Math.max(2,Math.round(share));
+      const dimVal=(o.k==='（未填）'?'':o.k);
+      return '<div class="otd-rrow'+(sel?' on':'')+'"'
+        +(dimVal?' data-refrk="'+esc(dim)+'" data-refrv="'+esc(dimVal)+'" title="点击＝按「'+esc(label)+' = '+esc(dimVal)+'」筛选明细（再点取消）&#10;'+o.n+' 条 · 占该维度 '+share+'%"':'')
+        +'><div class="rk-l1"><span class="rkno '+cls+'">'+(i+1)+'</span>'
+        +'<span class="rkname">'+esc(o.k)+(sel?' <b>✕</b>':'')+'</span></div>'
+        +'<div class="rk-l2">'+o.n+' 条 · 占比 <b class="rkshare">'+share+'%</b></div>'
+        +'<span class="rkbar"><i style="width:'+w+'%"></i></span></div>';
+    }).join('');
+    return '<div class="otd-rk"><div class="otd-rk-h"><span>'+esc(label)+'</span>'
+      +'<span class="dim">'+arr.length+' 项 · 按条数排</span></div>'+body
+      +(arr.length>3?'<button class="otd-rmore" data-refrankmore="'+dim+'">'+(open?'收起 ▴':'展开全部 '+arr.length+' 项 ▾')+'</button>':'')
+      +'</div>';
+  }).join('');
+  return '<div class="otd-rkgrid rk5">'+cols+'</div>';
+}
+let refRankOpen={};
+/* ── 表格 ── */
+function refTableHtml(){
+  const rows=refList();
+  const pages=Math.max(1,Math.ceil(rows.length/isPageSize));
+  const page=Math.min(Math.max(1,refPage),pages);refPage=page;
+  const part=rows.slice((page-1)*isPageSize,page*isPageSize);
+  const head='<thead><tr>'+REF_COLS.map(function(c){
+    return '<th class="fbm-th" style="min-width:'+c.w+'px">'+esc(c.label)+'</th>';
+  }).join('')+'</tr></thead>';
+  const body=part.map(function(r){
+    return '<tr>'+REF_COLS.map(function(c,i){
+      const v=String(r[i]==null?'':r[i]);
+      const num=(c.k==='orderAmt'||c.k==='refAmt');
+      const long=(c.w>=150);
+      return '<td class="fbm-td"'
+        +(num?' style="text-align:right;font-variant-numeric:tabular-nums"':'')
+        +(long?' style="max-width:'+c.w+'px;overflow:hidden;text-overflow:ellipsis"':'')
+        +' title="'+esc(v)+'">'+(v?esc(v):'<span class="fbm-nil">—</span>')+'</td>';
+    }).join('')+'</tr>';
+  }).join('')||('<tr><td colspan="'+REF_N+'" style="text-align:center;padding:30px" class="fbm-nil">没有匹配的记录</td></tr>');
+  return '<table class="fbm-tbl">'+head+'<tbody>'+body+'</tbody></table>';
+}
+function refPagerHtml(){
+  const rows=refList();
+  const pages=Math.max(1,Math.ceil(rows.length/isPageSize));
+  const page=Math.min(Math.max(1,refPage),pages);
+  return '<div class="pager"><span>共 '+rows.length+' 条 · 第 '+page+' / '+pages+' 页</span>'
+    +'<button class="btn ghost xs" data-refpage="1"'+(page<=1?' disabled':'')+'>首页</button>'
+    +'<button class="btn ghost xs" data-refpage="prev"'+(page<=1?' disabled':'')+'>上一页</button>'
+    +'<button class="btn ghost xs" data-refpage="next"'+(page>=pages?' disabled':'')+'>下一页</button>'
+    +'<button class="btn ghost xs" data-refpage="last"'+(page>=pages?' disabled':'')+'>末页</button></div>';
+}
+function refRefresh(){
+  const t=document.getElementById('refTableWrap');if(t)t.innerHTML=refTableHtml();
+  const p=document.getElementById('refPager');if(p)p.innerHTML=refPagerHtml();
+  const r=document.getElementById('refRank');if(r)r.innerHTML=refRankHtml();
+  const k=document.getElementById('refKpi');if(k)k.innerHTML=refKpiHtml();
+}
+function refPageGo(v){
+  const rows=refList();
+  const pages=Math.max(1,Math.ceil(rows.length/isPageSize));
+  if(v==='prev')refPage=Math.max(1,refPage-1);
+  else if(v==='next')refPage=Math.min(pages,refPage+1);
+  else if(v==='last')refPage=pages;
+  else refPage=1;
+  const t=document.getElementById('refTableWrap');if(t)t.innerHTML=refTableHtml();
+  const p=document.getElementById('refPager');if(p)p.innerHTML=refPagerHtml();
+}
+/* ── 工具栏 ── */
+function refOpts(kind,cur){
+  const set={};
+  (REF.rows||[]).forEach(function(r){
+    let v='';
+    if(kind==='site')v=refSiteOf(r);
+    else if(kind==='region')v=refRegionOf(r);
+    else v=refVal(r,kind);
+    if(v)set[v]=1;
+  });
+  const arr=Object.keys(set).sort();
+  if(arr.length>400)return '';
+  return '<option value="">全部</option>'+arr.map(function(v){
+    return '<option value="'+esc(v)+'"'+(cur===v?' selected':'')+'>'+esc(v)+'</option>';
+  }).join('');
+}
+function refBarHtml(){
+  const colOpts='<option value="">全部字段</option>'+REF_COLS.map(function(c){
+    return '<option value="'+c.k+'"'+(refColSel===c.k?' selected':'')+'>'+esc(c.label)+'</option>';
+  }).join('');
+  const exactBtn=refColSel?'<button id="refExactBtn" class="acc-scope-btn" title="切换匹配方式：包含（默认）/ 精确（字段值完全相等）">匹配：'+(refExact?'精确':'包含')+'</button>':'';
+  const sortSel='<span class="is-sel"><label>排序</label><select id="refSortSel">'
+    +[['refTimeDesc','退款时间 ↓'],['refTimeAsc','退款时间 ↑'],['refAmtDesc','退款金额 ↓'],['orderAmtDesc','订单金额 ↓'],['acc','账号']].map(function(o){
+      return '<option value="'+o[0]+'"'+(refSort===o[0]?' selected':'')+'>'+o[1]+'</option>';
+    }).join('')+'</select></span>';
+  const siteSel='<span class="is-sel"><label>站点</label><select id="refSiteSel">'+refOpts('site',refF.site)+'</select></span>';
+  const catSel='<span class="is-sel"><label>问题归类</label><select id="refCatSel">'+refOpts('issueCat',refF.issueCat)+'</select></span>';
+  const reaSel='<span class="is-sel"><label>退款原因</label><select id="refReasonSel">'+refOpts('refReason',refF.refReason)+'</select></span>';
+  const dtStyle='width:128px;border:1px solid #dde5e1;border-radius:8px;padding:4px 6px;font-size:12.5px;font-family:inherit';
+  const dateRange='<span class="is-sel"><label>退款时间</label><input type="date" id="refD1" value="'+esc(refF.d1||'')+'" style="'+dtStyle+'">'
+    +'<span class="dim">至</span><input type="date" id="refD2" value="'+esc(refF.d2||'')+'" style="'+dtStyle+'"></span>';
+  const filtOn=!!(refF.site||refF.issueCat||refF.refReason||refF.acc||refF.region||refF.cat1||refF.d1||refF.d2||refSearch);
+  /* 两行：① 搜索 + 右侧操作按钮  ② 维度筛选 */
+  return '<div class="toolbar is-bar">'
+    +'<span class="is-sel"><label>搜索列</label><select id="refColSel">'+colOpts+'</select></span>'
+    +'<input id="refSearch" class="search" style="width:380px;flex:0 0 auto;min-width:200px" placeholder="🔍 '+(refColSel?('在「'+esc((REF_COLS[REF_IDX[refColSel]]||{}).label||refColSel)+'」中搜索（空格/逗号分隔多个词）'):'搜索全部字段（空格/逗号分隔多个词，任一命中）')+'" value="'+esc(refSearch)+'">'
+    +exactBtn
+    +'<span style="flex:1 1 auto"></span>'
+    +'<button class="btn ghost" id="refExportBtn">⬇ 导出</button>'
+    +'<button class="btn ghost" id="refUploadBtn">⬆ 上传退款明细</button>'
+    +'<button class="btn ghost" id="refClearBtn">🗑 清空</button>'
+    +'</div>'
+    +'<div class="toolbar is-bar">'
+    +sortSel+siteSel+catSel+reaSel+dateRange
+    +'<label class="is-chk" title="勾上只统计账号管理里「启用 且 纳入考核」的账号（与其它 tab 同口径）；默认按原表全部账号统计"><input type="checkbox" id="refOnlyOnChk"'+(refOnlyOn?' checked':'')+'> 仅启用且纳入考核</label>'
+    +(filtOn?'<button class="btn ghost" id="refFilterClear" title="清空本页全部筛选与搜索">✕ 清空筛选</button>':'')
+    +'</div>';
+}
+/* ── 分区本体 ── */
+function refLoadingHtml(){
+  if(REF.state==='error'){
+    return '<div class="is-empty"><div class="is-ei">⚠️</div><div class="is-et">退款明细加载失败</div>'
+      +'<div class="is-ed">'+esc(REF.err||'网络超时')+'<br>可以直接上传一份新的退款明细覆盖。</div>'
+      +'<button class="btn" id="refUploadBtn">⬆ 上传退款明细</button>'
+      +'<button class="btn ghost" id="refRetryBtn">重试加载</button>'
+      +'<input type="file" id="refFile" accept=".xlsx,.xls,.csv,.txt" style="display:none"></div>';
+  }
+  return '<div class="is-empty"><div class="is-ei">⏳</div><div class="is-et">正在读取退款明细…</div>'
+    +'<div class="is-ed">先读本机缓存，没有则从云端快照拉取（首次进入通常十几秒）。</div>'
+    +'<input type="file" id="refFile" accept=".xlsx,.xls,.csv,.txt" style="display:none"></div>';
+}
+function refSection(){
+  if(REF.state==='idle'||REF.state==='loading'){
+    if(REF.state==='idle')refEnsure();
+    return refLoadingHtml();
+  }
+  const rows=REF.rows||[];
+  const fileInput='<input type="file" id="refFile" accept=".xlsx,.xls,.csv,.txt" style="display:none">';
+  if(!rows.length){
+    return '<div class="is-empty"><div class="is-ei">💸</div><div class="is-et">还没有退款明细</div>'
+      +'<div class="is-ed">上传「退款明细」导出的原表（xlsx / csv）即可：看板按<b>表头字段名</b>自动识别 '+REF_N+' 个字段（不按列顺序），识别不到的字段留空。<br>'
+      +'默认与已有记录按「平台单号 + SKU + 退款时间」合并，需要整体替换时用「清空」后再传。</div>'
+      +'<button class="btn" id="refUploadBtn">⬆ 上传退款明细</button>'+fileInput+'</div>';
+  }
+  const mt=REF.meta||{};
+  const miss=(mt.miss||[]).length;
+  const note='<div class="fbm-note">数据来源：'+(mt.file?esc(mt.file)+' · '+esc(mt.at||''):'本机缓存')
+    +' · 共 '+rows.length+' 条 · 字段识别 '+(mt.hit||REF_N)+'/'+REF_N+(miss?('（未识别 '+miss+' 个，已留空）'):'')
+    +' · <span id="refSyncTip">'+(REF.sync==='cloud'?'云端已同步':(REF.sync==='local'?'仅本机（云端未同步）':(REF.src==='cloud'?'来自云端快照':(REF.src==='idb'?'来自本机缓存':''))))+'</span></div>';
+  return refBarHtml()
+    +'<div id="refKpi">'+refKpiHtml()+'</div>'
+    +'<div class="otd-rank"><div class="otd-rank-hd">📊 退款分布排名<span class="dim">点某一行＝按该取值筛选下方明细（再点取消）</span></div>'
+    +'<div id="refRank">'+refRankHtml()+'</div></div>'
+    +'<div class="fbm-scroll" id="refScroll"><div id="refTableWrap">'+refTableHtml()+'</div></div>'
+    +'<div id="refPager">'+refPagerHtml()+'</div>'
+    +note+fileInput;
+}
+/* ── 导入 ── */
+function refReadFile(file){
+  if(!file)return;
+  /* 大表解析要 5~10 秒（3 万行 xlsx 实测），先把提示打出来，别让人以为点没反应 */
+  const tip0=document.getElementById('saveTip');
+  if(tip0)tip0.textContent='正在解析 '+file.name+'…（大表约 5~10 秒）';
+  setTimeout(function(){refReadFileGo(file);},60);
+}
+function refReadFileGo(file){
+  if(!file)return;
+  const ext=String((file.name.split('.').pop()||'')).toLowerCase();
+  const rd=new FileReader();
+  const fin=function(rows){
+    const msg=refImportRows(rows,file.name);
+    if(msg.indexOf('导入完成')===0){refPage=1;}
+    if(view==='issue')render();
+    alert(msg);
+  };
+  if((ext==='xlsx'||ext==='xls')&&window.XLSX){
+    rd.onload=function(){
+      try{
+        const wb=XLSX.read(new Uint8Array(rd.result),{type:'array',cellDates:true});
+        let best=[];
+        wb.SheetNames.forEach(function(sn){
+          const a=XLSX.utils.sheet_to_json(wb.Sheets[sn],{header:1,defval:'',blankrows:false,raw:true});
+          if(a.length>best.length)best=a;
+        });
+        fin(best);
+      }catch(e){alert('读取失败：'+((e&&e.message)||e));}
+    };
+    rd.readAsArrayBuffer(file);return;
+  }
+  rd.onload=function(){
+    const txt=decodeText(rd.result).replace(/^\uFEFF/,'');
+    fin(txt.split(/\r?\n/).filter(function(l){return l.trim()!=='';}).map(otdCutCSV));
+  };
+  rd.readAsArrayBuffer(file);
+}
+function refKeyOf(r){
+  const p=refVal(r,'platNo'),s=refVal(r,'sku'),t=refVal(r,'refTime');
+  if(p)return 'P|'+p+'|'+s+'|'+t;
+  return 'W|'+refVal(r,'wmsNo')+'|'+s+'|'+t;
+}
+function refImportRows(rows,fname){
+  if(!Array.isArray(rows)||!rows.length)return '文件是空的';
+  /* ① 找表头行：前 10 行里「命中已知字段最多」的那一行（至少 3 个） */
+  let hdr=-1,bestN=0;
+  for(let i=0;i<Math.min(rows.length,10);i++){
+    const r=rows[i]||[];let n=0;
+    for(let j=0;j<r.length;j++){if(refHeadIdx(r[j])>=0)n++;}
+    if(n>bestN){bestN=n;hdr=i;}
+  }
+  if(hdr<0||bestN<3)return '没认出表头行：需要至少含「账号简称 / 平台单号 / 退款原因」等已知字段名中的 3 个';
+  /* ② 列映射：每个上传列 → 固定表结构的下标；重复字段只认第一个 */
+  const head=rows[hdr]||[];
+  const map=[],used={},missLabels=[];
+  for(let j=0;j<head.length;j++){
+    const idx=refHeadIdx(head[j]);
+    if(idx>=0&&!used[idx]){map[j]=idx;used[idx]=1;}
+    else{
+      map[j]=-1;
+      const t=String(head[j]==null?'':head[j]).trim();
+      if(t&&idx<0)missLabels.push(t);
+    }
+  }
+  const hitN=Object.keys(used).length;
+  if(hitN<3)return '字段识别失败：只认出 '+hitN+' 个字段，请检查表头';
+  /* ③ 数据行 → 定长数组（长度 = 38，识别不到的字段保持空串） */
+  const out=[];
+  let skipped=0;
+  for(let i=hdr+1;i<rows.length;i++){
+    const r=rows[i]||[];
+    const arr=new Array(REF_N);
+    for(let k=0;k<REF_N;k++)arr[k]='';
+    let any=false;
+    for(let j=0;j<r.length;j++){
+      const idx=map[j];
+      if(idx==null||idx<0)continue;
+      const v=refCellVal(r[j]);
+      arr[idx]=v;
+      if(v)any=true;
+    }
+    if(!any){skipped++;continue;}
+    out.push(arr);
+  }
+  if(!out.length)return '没有可用数据行';
+  /* ④ 合并（主键：平台单号 + SKU + 退款时间；空值不覆盖已有值） */
+  const idx=new Map();
+  (REF.rows||[]).forEach(function(r){const k=refKeyOf(r);let a=idx.get(k);if(!a){a=[];idx.set(k,a);}a.push(r);});
+  let ins=0,upd=0;
+  out.forEach(function(n){
+    const a=idx.get(refKeyOf(n));
+    const ex=(a&&a.length)?a.shift():null;
+    if(ex){
+      for(let i=0;i<REF_N;i++){if(n[i]!==''&&n[i]!=null)ex[i]=n[i];}
+      upd++;
+    }else{
+      REF.rows.push(n);ins++;
+    }
+  });
+  REF.meta={file:String(fname||''),at:(new Date()).toLocaleString('zh-CN',{hour12:false}).slice(0,16),hit:hitN,miss:missLabels.slice(0,20)};
+  REF.state='loaded';
+  refSave();
+  return '导入完成：识别 '+hitN+'/'+REF_N+' 个字段'
+    +(missLabels.length?('（未识别 '+missLabels.length+' 个表头，字段留空：'+missLabels.slice(0,5).join('、')+(missLabels.length>5?' 等':'')+'）'):'')
+    +'；新增 '+ins+' 条，更新 '+upd+' 条'+(skipped?('，跳过空行 '+skipped):'')+'，现共 '+REF.rows.length+' 条';
+}
+function refExport(){
+  const rows=refList();
+  if(!rows.length){alert('当前没有可导出的数据');return;}
+  const q=function(v){const t=v==null?'':String(v);return /[",\n]/.test(t)?('"'+t.replace(/"/g,'""')+'"'):t;};
+  const lines=[REF_COLS.map(function(c){return q(c.label);}).join(',')];
+  rows.forEach(function(r){lines.push(REF_COLS.map(function(c,i){return q(r[i]);}).join(','));});
+  downloadBlob(new Blob(['\uFEFF'+lines.join('\r\n')],{type:'text/csv;charset=utf-8'}),'退款明细_'+rows.length+'条_'+todayStr()+'.csv');
+}
+function refClearAll(){
+  const n=(REF.rows||[]).length;
+  if(!n){alert('当前没有数据');return;}
+  if(!confirm('将【清空】当前 '+n+' 条退款明细（本机缓存与云端快照一起清空），确定继续？'))return;
+  REF.rows=[];REF.meta={file:'',at:'',hit:0,miss:[]};REF.state='empty';REF.sync='';
+  refPage=1;
+  try{refIdbSet(null);}catch(e){}
+  refPushCloud();
+  render();
+  const t=document.getElementById('saveTip');if(t)t.textContent='退款明细已清空';
+}
+/* ── 存储：IndexedDB 本机缓存 ── */
+const REF_DB='amz_refund_v1',REF_OBJ='snap';
+function refIdb(){
+  return new Promise(function(res,rej){
+    if(typeof indexedDB==='undefined')return rej(new Error('浏览器不支持 IndexedDB'));
+    const q=indexedDB.open(REF_DB,1);
+    q.onupgradeneeded=function(){try{q.result.createObjectStore(REF_OBJ);}catch(e){}};
+    q.onsuccess=function(){res(q.result);};
+    q.onerror=function(){rej(q.error||new Error('IndexedDB 打开失败'));};
+  });
+}
+function refIdbSet(rec){
+  return refIdb().then(function(db){
+    return new Promise(function(res,rej){
+      const tx=db.transaction(REF_OBJ,'readwrite');
+      const os=tx.objectStore(REF_OBJ);
+      if(rec==null)os.delete('last');else os.put(rec,'last');
+      tx.oncomplete=function(){db.close();res(true);};
+      tx.onerror=function(){db.close();rej(tx.error);};
+    });
+  });
+}
+function refIdbGet(){
+  return refIdb().then(function(db){
+    return new Promise(function(res,rej){
+      const tx=db.transaction(REF_OBJ,'readonly');
+      const rq=tx.objectStore(REF_OBJ).get('last');
+      rq.onsuccess=function(){db.close();res(rq.result||null);};
+      rq.onerror=function(){db.close();rej(rq.error);};
+    });
+  });
+}
+function refGzipBlob(txt){
+  if(typeof CompressionStream==='undefined')return Promise.resolve(new Blob([txt],{type:'application/json'}));
+  return new Response(new Blob([txt]).stream().pipeThrough(new CompressionStream('gzip')))
+    .blob().then(function(b){return new Blob([b],{type:'application/gzip'});});
+}
+function refGunzipBlob(blob){
+  if(!blob)return Promise.resolve('');
+  if(String(blob.type||'').indexOf('gzip')<0)return blob.text();
+  if(typeof DecompressionStream==='undefined')return Promise.reject(new Error('浏览器不支持解压'));
+  return new Response(blob.stream().pipeThrough(new DecompressionStream('gzip'))).text();
+}
+function refSave(){
+  REF.sync='saving';refSyncTip();
+  var json=JSON.stringify({v:1,meta:REF.meta,rows:REF.rows});
+  refGzipBlob(json).then(function(blob){
+    return refPushCloud(blob).then(function(etag){
+      return refIdbSet({at:Date.now(),meta:REF.meta,blob:blob,etag:etag||''});
+    });
+  }).catch(function(e){
+    console.warn('[ref] 本机缓存失败：',e&&e.message);
+  });
+}
+function refIdbSaveCache(){
+  var json=JSON.stringify({v:1,meta:REF.meta,rows:REF.rows});
+  return refGzipBlob(json).then(function(blob){
+    return refIdbSet({at:Date.now(),meta:REF.meta,blob:blob,etag:REF.etag||''});
+  }).catch(function(){});
+}
+function refSyncTip(){
+  const el=document.getElementById('refSyncTip');
+  if(!el)return;
+  el.textContent=REF.sync==='cloud'?'云端已同步':(REF.sync==='local'?'仅本机（云端未同步）':(REF.sync==='saving'?'本机已缓存 · 正在同步云端…':''));
+}
+/* ── 存储：Storage 云端快照（与 state.json.gz 同桶同前缀） ── */
+const REF_PATH='amz2026/refund.json.gz';
+function refCloudUrl(){return SB_URL+'/storage/v1/object/authenticated/'+SB_BUCKET+'/'+REF_PATH;}
+function refPushCloud(blob){
+  if(typeof SB_URL==='undefined'||!SB_URL)return Promise.resolve('');
+  if(typeof CompressionStream==='undefined'){REF.sync='local';refSyncTip();return Promise.resolve('');}
+  var p=blob?Promise.resolve(blob):
+    refGzipBlob(JSON.stringify({v:1,meta:REF.meta,rows:REF.rows}));
+  return p.then(function(b){
+    return fetch(SB_URL+'/storage/v1/object/'+SB_BUCKET+'/'+REF_PATH,{
+      method:'POST',
+      headers:sbStorageHeaders({'Content-Type':'application/gzip','x-upsert':'true','cache-control':'no-cache'}),
+      body:b
+    });
+  }).then(function(r){
+    if(!r.ok)throw new Error('HTTP '+r.status);
+    REF.sync='cloud';refSyncTip();
+    return refCloudEtag();
+  }).catch(function(e){
+    REF.sync='local';refSyncTip();
+    console.warn('[ref] 云端同步失败（本机已缓存）：',e&&e.message);
+    return '';
+  });
+}
+/* 云端快照的 etag：用来判断「别人是不是传过更新的版本」，不同就重拉 */
+function refCloudEtag(){
+  return fetch(refCloudUrl(),{method:'HEAD',cache:'no-store',headers:sbStorageHeaders()}).then(function(r){
+    return r.ok?(r.headers.get('etag')||''):'';
+  }).catch(function(){return '';});
+}
+function refFetchCloud(){
+  return fetch(refCloudUrl(),{headers:sbStorageHeaders()}).then(function(r){
+    if(!r.ok)throw new Error('HTTP '+r.status);
+    REF.etag=r.headers.get('etag')||'';
+    return r.arrayBuffer();
+  }).then(function(buf){
+    if(typeof DecompressionStream==='undefined')throw new Error('浏览器不支持解压');
+    return new Response(new Blob([buf]).stream().pipeThrough(new DecompressionStream('gzip'))).text();
+  }).then(function(txt){return JSON.parse(txt);});
+}
+function refApply(o,src){
+  if(!o||!Array.isArray(o.rows))return false;
+  REF.rows=o.rows.map(function(r){
+    const arr=new Array(REF_N);
+    for(let k=0;k<REF_N;k++)arr[k]=r&&r[k]!=null?r[k]:'';
+    return arr;
+  });
+  REF.meta=o.meta||{file:'',at:'',hit:REF_N,miss:[]};
+  REF.src=src||'';
+  REF.state=REF.rows.length?'loaded':'empty';
+  return true;
+}
+function refEnsure(){
+  if(REF.state==='loading'||REF.state==='loaded'||REF.state==='empty')return;
+  REF.state='loading';REF.err='';
+  var rec=null;
+  refIdbGet().then(function(r){
+    rec=r||null;
+    if(!rec||!rec.blob)return null;
+    return refGunzipBlob(rec.blob).then(function(txt){return JSON.parse(txt);}).catch(function(){return null;});
+  }).catch(function(){return null;}).then(function(o){
+    if(o&&o.rows&&o.rows.length){
+      refApply(o,'idb');
+      REF.etag=(rec&&rec.etag)||'';
+      /* 本机已有缓存：只发一个 HEAD，看云端是否被别人更新过；变了再整份重拉 */
+      if(REF.etag)refCloudEtag().then(function(e){
+        if(e&&e!==REF.etag){
+          refReloadCloud().then(function(ok){if(ok&&view==='issue'&&isTab==='ref')render();});
+        }
+      });
+      return true;
+    }
+    return refReloadCloud();
+  }).then(function(ok){
+    if(!ok&&REF.state==='loading')REF.state='empty';
+    if(view==='issue'&&isTab==='ref')render();
+  });
+}
+function refReloadCloud(){
+  return refFetchCloud().then(function(o){
+    if(o&&o.rows&&o.rows.length){
+      refApply(o,'cloud');
+      refIdbSaveCache();
+      return true;
+    }
+    return false;
+  }).catch(function(){return false;});
+}
+
 function issueView(){
   let body='';
   if(isTab==='policy')body=pcView();
   else if(isTab==='fbm')body=fbmSection();
   else if(isTab==='otd')body=otdSection();
   else if(isTab==='ctr')body=ctrSection();
+  else if(isTab==='ref')body=refSection();
   else body=isPlaceholder(isTab);
   return isTabBar()+isGoCtxHtml()+body;
 }
