@@ -6148,23 +6148,18 @@ const SUM_BASE_COLS=[['short','账号'],['site','站点'],['bigGroup','核算分
 /* 账号报损：日 / 周 / 月三张退款明细表（三个独立上传入口，各存最近一次快照）。
    列顺序按业务给定表头，紧跟在「准时交货率」（= 业务口中的「准时送达率」）后面。 */
 const SUM_BAO_COLS=[
-  ['baoDOrd','日订单量'],['baoDRqty','日退款量'],['baoDRef','日退款额'],['baoDSale','日销售额'],['baoDRate','日退款率'],
-  ['baoWOrd','周订单量'],['baoWRqty','周退款量'],['baoWRef','周退款额'],['baoWSale','周销售额'],['baoWRate','周退款率'],
-  ['baoMOrd','月订单量'],['baoMRqty','月退款量'],['baoMRef','月退款额'],['baoMSale','月销售额'],['baoMRate','月退款率'],
+  ['baoDOrd','日订单量'],['baoDRqty','日退款量'],['baoDQtyShare','日退款占比'],['baoDRef','日退款额'],['baoDSale','日销售额'],['baoDRate','日退款率'],
+  ['baoWOrd','周订单量'],['baoWRqty','周退款量'],['baoWQtyShare','周退款占比'],['baoWRef','周退款额'],['baoWSale','周销售额'],['baoWRate','周退款率'],
+  ['baoMOrd','月订单量'],['baoMRqty','月退款量'],['baoMQtyShare','月退款占比'],['baoMRef','月退款额'],['baoMSale','月销售额'],['baoMRate','月退款率'],
   ['baoAt','更新时间']
 ];
 const SUM_BAO_KEYS=SUM_BAO_COLS.map(function(c){return c[0];});
 const SUM_BAO_RATE=['baoDRate','baoWRate','baoMRate'];
-/* 日/周/月退款占比（紧随「账号报损」右侧）：把退款率拆成「量」「额」两种口径并排看 ——
-   退款量占比 = 退款量 ÷ 订单量（量口径）；退款额占比 = 退款额 ÷ 销售额（额口径，与「退款率」同值）；
-   退款率 = 与「账号报损」同一套（退款额 ÷ 销售额），在占比组里再放一份方便横向比对。
-   三列全部按账号实时算，不从上传文件读；缺订单量 / 销售额 / 退款明细时该格留空显示「—」。 */
-const SUM_SHARE_COLS=[
-  ['baoDQtyShare','日退款量占比'],['baoDAmtShare','日退款额占比'],['baoDRateShare','日退款率'],
-  ['baoWQtyShare','周退款量占比'],['baoWAmtShare','周退款额占比'],['baoWRateShare','周退款率'],
-  ['baoMQtyShare','月退款量占比'],['baoMAmtShare','月退款额占比'],['baoMRateShare','月退款率']
-];
-const SUM_SHARE_RATE=SUM_SHARE_COLS.map(function(c){return c[0];});
+/* 日/周/月退款占比（紧挨在「退款量」右侧，不再单独成组）：
+   退款占比 = 退款量 ÷ 订单量 —— 量口径的退款率，看「退了多少单」；
+   与「退款率」（退款额 ÷ 销售额，额口径）互补，两列并排一眼看出「单量多但金额小」还是反之。
+   按账号实时算，不从上传文件读：退款明细没载入 / 订单量缺值或为 0 → 该格留空显示「—」。 */
+const SUM_BAO_SHARE=['baoDQtyShare','baoWQtyShare','baoMQtyShare'];
 /* 日/周/月三套快照的键：d/w/m → 列前缀 */
 const SUM_BAO_KIND=[['d','日','baoD'],['w','周','baoW'],['m','月','baoM']];
 /* 默认不显示的列：订单量 / 销售额 / 更新时间 —— 到「🧩 显示字段」里勾选才出现 */
@@ -6176,13 +6171,12 @@ const SUM_METRIC_GROUPS=[
   ['店铺评分',[['shopScore','店铺评分']]],
   ['政策合规性',[['acctGrade','账户评级'],['acctScore','账户评分'],['probCnt','问题数量']]],
   ['物流考核&发货问题',[['late10','10天迟发率'],['late30','30天迟发率'],['cancelRate','预配送取消率'],['trackRate','有效追踪率'],['ontimeRate','准时交货率']]],
-  ['账号报损',SUM_BAO_COLS],
-  ['日周月退款占比',SUM_SHARE_COLS]
+  ['账号报损',SUM_BAO_COLS]
 ];
 const SUM_M_COLS=SUM_METRIC_GROUPS.reduce((a,g)=>a.concat(g[1]),[]);
 const SUM_M_KEYS=SUM_M_COLS.map(c=>c[0]);
 /* 率字段（小数分数存储 → 显示/导出时 ×100 加 %；缺陷订单数/订单总数/评分等保持原值） */
-const SUM_PCT_KEYS=['fbmOdr','invDefRate','late10','late30','cancelRate','trackRate','ontimeRate'].concat(SUM_BAO_RATE).concat(SUM_SHARE_RATE);
+const SUM_PCT_KEYS=['fbmOdr','invDefRate','late10','late30','cancelRate','trackRate','ontimeRate'].concat(SUM_BAO_RATE).concat(SUM_BAO_SHARE);
 function fmtPct(v){if(v==null)return '—';const s=String(v).trim();if(s==='')return '—';if(s.indexOf('%')>=0)return s;const n=parseFloat(s);if(isNaN(n))return s;const p=n*100;return (p%1===0?p:Math.round(p*100)/100)+'%';}
 /* 金额/数量加千位符：只作用于显示层（排序、达标判定、导出仍用原始数值）。
    口径：退款额 / 销售额是用户点名的「两列要好看」，同分组的订单量一并加，
@@ -6540,6 +6534,10 @@ function sumBodyInner(){
       let v;if(raw==='')v='<span class="dim">—</span>';else v=esc(sumDisp(k,raw));
       const bc=baoCls(k);
       if(sumGoHit(k,raw))return `<td class="go${bc?' '+bc:''}">${sumGoLink(k,a.short,v)}</td>`;
+      if(SUM_BAO_SHARE.indexOf(k)>=0){
+        const pd=(k.indexOf('baoD')===0?'日':(k.indexOf('baoW')===0?'周':'月'));
+        return `<td${bc?' class="'+bc+'"':''} title="退款占比 = 退款量 ÷ 订单量（${pd}口径）">${v}</td>`;
+      }
       return `<td${bc?' class="'+bc+'"':''}>${v}</td>`;
     }).join('');
     return `<tr data-id="${a.id}"><td class="num">${start+idx+1}</td>${tds}</tr>`;
@@ -6734,20 +6732,15 @@ function sumBaoFields(key){
     out.baoWRqty=refQtyOf(q,'W',key);
     out.baoMRqty=refQtyOf(q,'M',key);
   }
-  /* 日/周/月退款占比：量口径 = 退款量 ÷ 订单量；额口径 = 退款额 ÷ 销售额；退款率沿用同周期值。
+  /* 日/周/月退款占比（紧挨退款量那列）：退款量 ÷ 订单量，存小数（0.0123 = 1.23%）。
      分母为 0 / 缺值 → 该格留空（显示「—」），别拿 0% 冒充「没退款」 */
   SUM_BAO_KIND.forEach(function(kp){
     const P=kp[2];
-    const ord=out[P+'Ord'],sale=out[P+'Sale'],ref=out[P+'Ref'],qty=out[P+'Rqty'];
+    const ord=out[P+'Ord'],qty=out[P+'Rqty'];
     if(ord!=null&&qty!=null){
       const o=Number(ord);
       out[P+'QtyShare']=(isFinite(o)&&o>0)?Number((Number(qty)/o).toFixed(4)):'';
     }
-    if(sale!=null&&ref!=null){
-      const s2=Number(sale);
-      out[P+'AmtShare']=(isFinite(s2)&&s2>0)?Number((Number(ref)/s2).toFixed(4)):'';
-    }
-    if(out[P+'Rate']!=null)out[P+'RateShare']=out[P+'Rate'];
   });
   return out;
 }
@@ -7028,7 +7021,7 @@ function sumSrcModal(){
     +card('Amazon汇总表（指标主表）','账号 · 订单缺陷率 / 缺陷订单数 / 店铺评分 / 政策合规性 / 物流考核 等',mainSt,'<button class="btn ghost xs" data-baoup="main">选择文件</button>','main')
     +baoCard('d')+baoCard('w')+baoCard('m')
     +'</div>'
-    +'<p style="margin:12px 0 0;font-size:12px;color:#8a85a6">汇总表里「账号报损」分组默认只显示 日/周/月退款额 + 退款率，订单量 / 销售额 / 更新时间到「🧩 显示字段」里勾选才出现。</p>'
+    +'<p style="margin:12px 0 0;font-size:12px;color:#8a85a6">汇总表里「账号报损」分组默认显示 日/周/月 的 退款量 + 退款占比 + 退款额 + 退款率（退款占比 = 退款量 ÷ 订单量），订单量 / 销售额 / 更新时间到「🧩 显示字段」里勾选才出现。</p>'
     +'</div><footer><button class="btn" id="sumSrcClose2">关闭</button></footer></div></div>';
 }
 function sumUseSrcFile(f,msgs){
@@ -11274,14 +11267,11 @@ function colLoad(){
         if(sumColsSel.indexOf('bao'+d+'Ord')>=0&&sumColsSel.indexOf('bao'+d+'Rqty')<0
            &&SUM_COLS.some(function(c){return c[0]==='bao'+d+'Rqty';}))sumColsSel.push('bao'+d+'Rqty');
       });
-      /* 老设置里也没有「日/周/月退款占比」：原来开着该周期退款量/退款率的，把三列一并补上 */
+      /* 老设置里也没有「日/周/月退款占比」：原来开着该周期「退款量」的，把占比列补上（它就是从退款量算出来的） */
       ['D','W','M'].forEach(function(d){
-        const onQty=sumColsSel.indexOf('bao'+d+'Rqty')>=0,onRate=sumColsSel.indexOf('bao'+d+'Rate')>=0;
-        if(!onQty&&!onRate)return;
-        [d+'QtyShare',d+'AmtShare',d+'RateShare'].forEach(function(sfx){
-          const k='bao'+sfx;
-          if(sumColsSel.indexOf(k)<0&&SUM_COLS.some(function(c){return c[0]===k;}))sumColsSel.push(k);
-        });
+        const k='bao'+d+'QtyShare';
+        if((sumColsSel.indexOf('bao'+d+'Rqty')>=0||sumColsSel.indexOf('bao'+d+'Rate')>=0)
+           &&sumColsSel.indexOf(k)<0&&SUM_COLS.some(function(c){return c[0]===k;}))sumColsSel.push(k);
       });
       sumColsKeep=true;
     }
@@ -13964,11 +13954,10 @@ function baoGo(kind,name,to,dim,st){
   else if(kind==='cs'&&name)f2.cs=[name];
   f2.fdate='';f2.fspan='';
   sumSearch='';sumSortK='';sumSortDir=0;sumFilterOpen='';
-  /* 列也一并筛好：只展示这张报损快照用得上的源字段（账号/客服/组长 + 该维度的订单量·退款额·销售额·退款率） */
+  /* 列也一并筛好：只展示这张报损快照用得上的源字段（账号/客服/组长 + 该维度的订单量·退款量·退款占比·退款额·销售额·退款率） */
   const D=(dim==='d'?'D':(dim==='m'?'M':'W'));
   try{ colSetSel('sum',['short','account','cs','csLeader','site',
-        'bao'+D+'Ord','bao'+D+'Rqty','bao'+D+'Ref','bao'+D+'Sale','bao'+D+'Rate',
-        'bao'+D+'QtyShare','bao'+D+'AmtShare','bao'+D+'RateShare']); }catch(e){ sumColsSel=null; }
+        'bao'+D+'Ord','bao'+D+'Rqty','bao'+D+'QtyShare','bao'+D+'Ref','bao'+D+'Sale','bao'+D+'Rate']); }catch(e){ sumColsSel=null; }
   curPage=1;view='summary';render();
   setTimeout(function(){
     if(view!=='summary')return;
