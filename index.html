@@ -1871,6 +1871,14 @@
     white-space:nowrap;font-variant-numeric:tabular-nums;pointer-events:none}
   .fb-bar.tiny>i>.fb-pin{right:auto;left:calc(100% + 6px);color:#6f7787;font-weight:600;text-shadow:none}
   .fb-n{flex:0 0 36px;text-align:right;color:#2c3140;font-weight:600;font-variant-numeric:tabular-nums}
+  /* 退款分析：12 张卡 6 列 × 2 行；单量是千位数、标签是中文短语，列宽比 FBM 稍紧一点 */
+  .fb-grid.rfa .fb-row{gap:5px;padding:2px 3px}
+  .fb-grid.rfa .fb-lab{flex:0 0 36%;max-width:36%}
+  .fb-grid.rfa .fb-n{flex:0 0 42px;font-size:11.5px}
+  .fb-grid.rfa .fb-bar{min-width:36px}
+  .fb-grid.rfa .fb-card{padding:10px 10px 9px}
+  @media(max-width:1200px){.fb-grid.rfa{grid-template-columns:repeat(4,minmax(0,1fr))}}
+  @media(max-width:760px){.fb-grid.rfa{grid-template-columns:1fr}}
   /* FBM 多维卡片行级周环比徽标：与 KPI 卡 .pcb-w 同色语义（增=红/降=绿/平=灰） */
   .fb-wow{flex:0 0 auto;margin-left:5px;font-size:10.5px;font-weight:800;line-height:16px;padding:0 5px;
     border-radius:7px;font-variant-numeric:tabular-nums;white-space:nowrap}
@@ -9885,7 +9893,6 @@ document.getElementById('app').addEventListener('change',e=>{
   if(id==='refAccSel'){refF.acc=e.target.value;refPage=1;render();return;}
   if(id==='refD1'){refF.d1=e.target.value;refPage=1;render();return;}
   if(id==='refD2'){refF.d2=e.target.value;refPage=1;render();return;}
-  if(id==='refOnlyOnChk'){refOnlyOn=!!e.target.checked;refPage=1;render();return;}
   if(id==='otdFile'){const f=e.target.files&&e.target.files[0];e.target.value='';if(f)otdReadFile(f);return;}
   if(id==='isUpClearChk'){isUpClear=!!e.target.checked;return;}
   if(id==='isUpFile'){const f=e.target.files&&e.target.files[0];e.target.value='';if(f){const _t=isUpTab,_c=isUpClear;isUpOpen=false;if(_t==='fbm')fbmReadFile(f,_c);else if(_t==='otd')otdReadFile(f,_c);else ctrReadFile(f,_c);}return;}
@@ -10646,12 +10653,6 @@ document.getElementById('app').addEventListener('click',e=>{
     if(refF.d1===_d&&refF.d2===_d){refF.d1='';refF.d2='';}else{refF.d1=_d;refF.d2=_d;}
     refPage=1;render();return;
   }
-  const _rat=e.target.closest&&e.target.closest('[data-refanatab]');
-  if(_rat){
-    refAnaTab=_rat.getAttribute('data-refanatab');
-    const _ra=document.getElementById('refAna');if(_ra)_ra.innerHTML=refAnaHtml();
-    return;
-  }
   const _ram=e.target.closest&&e.target.closest('[data-refanamore]');
   if(_ram){
     const _k=_ram.getAttribute('data-refanamore');
@@ -10678,7 +10679,7 @@ document.getElementById('app').addEventListener('click',e=>{
   if(e.target.id==='refRetryBtn'){REF.state='idle';REF.err='';refEnsure();render();return;}
   if(e.target.id==='refExactBtn'){refExact=!refExact;refPage=1;refRefresh();const _b=document.getElementById('refExactBtn');if(_b)_b.innerHTML='匹配：'+(refExact?'精确':'包含');return;}
   if(e.target.id==='refFilterClear'){
-    refF={site:'',acc:'',issueCat:'',refReason:'',region:'',cat1:'',d1:'',d2:''};
+    refF={site:'',acc:'',issueCat:'',refReason:'',region:'',cs:'',cat1:'',d1:'',d2:''};
     refSearch='';refColSel='';refPage=1;
     refRefresh();render();return;
   }
@@ -15485,7 +15486,9 @@ function ctrExport(){
    ── 保留期：只留退款时间最新 30 天，超窗的老记录在导入/加载时自动删除
    ── 存储：IndexedDB 本机缓存（gzip 压缩，约 1/5 体积）
             + Storage 云端快照 amz2026/refund.json.gz（与整包同桶同前缀，可跨设备共享）
-   ── 口径：默认按原表全部账号；勾「仅启用且纳入考核」与其它 tab 同口径
+   ── 口径：自动数据清洗（无开关）——账号管理里「启用 且 纳入考核」之外的账号，
+            其明细在导入时物理删除、在视图里再兜一层过滤，KPI / 分析卡 / 明细 / 导出同口径；
+            账号管理里查不到的账号（未映射）不动，避免账号表没同步时把整张表清空
    ══════════════════════════════════════════════════════════════════════════ */
 const REF_COLS=[
   {k:'acc',label:'账号简称',w:132,a:['账号简称','账号','店铺名称','店铺']},
@@ -15563,8 +15566,8 @@ function refHeadIdx(label){
   return -1;
 }
 /* ── 状态 ── */
-let refSearch='',refColSel='',refExact=false,refPage=1,refOnlyOn=false,refSort='refTimeDesc';
-let refF={site:'',acc:'',issueCat:'',refReason:'',region:'',cat1:'',d1:'',d2:''};
+let refSearch='',refColSel='',refExact=false,refPage=1,refSort='refTimeDesc';
+let refF={site:'',acc:'',issueCat:'',refReason:'',region:'',cs:'',cat1:'',d1:'',d2:''};
 let REF={rows:[],state:'idle',meta:{file:'',at:'',hit:0,miss:[]},err:'',sync:'',src:'',ver:0};
 /* ── 取值 / 归一 ── */
 function refVal(r,k){
@@ -15600,6 +15603,11 @@ function refRegionOf(r){
   if(v&&v!=='-')return v;
   const d=refAccDim()[refVal(r,'acc').toUpperCase()];
   return (d&&d.region)||'';
+}
+/* 客服：退款原表没有这列，只能按账号简称去账号管理映射；映射不到统一归「（未映射）」 */
+function refCsOf(r){
+  const d=refAccDim()[refVal(r,'acc').toUpperCase()];
+  return (d&&d.cs)||'（未映射）';
 }
 function refNumK(v){
   const s=String(v==null?'':v).replace(/[,\s¥$€£]/g,'');
@@ -15678,25 +15686,74 @@ function refPrune(rows){
   });
   return {rows:kept,cut:cut,dropped:dropped};
 }
+/* ── 自动数据清洗：账号管理里「启用 且 纳入考核」之外的行自动剔除（无开关）
+     ① 账号管理里查得到、但状态不是启用或没纳入考核 → 剔除
+     ② 账号管理里查不到（未映射）→ 不动：账号表没同步时不能把整张表清空 ── */
+let _refAccSet=null,_refAccSetRef=null;
+function refAccSet(){
+  const src=DATA.accounts||[];
+  if(_refAccSet&&_refAccSetRef===src)return _refAccSet;
+  const pick={};
+  src.forEach(function(a){
+    const k=String(a.short==null?'':a.short).trim().toUpperCase();
+    if(!k)return;
+    const cur=pick[k];
+    if(!cur||(cur.status!=='启用'&&a.status==='启用'))pick[k]=a;
+  });
+  const drop={};let nQ=0;
+  Object.keys(pick).forEach(function(k){
+    const a=pick[k];
+    if(a.status==='启用'&&String(a.assess==null?'':a.assess).trim()==='纳入考核')nQ++;
+    else drop[k]=1;
+  });
+  _refAccSet={drop:drop,n:Object.keys(drop).length,qual:nQ,
+    stamp:[src.length,nQ,Object.keys(drop).length].join('/')};
+  _refAccSetRef=src;
+  return _refAccSet;
+}
+function refIsDropped(r){
+  const s=refAccSet();
+  if(!s.n)return false;
+  return !!s.drop[refVal(r,'acc').toUpperCase()];
+}
+/* 被自动清洗掉的行数（按当前账号表现算，用于底部说明） */
+function refBaseRows(){
+  const s=refAccSet();
+  if(!s.n)return REF.rows||[];
+  return (REF.rows||[]).filter(function(r){return !refIsDropped(r);});
+}
+function refCleanCount(){
+  const s=refAccSet();
+  if(!s.n)return 0;
+  let n=0;(REF.rows||[]).forEach(function(r){if(refIsDropped(r))n++;});
+  return n;
+}
+/* 导入时物理删除：返回删掉的行数 */
+function refPhysClean(){
+  const s=refAccSet();
+  if(!s.n||!(REF.rows||[]).length)return 0;
+  const before=REF.rows.length;
+  REF.rows=REF.rows.filter(function(r){return !refIsDropped(r);});
+  return before-REF.rows.length;
+}
 /* ── 明细筛选（except：排名卡自己那一维不参与筛选，方便在榜上切换取值）
      大表（2~3 万行）一次 render 里 KPI / 排名 / 表格 / 分页各调一次，
      按「筛选条件签名」缓存一次结果，避免重复过滤 + 重复排序。 ── */
 let _refCache=new Map();
 function refSig(except,noSort){
-  return [REF.rows.length,'v'+(REF.ver||0),(REF.meta&&REF.meta.at)||'',refOnlyOn?'1':'0',
-    refF.site,refF.acc,refF.issueCat,refF.refReason,refF.region,refF.cat1,refF.d1,refF.d2,
+  /* refF 里可能被卡片点出任意维度（如 dev / team / goodsState）→ 整份序列化进签名，
+     否则点「开发」这类没写进白名单的维度会命中旧缓存，看着像点了没反应 */
+  return [REF.rows.length,'v'+(REF.ver||0),(REF.meta&&REF.meta.at)||'',refAccSet().stamp,
+    JSON.stringify(refF),
     refSearch,refColSel,refExact?'1':'0',noSort?'n':refSort,except||''].join('\u0001');
 }
 function refList(except,noSort){
   const _sig=refSig(except,noSort);
   if(_refCache.has(_sig))return _refCache.get(_sig);
   let rows=REF.rows||[];
-  /* 默认「全部账号」：退款明细原表本来就含停用账号与未映射账号，强过滤会让整张表突然空掉；
-     需要跟其它 tab 同口径时勾「仅启用且纳入考核」。 */
-  if(refOnlyOn){
-    const on=accOnMap();
-    rows=rows.filter(function(r){return accIsOn(on,refVal(r,'acc'));});
-  }
+  /* 自动数据清洗：非「启用 且 纳入考核」账号的明细不参与任何统计（无开关） */
+  const _as=refAccSet();
+  if(_as.n)rows=rows.filter(function(r){return !refIsDropped(r);});
   const F=refF;
   Object.keys(F).forEach(function(k){
     if(k===except)return;
@@ -15706,6 +15763,7 @@ function refList(except,noSort){
     if(k==='d2'){rows=rows.filter(function(r){const t=refDayKey(refVal(r,'refTime'));return !t||t<=v;});return;}
     if(k==='site'){rows=rows.filter(function(r){return refSiteOf(r)===v;});return;}
     if(k==='region'){rows=rows.filter(function(r){return refRegionOf(r)===v;});return;}
+    if(k==='cs'){rows=rows.filter(function(r){return refCsOf(r)===v;});return;}
     if(REF_IDX[k]==null)return;
     rows=rows.filter(function(r){return refVal(r,k)===v;});
   });
@@ -15878,7 +15936,7 @@ function refPageGo(v){
 /* ── 工具栏 ── */
 function refOpts(kind,cur){
   const set={};
-  (REF.rows||[]).forEach(function(r){
+  refBaseRows().forEach(function(r){
     let v='';
     if(kind==='site')v=refSiteOf(r);
     else if(kind==='region')v=refRegionOf(r);
@@ -15906,7 +15964,7 @@ function refBarHtml(){
   const dtStyle='width:128px;border:1px solid #dde5e1;border-radius:8px;padding:4px 6px;font-size:12.5px;font-family:inherit';
   const dateRange='<span class="is-sel"><label>退款时间</label><input type="date" id="refD1" value="'+esc(refF.d1||'')+'" style="'+dtStyle+'">'
     +'<span class="dim">至</span><input type="date" id="refD2" value="'+esc(refF.d2||'')+'" style="'+dtStyle+'"></span>';
-  const filtOn=!!(refF.site||refF.issueCat||refF.refReason||refF.acc||refF.region||refF.cat1||refF.d1||refF.d2||refSearch);
+  const filtOn=Object.keys(refF).some(function(k){return String(refF[k]||'').trim();})||!!refSearch;
   /* 两行：① 搜索 + 右侧操作按钮  ② 维度筛选 */
   return '<div class="toolbar is-bar">'
     +'<span class="is-sel"><label>搜索列</label><select id="refColSel">'+colOpts+'</select></span>'
@@ -15919,7 +15977,6 @@ function refBarHtml(){
     +'</div>'
     +'<div class="toolbar is-bar">'
     +sortSel+siteSel+catSel+reaSel+dateRange
-    +'<label class="is-chk" title="勾上只统计账号管理里「启用 且 纳入考核」的账号（与其它 tab 同口径）；默认按原表全部账号统计"><input type="checkbox" id="refOnlyOnChk"'+(refOnlyOn?' checked':'')+'> 仅启用且纳入考核</label>'
     +(filtOn?'<button class="btn ghost" id="refFilterClear" title="清空本页全部筛选与搜索">✕ 清空筛选</button>':'')
     +'</div>';
 }
@@ -15939,29 +15996,33 @@ function refLoadingHtml(){
     +'<input type="file" id="refFile" accept=".xlsx,.xls,.csv,.txt" style="display:none"></div>';
 }
 
-/* ══════════ 退款分析板块：6 组维度 tab（时间 / 人员组织 / 原因 / 品类 / 物流 / 商品） ══════════
-   口径：全部基于当前筛选后的明细（refList()），点某一行＝按该取值筛明细（再点取消）；
-        部分退款占比 = 该取值里「退款金额 ÷ 订单总金额 ≤ 80%」的单量 ÷ 有订单金额的单量；
-        超 48 小时发货 = 发货时间 − 付款时间 > 48 小时（按小时算，仍用原始时分）；
-        品类组只统计退款单量 ≥ 2 的 SKU；原因组「其他」不参与排序。 */
+/* ══════════ 退款分析板块：12 组维度 · 两行卡片（与 FBM「多维度分析」同一套卡片样式） ══════════
+   口径：全部基于当前筛选后的明细（refList()）；点某一行＝按该取值筛明细（再点取消）；
+        条长 = 该取值单量 ÷ 本卡最大单量；条内 % = 单量 ÷ 本维度合计；
+        部分退款占比 / 退款金额 / 超 48 小时发货 放在行 title（悬停看）；
+        品类组只统计退款单量 ≥ 2 的 SKU；原因组「其他」不参与排序。
+   排序：第一行「什么时候 + 谁」，第二行「为什么 + 什么货 + 怎么发」，6 列 × 2 行铺满。 */
 const REF_SLOW_HOURS=48;
-const REF_ANA_TABS=[['time','时间'],['org','人员组织'],['reason','原因'],['cat','品类'],['logi','物流'],['goods','商品']];
-const REF_ANA_DIMS={
-  time:[{k:'refDay',label:'退款日期',bar:1,part:1},{k:'payDay',label:'付款日期',part:1},
-        {k:'listMonth',label:'刊登时间',month:1,part:1,style:'bar'}],
-  org:[{k:'cs',label:'客服',part:1},{k:'region',label:'区域',part:1},{k:'team',label:'团队',part:1},{k:'dev',label:'开发',part:1}],
-  reason:[{k:'issueCat',label:'问题归类',skipOther:1},{k:'refReason',label:'退款原因',skipOther:1}],
-  cat:[{k:'cat1',label:'星耀一级分类',skuMin:2,amt:1},{k:'cat2',label:'星耀二级分类',skuMin:2,amt:1}],
-  logi:[{k:'logi',label:'物流渠道',amt:1}],
-  goods:[{k:'goodsState',label:'商品状态',slow:1},{k:'goodsType',label:'商品类型',slow:1}]
-};
-let refAnaTab='time';
+const REF_ANA_CARDS=[
+  {k:'refDay',    label:'退款日期',     c:'#1D9E75', part:1},
+  {k:'payDay',    label:'付款日期',     c:'#2f9e8f', part:1},
+  {k:'listMonth', label:'刊登月份',     c:'#3f8ae0', part:1},
+  {k:'cs',        label:'客服',         c:'#7d75ea', part:1},
+  {k:'region',    label:'区域',         c:'#c95f9b', part:1},
+  {k:'dev',       label:'开发',         c:'#ef8f3d', part:1},
+  {k:'issueCat',  label:'问题归类',     c:'#d9585e', skipOther:1},
+  {k:'refReason', label:'退款原因',     c:'#e0724d', skipOther:1},
+  {k:'cat1',      label:'星耀一级分类',  c:'#2ba8b4', skuMin:2, amt:1},
+  {k:'cat2',      label:'星耀二级分类',  c:'#35a06b', skuMin:2, amt:1},
+  {k:'logi',      label:'物流渠道',     c:'#5b7cfa', amt:1},
+  {k:'goodsState',label:'商品状态',     c:'#c0892e', slow:1}
+];
 let refAnaOpen={};
 function refAnaDimVal(r,d){
   if(d.k==='refDay')return refDayKey(refVal(r,'refTime'));
   if(d.k==='payDay')return refDayKey(refVal(r,'payTime'));
   if(d.k==='listMonth'){const m=refDayKey(refVal(r,'listTime'));return m?m.slice(0,7):'';}
-  if(d.k==='cs'){const a=refAccDim()[refVal(r,'acc').toUpperCase()];return (a&&a.cs)||'（未映射）';}
+  if(d.k==='cs')return refCsOf(r);
   if(d.k==='region')return refRegionOf(r)||'（未填）';
   return refVal(r,d.k);
 }
@@ -15985,7 +16046,9 @@ function refAnaStat(rows,d){
   const total=list.length;
   let arr=order.map(function(k){
     const o=m[k];
-    return {k:k,n:o.n,amt:o.amt,slow:o.slow,
+    /* 日期类只显示「月-日」，完整年份放 title，窄卡里也读得出来 */
+    const _lbl=(d.k==='refDay'||d.k==='payDay')?String(k).replace(/^\d{4}-/,''):String(k);
+    return {k:k,lbl:_lbl,n:o.n,amt:o.amt,slow:o.slow,
       part:(o.nv?Math.round(o.np/o.nv*1000)/10:null),
       share:(total?Math.round(o.n/total*1000)/10:0)};
   });
@@ -15993,92 +16056,57 @@ function refAnaStat(rows,d){
   arr.sort(function(a,b){return (b.n-a.n)||String(a.k).localeCompare(String(b.k));});
   return {arr:arr,total:total,list:list};
 }
-function refAnaRowHtml(o,i,d,canClick){
-  const cls=(i===0?'top1':(i===1?'top2':(i===2?'top3':'')));
-  const sel=canClick&&(String(refF[d.k]||'')===o.k);
-  const bits=['<b>'+refFmtNum(o.n)+'</b> 单'];
-  if(d.amt)bits.push('<b>'+refFmtNum(o.amt,2)+'</b>');
-  bits.push('占比 <b class="rkshare">'+o.share+'%</b>');
-  if(d.part)bits.push('部分退款 '+(o.part==null?'—':('<b>'+o.part+'%</b>')));
-  if(d.slow)bits.push('超48h <b>'+refFmtNum(o.slow)+'</b>'+(o.n?('（'+Math.round(o.slow/o.n*100)+'%）'):''));
-  const w=Math.max(2,Math.min(100,Math.round(o.share)));
-  return '<div class="refa-row'+(sel?' on':'')+'"'
-    +(canClick?' data-refrk="'+esc(d.k)+'" data-refrv="'+esc(o.k)+'" title="点击＝按「'+esc(d.label)+' = '+esc(o.k)+'」筛选明细（再点取消）"':'')
-    +' style="padding:6px 0;border-bottom:1px solid #f1f4f2;cursor:'+(canClick?'pointer':'default')+'">'
-    +'<div style="display:flex;align-items:center;gap:6px;min-width:0">'
-    +'<span class="rkno '+cls+'">'+(i+1)+'</span>'
-    +'<span style="font-size:12.5px;color:#31424e;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(o.k)+(sel?' <b>✕</b>':'')+'</span></div>'
-    +'<div style="font-size:11.5px;color:#6b7a86;margin:2px 0 4px;line-height:1.55">'+bits.join(' · ')+'</div>'
-    +'<span class="rkbar" style="display:block"><i style="width:'+w+'%"></i></span></div>';
+/* 该维度能不能点了筛明细：日期卡写回 d1/d2，其余写回 refF[维度] */
+function refAnaMode(d){
+  if(d.k==='refDay')return 'day';
+  if(d.k==='cs'||d.k==='region')return 'flt';
+  return REF_IDX[d.k]!=null?'flt':'';
 }
 function refAnaCard(rows,d){
   const st=refAnaStat(rows,d);
-  const canClick=!!(REF_IDX[d.k]!=null||d.k==='region'||d.k==='refDay');
   const arr=st.arr;
   const open=!!refAnaOpen[d.k];
   const LIMIT=3;
   const show=open?arr:arr.slice(0,LIMIT);
-  const chart=d.bar?refAnaMiniBars(rows,d):'';
-  let list='';
-  if(!show.length){
-    list='<div class="dim" style="font-size:12px;padding:8px 0">没有数据</div>';
-  }else if(d.style==='bar'){
-    list=show.map(function(o){return refAnaBarRow(o,d,canClick);}).join('');
-  }else{
-    list=show.map(function(o,i){return refAnaRowHtml(o,i,d,canClick);}).join('');
-  }
-  const more=(arr.length>LIMIT)?('<button class="otd-rmore" data-refanamore="'+d.k+'">'+(open?'收起 ▴':'展开全部 '+arr.length+' 项 ▾')+'</button>'):'';
-  const sub=(d.bar?('共 '+arr.length+' 天'):(d.month?(arr.length+' 个月'):(arr.length+' 项')))+' · 按单量排'
-    +(d.bar?(' · 合计 '+refFmtNum(st.total)+' 单'):'')
-    +(d.skipOther?' · 其他类不参与排序':'')+(d.skuMin?(' · 仅退款≥'+d.skuMin+'单的SKU'):'');
-  return '<div class="otd-rk"><div class="otd-rk-h"><span>'+esc(d.label)+'</span><span class="dim">'+sub+'</span></div>'
-    +chart+list+more+'</div>';
-}
-function refAnaMiniBars(rows,d){
-  const st=refAnaStat(rows,d);
-  const arr=st.arr.slice().sort(function(a,b){return String(a.k).localeCompare(String(b.k));});
-  if(!arr.length)return '';
-  const max=Math.max.apply(null,arr.map(function(o){return o.n;}))||1;
-  const bars=arr.map(function(o){
-    const h=Math.max(3,Math.round(o.n/max*52));
-    const sel=!!(refF.d1&&refF.d1===o.k&&refF.d2===o.k);
-    return '<i data-refday="'+esc(o.k)+'" title="'+esc(o.k)+' · '+refFmtNum(o.n)+' 单 · 占比 '+o.share+'%'
-      +(o.part==null?'':' · 部分退款 '+o.part+'%')+'" style="flex:1;min-width:0;height:'+h+'px;'
-      +'background:'+(sel?'#1D9E75':'#9FE1CB')+';border-radius:2px 2px 0 0;cursor:pointer;display:block"></i>';
-  }).join('');
-  return '<div style="display:flex;align-items:flex-end;gap:2px;height:56px;margin:2px 0 8px">'+bars+'</div>';
-}
-function refAnaBarRow(o,d,canClick){
-  const sel=canClick&&(String(refF[d.k]||'')===o.k);
-  const w=Math.max(2,Math.min(100,Math.round(o.share)));
-  return '<div'+(canClick?(' data-refrk="'+esc(d.k)+'" data-refrv="'+esc(o.k)+'" title="点击＝按「'+esc(d.label)+' = '+esc(o.k)+'」筛选（再点取消）"'):'')
-    +' style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid #f1f4f2;cursor:'+(canClick?'pointer':'default')+'">'
-    +'<span style="width:56px;flex:0 0 56px;font-size:12px;color:#31424e;font-variant-numeric:tabular-nums">'+esc(o.k)+(sel?' ✕':'')+'</span>'
-    +'<span style="flex:1;height:8px;background:#eef4f0;border-radius:4px;position:relative;overflow:hidden">'
-    +'<i style="position:absolute;left:0;top:0;bottom:0;width:'+w+'%;background:#9FE1CB;border-radius:4px;display:block"></i></span>'
-    +'<span style="font-size:11.5px;color:#6b7a86;white-space:nowrap"><b>'+refFmtNum(o.n)+'</b> 单 · '+o.share+'%</span></div>';
+  const maxN=arr.length?arr[0].n:0;
+  const mode=refAnaMode(d);
+  const body=show.map(function(o,i){
+    const w=maxN?Math.max(1.5,o.n/maxN*100):0;
+    const val=String(o.k)==='（未填）'?'':o.k;
+    let on=false,attr='';
+    if(mode==='day'){
+      on=!!(refF.d1&&refF.d1===o.k&&refF.d2===o.k);
+      if(val)attr=' data-refday="'+esc(val)+'"';
+    }else if(mode==='flt'){
+      on=!!(String(refF[d.k]||'')===o.k);
+      if(val)attr=' data-refrk="'+esc(d.k)+'" data-refrv="'+esc(val)+'"';
+    }
+    const bits=[refFmtNum(o.n)+' 单','占比 '+o.share+'%'];
+    if(d.part)bits.push('部分退款 '+(o.part==null?'—':(o.part+'%')));
+    if(d.amt)bits.push('退款额 '+refFmtNum(o.amt,2));
+    if(d.slow)bits.push('超 48h '+refFmtNum(o.slow)+(o.n?('（'+Math.round(o.slow/o.n*100)+'%）'):''));
+    const tip=(String(o.lbl)+'：'+bits.join(' · '))+(attr?' · 点一下按这个筛明细（再点取消）':'');
+    return '<div class="fb-row'+(on?' on':'')+'"'+attr+' title="'+esc(tip)+'">'
+      +'<span class="fb-rk">'+(i+1)+'</span>'
+      +'<span class="fb-lab" title="'+esc(String(o.lbl))+'">'+esc(String(o.lbl))+'</span>'
+      +'<span class="fb-bar'+(w<22?' tiny':'')+'"><i style="width:'+w.toFixed(1)+'%">'
+      +'<b class="fb-pin">'+o.share+'%</b></i></span>'
+      +'<span class="fb-n">'+refFmtNum(o.n)+'</span></div>';
+  }).join('')||'<div class="dim" style="font-size:11.5px;padding:6px 2px">没有数据</div>';
+  const more=(arr.length>LIMIT)
+    ?'<button class="fb-more" data-refanamore="'+esc(d.k)+'">'+(open?'收起 ▴':'查看全部 '+arr.length+' 项 ▾')+'</button>':'';
+  const cnt=(arr.length>LIMIT)
+    ?'<span class="fb-cn">'+(open?'全部 '+arr.length:'前 '+LIMIT+' / '+arr.length)+'</span>':'';
+  return '<div class="fb-card" style="--fbc:'+d.c+';--fbc2:'+fbLight(d.c,.18)+';--fbcbg:'+fbRgba(d.c,.08)+'">'
+    +'<div class="fb-ct"><i class="fb-dot"></i>'+esc(d.label)+cnt+'</div>'
+    +'<div class="fb-body">'+body+'</div>'+more+'</div>';
 }
 function refAnaHtml(){
   const rows=refList();
-  const tab=(REF_ANA_TABS.filter(function(t){return t[0]===refAnaTab;})[0]||REF_ANA_TABS[0])[0];
-  const tabs='<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px">'
-    +REF_ANA_TABS.map(function(t){
-      const on=t[0]===tab;
-      return '<button data-refanatab="'+t[0]+'" style="font-size:12.5px;padding:5px 12px;border-radius:20px;cursor:pointer;font-family:inherit;'
-        +(on?'background:#1D9E75;border:1px solid #1D9E75;color:#fff':'background:#fff;border:1px solid #dde5e1;color:#5c6b76')+'">'+esc(t[1])+'</button>';
-    }).join('')+'</div>';
-  const dims=REF_ANA_DIMS[tab]||[];
-  let body='';
-  if(tab==='time'){
-    body='<div class="otd-rkgrid" style="grid-template-columns:1fr 1fr 1fr">'
-      +dims.map(function(d){return refAnaCard(rows,d);}).join('')+'</div>';
-  }else{
-    const cls=dims.length>=4?'rk4':(dims.length===3?'':' ');
-    body='<div class="otd-rkgrid'+(cls==='rk4'?' rk4':(cls===' '?'':' rk3'))+'">'
-      +dims.map(function(d){return refAnaCard(rows,d);}).join('')+'</div>';
-  }
-  if(!rows.length)body='<div class="dim" style="font-size:12px;padding:8px 0">当前筛选下没有记录</div>';
-  return tabs+body;
+  if(!rows.length)return '<div class="dim" style="font-size:12px;padding:8px 0">当前筛选下没有记录</div>';
+  return '<div class="fb-wrap"><div class="fb-grid rfa">'
+    +REF_ANA_CARDS.map(function(d){return refAnaCard(rows,d);}).join('')
+    +'</div></div>';
 }
 
 function refSection(){
@@ -16087,6 +16115,8 @@ function refSection(){
     return refLoadingHtml();
   }
   const rows=REF.rows||[];
+  /* 账号管理可能刚被改过（启用/停用/纳入考核）→ 每次进本页重算一次清洗口径，别用上次的缓存 */
+  _refAccSet=null;
   const fileInput='<input type="file" id="refFile" accept=".xlsx,.xls,.csv,.txt" style="display:none">';
   if(!rows.length){
     return '<div class="is-empty"><div class="is-ei">💸</div><div class="is-et">还没有退款明细</div>'
@@ -16097,15 +16127,17 @@ function refSection(){
   const mt=REF.meta||{};
   const miss=(mt.miss||[]).length;
   const win=REF.win||{};
+  const cleaned=refCleanCount();
   const note='<div class="fbm-note">数据来源：'+(mt.file?esc(mt.file)+' · '+esc(mt.at||''):'本机缓存')
     +' · 共 '+rows.length+' 条 · 字段识别 '+Math.min(mt.hit||REF_N,REF_N)+'/'+REF_N+(miss?('（未识别 '+miss+' 个，已留空）'):'')
+    +(cleaned?(' · 已自动清洗 '+refFmtNum(cleaned)+' 条（非启用 / 未纳入考核账号）'):'')
     +(REF.migrated?' · 云端快照为旧版结构（含「标题」列），已自动兼容':'')
     +' · 只保留退款时间最新 '+REF_KEEP_DAYS+' 天'+(win.cut?('（≥ '+win.cut+'）'):'')+(win.dropped?('，已自动删除更早的 '+win.dropped+' 条'):'')
     +' · <span id="refSyncTip">'+(REF.sync==='cloud'?'云端已同步':(REF.sync==='local'?'仅本机（云端未同步）':(REF.src==='cloud'?'来自云端快照':(REF.src==='idb'?'来自本机缓存':''))))+'</span></div>';
   return refBarHtml()
     +'<div id="refKpi">'+refKpiHtml()+'</div>'
-    +'<div class="otd-rank"><div class="otd-rank-hd">📊 退款分析<span class="dim">按维度分组看：点某一行＝按该取值筛选明细（再点取消）</span></div>'
-    +'<div id="refAna">'+refAnaHtml()+'</div></div>'
+    +'<div class="otd-rank-hd" style="margin:2px 0 8px">📊 退款分析<span class="dim">点某一行＝按该取值筛选明细（再点取消）</span></div>'
+    +'<div id="refAna">'+refAnaHtml()+'</div>'
     +'<div class="fbm-scroll" id="refScroll"><div id="refTableWrap">'+refTableHtml()+'</div></div>'
     +'<div id="refPager">'+refPagerHtml()+'</div>'
     +note+fileInput;
@@ -16232,6 +16264,9 @@ function refImportRows(rows,fname){
   const pr=refPrune(REF.rows);
   REF.rows=pr.rows;
   REF.win={cut:pr.cut,dropped:pr.dropped};
+  /* ⑥ 自动数据清洗：账号管理里「启用 且 纳入考核」之外的账号，明细入库前就删掉 */
+  const cleaned=refPhysClean();
+  REF.clean={n:cleaned,at:todayStr()};
   REF.meta={file:String(fname||''),at:todayStr(),hit:hitN,miss:missLabels.slice(0,20)};
   REF.state='loaded';
   REF.ver=(REF.ver||0)+1;
@@ -16241,6 +16276,7 @@ function refImportRows(rows,fname){
     +'；新增 '+ins+' 条，更新 '+upd+' 条'+(skipped?('，跳过空行 '+skipped):'')
     +(replaced?('；按退款时间 '+winTxt+' 整体替换，清掉旧行 '+replaced+' 条'):'')
     +(pr.dropped?('；按「退款时间最新 '+REF_KEEP_DAYS+' 天」自动删除 '+pr.dropped+' 条更早的明细'):'')
+    +(cleaned?('；自动清洗 '+cleaned+' 条（非启用 / 未纳入考核账号）'):'')
     +'，现共 '+REF.rows.length+' 条';
 }
 function refExport(){
