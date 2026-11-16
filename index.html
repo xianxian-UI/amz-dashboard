@@ -10640,6 +10640,25 @@ document.getElementById('app').addEventListener('click',e=>{
   /* ── 退款明细交互 ── */
   const _rfp=e.target.closest&&e.target.closest('[data-refpage]');
   if(_rfp){refPageGo(_rfp.getAttribute('data-refpage'));return;}
+  const _rday=e.target.closest&&e.target.closest('[data-refday]');
+  if(_rday){
+    const _d=_rday.getAttribute('data-refday');
+    if(refF.d1===_d&&refF.d2===_d){refF.d1='';refF.d2='';}else{refF.d1=_d;refF.d2=_d;}
+    refPage=1;render();return;
+  }
+  const _rat=e.target.closest&&e.target.closest('[data-refanatab]');
+  if(_rat){
+    refAnaTab=_rat.getAttribute('data-refanatab');
+    const _ra=document.getElementById('refAna');if(_ra)_ra.innerHTML=refAnaHtml();
+    return;
+  }
+  const _ram=e.target.closest&&e.target.closest('[data-refanamore]');
+  if(_ram){
+    const _k=_ram.getAttribute('data-refanamore');
+    refAnaOpen[_k]=!refAnaOpen[_k];
+    const _ra2=document.getElementById('refAna');if(_ra2)_ra2.innerHTML=refAnaHtml();
+    return;
+  }
   const _rfr=e.target.closest&&e.target.closest('[data-refrk]');
   if(_rfr){
     const _rd=_rfr.getAttribute('data-refrk'),_rv=_rfr.getAttribute('data-refrv');
@@ -10650,7 +10669,7 @@ document.getElementById('app').addEventListener('click',e=>{
   if(_rfm){
     const _rd=_rfm.getAttribute('data-refrankmore');
     refRankOpen[_rd]=!refRankOpen[_rd];
-    const _rr=document.getElementById('refRank');if(_rr)_rr.innerHTML=refRankHtml();
+    const _rr=document.getElementById('refAna');if(_rr)_rr.innerHTML=refAnaHtml();
     return;
   }
   if(e.target.id==='refUploadBtn'){const _f=document.getElementById('refFile');if(_f)_f.click();return;}
@@ -15565,7 +15584,8 @@ function refAccDim(){
     let site=String(a.site==null?'':a.site).trim();
     if(!site){const p=k.split('-');site=p.length>1?String(p[1]).trim():'';}
     const cur=m[k];
-    if(!cur||(cur.status!=='启用'&&a.status==='启用'))m[k]={site:site,region:String(a.region==null?'':a.region).trim(),status:String(a.status==null?'':a.status)};
+    if(!cur||(cur.status!=='启用'&&a.status==='启用'))m[k]={site:site,region:String(a.region==null?'':a.region).trim(),
+      cs:String(a.cs==null?'':a.cs).trim(),status:String(a.status==null?'':a.status)};
   });
   _REF_ADM=m;_REF_ADM_REF=src;return m;
 }
@@ -15842,7 +15862,7 @@ function refPagerHtml(){
 function refRefresh(){
   const t=document.getElementById('refTableWrap');if(t)t.innerHTML=refTableHtml();
   const p=document.getElementById('refPager');if(p)p.innerHTML=refPagerHtml();
-  const r=document.getElementById('refRank');if(r)r.innerHTML=refRankHtml();
+  const r=document.getElementById('refAna');if(r)r.innerHTML=refAnaHtml();
   const k=document.getElementById('refKpi');if(k)k.innerHTML=refKpiHtml();
 }
 function refPageGo(v){
@@ -15918,6 +15938,138 @@ function refLoadingHtml(){
     +'<div style="margin-top:10px"><button class="btn" id="refUploadBtn">⬆ 直接上传退款明细</button></div>'
     +'<input type="file" id="refFile" accept=".xlsx,.xls,.csv,.txt" style="display:none"></div>';
 }
+
+/* ══════════ 退款分析板块：6 组维度 tab（时间 / 人员组织 / 原因 / 品类 / 物流 / 商品） ══════════
+   口径：全部基于当前筛选后的明细（refList()），点某一行＝按该取值筛明细（再点取消）；
+        部分退款占比 = 该取值里「退款金额 ÷ 订单总金额 ≤ 80%」的单量 ÷ 有订单金额的单量；
+        超 48 小时发货 = 发货时间 − 付款时间 > 48 小时（按小时算，仍用原始时分）；
+        品类组只统计退款单量 ≥ 2 的 SKU；原因组「其他」不参与排序。 */
+const REF_SLOW_HOURS=48;
+const REF_ANA_TABS=[['time','时间'],['org','人员组织'],['reason','原因'],['cat','品类'],['logi','物流'],['goods','商品']];
+const REF_ANA_DIMS={
+  time:[{k:'refDay',label:'退款日期',bar:1,part:1},{k:'payDay',label:'付款日期',part:1},{k:'listMonth',label:'刊登时间',month:1,part:1}],
+  org:[{k:'cs',label:'客服',part:1},{k:'region',label:'区域',part:1},{k:'team',label:'团队',part:1},{k:'dev',label:'开发',part:1}],
+  reason:[{k:'issueCat',label:'问题归类',skipOther:1},{k:'refReason',label:'退款原因',skipOther:1}],
+  cat:[{k:'cat1',label:'星耀一级分类',skuMin:2,amt:1},{k:'cat2',label:'星耀二级分类',skuMin:2,amt:1}],
+  logi:[{k:'logi',label:'物流渠道',amt:1}],
+  goods:[{k:'goodsState',label:'商品状态',slow:1},{k:'goodsType',label:'商品类型',slow:1}]
+};
+let refAnaTab='time';
+let refAnaOpen={};
+function refAnaDimVal(r,d){
+  if(d.k==='refDay')return refDayKey(refVal(r,'refTime'));
+  if(d.k==='payDay')return refDayKey(refVal(r,'payTime'));
+  if(d.k==='listMonth'){const m=refDayKey(refVal(r,'listTime'));return m?m.slice(0,7):'';}
+  if(d.k==='cs'){const a=refAccDim()[refVal(r,'acc').toUpperCase()];return (a&&a.cs)||'（未映射）';}
+  if(d.k==='region')return refRegionOf(r)||'（未填）';
+  return refVal(r,d.k);
+}
+function refAnaStat(rows,d){
+  let list=rows;
+  if(d.skuMin){
+    const cnt={};
+    rows.forEach(function(r){const sk=refVal(r,'sku');if(sk)cnt[sk]=(cnt[sk]||0)+1;});
+    list=rows.filter(function(r){const sk=refVal(r,'sku');return sk&&cnt[sk]>=d.skuMin;});
+  }
+  const m={},order=[];
+  list.forEach(function(r){
+    const v=refAnaDimVal(r,d)||'（未填）';
+    if(!(v in m)){m[v]={n:0,amt:0,np:0,nv:0,slow:0};order.push(v);}
+    const o=m[v];o.n++;
+    if(d.amt)o.amt+=refNumK(refVal(r,'refAmt'));
+    const ord=refNumK(refVal(r,'orderAmt')),f=refNumK(refVal(r,'refAmt'));
+    if(ord>0){o.nv++;if(f/ord<=REF_PARTIAL_MAX)o.np++;}
+    if(d.slow){const h=parseFloat(refCalc(r,'shipHours'));if(isFinite(h)&&h>REF_SLOW_HOURS)o.slow++;}
+  });
+  const total=list.length;
+  let arr=order.map(function(k){
+    const o=m[k];
+    return {k:k,n:o.n,amt:o.amt,slow:o.slow,
+      part:(o.nv?Math.round(o.np/o.nv*1000)/10:null),
+      share:(total?Math.round(o.n/total*1000)/10:0)};
+  });
+  if(d.skipOther)arr=arr.filter(function(o){return !/^(其他|其它)/.test(String(o.k).trim());});
+  arr.sort(function(a,b){return (b.n-a.n)||String(a.k).localeCompare(String(b.k));});
+  return {arr:arr,total:total,list:list};
+}
+function refAnaRowHtml(o,i,d,canClick){
+  const cls=(i===0?'top1':(i===1?'top2':(i===2?'top3':'')));
+  const sel=canClick&&(String(refF[d.k]||'')===o.k);
+  const bits=['<b>'+refFmtNum(o.n)+'</b> 单'];
+  if(d.amt)bits.push('<b>'+refFmtNum(o.amt,2)+'</b>');
+  bits.push('占比 <b class="rkshare">'+o.share+'%</b>');
+  if(d.part)bits.push('部分退款 '+(o.part==null?'—':('<b>'+o.part+'%</b>')));
+  if(d.slow)bits.push('超48h <b>'+refFmtNum(o.slow)+'</b>'+(o.n?('（'+Math.round(o.slow/o.n*100)+'%）'):''));
+  const w=Math.max(2,Math.min(100,Math.round(o.share)));
+  return '<div class="refa-row'+(sel?' on':'')+'"'
+    +(canClick?' data-refrk="'+esc(d.k)+'" data-refrv="'+esc(o.k)+'" title="点击＝按「'+esc(d.label)+' = '+esc(o.k)+'」筛选明细（再点取消）"':'')
+    +' style="padding:6px 0;border-bottom:1px solid #f1f4f2;cursor:'+(canClick?'pointer':'default')+'">'
+    +'<div style="display:flex;align-items:center;gap:6px;min-width:0">'
+    +'<span class="rkno '+cls+'">'+(i+1)+'</span>'
+    +'<span style="font-size:12.5px;color:#31424e;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(o.k)+(sel?' <b>✕</b>':'')+'</span></div>'
+    +'<div style="font-size:11.5px;color:#6b7a86;margin:2px 0 4px;line-height:1.55">'+bits.join(' · ')+'</div>'
+    +'<span class="rkbar" style="display:block"><i style="width:'+w+'%"></i></span></div>';
+}
+function refAnaCard(rows,d){
+  const st=refAnaStat(rows,d);
+  const canClick=!!(REF_IDX[d.k]!=null||d.k==='region');
+  const byDay=!!d.bar;
+  let arr=st.arr;
+  if(byDay)arr=arr.slice().sort(function(a,b){return String(a.k).localeCompare(String(b.k));});
+  const open=!!refAnaOpen[d.k];
+  const show=(byDay||open)?arr:arr.slice(0,5);
+  const body=show.length
+    ? show.map(function(o,i){return refAnaRowHtml(o,i,d,canClick);}).join('')
+    : '<div class="dim" style="font-size:12px;padding:8px 0">没有数据</div>';
+  const more=(!byDay&&arr.length>5)?('<button class="otd-rmore" data-refanamore="'+d.k+'">'+(open?'收起 ▴':'展开全部 '+arr.length+' 项 ▾')+'</button>'):'';
+  const sub=byDay?('共 '+arr.length+' 天 · 合计 '+refFmtNum(st.total)+' 单')
+    :(arr.length+' 项 · 按'+(d.month?'月':'单量')+'排'+(d.skipOther?' · 其他类不参与排序':'')+(d.skuMin?(' · 仅退款≥'+d.skuMin+'单的SKU'):''));
+  return '<div class="otd-rk"><div class="otd-rk-h"><span>'+esc(d.label)+'</span><span class="dim">'+sub+'</span></div>'
+    +body+more+'</div>';
+}
+function refAnaDayChart(rows,d){
+  const st=refAnaStat(rows,d);
+  const arr=st.arr.slice().sort(function(a,b){return String(a.k).localeCompare(String(b.k));});
+  const head='<div class="otd-rk-h"><span>'+esc(d.label)+'</span>'
+    +'<span class="dim">共 '+arr.length+' 天 · 合计 '+refFmtNum(st.total)+' 单 · 点柱子＝筛这一天</span></div>';
+  if(!arr.length)return '<div class="otd-rk">'+head+'<div class="dim" style="font-size:12px;padding:8px 0">没有数据</div></div>';
+  const max=Math.max.apply(null,arr.map(function(o){return o.n;}))||1;
+  const step=Math.max(1,Math.ceil(arr.length/7));
+  const bars=arr.map(function(o,i){
+    const h=Math.max(6,Math.round(o.n/max*84));
+    const sel=!!(refF.d1&&refF.d1===o.k&&refF.d2===o.k);
+    const lab=(i===0||i===arr.length-1||i%step===0)?o.k.slice(5):'';
+    return '<div data-refday="'+esc(o.k)+'" title="'+esc(o.k)+' · '+refFmtNum(o.n)+' 单 · 占比 '+o.share+'% · 部分退款 '+(o.part==null?'—':o.part+'%')+'"'
+      +' style="flex:1;min-width:0;display:flex;flex-direction:column;justify-content:flex-end;align-items:center;gap:4px;cursor:pointer">'
+      +'<i style="width:100%;height:'+h+'px;background:'+(sel?'#1D9E75':'#9FE1CB')+';border-radius:3px 3px 0 0;display:block"></i>'
+      +'<span style="font-size:10.5px;color:#9aa1ad;white-space:nowrap">'+esc(lab)+'</span></div>';
+  }).join('');
+  return '<div class="otd-rk">'+head+'<div style="display:flex;align-items:flex-end;gap:3px;padding:2px 0 0">'+bars+'</div></div>';
+}
+function refAnaHtml(){
+  const rows=refList();
+  const tab=(REF_ANA_TABS.filter(function(t){return t[0]===refAnaTab;})[0]||REF_ANA_TABS[0])[0];
+  const tabs='<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px">'
+    +REF_ANA_TABS.map(function(t){
+      const on=t[0]===tab;
+      return '<button data-refanatab="'+t[0]+'" style="font-size:12.5px;padding:5px 12px;border-radius:20px;cursor:pointer;font-family:inherit;'
+        +(on?'background:#1D9E75;border:1px solid #1D9E75;color:#fff':'background:#fff;border:1px solid #dde5e1;color:#5c6b76')+'">'+esc(t[1])+'</button>';
+    }).join('')+'</div>';
+  const dims=REF_ANA_DIMS[tab]||[];
+  let body='';
+  if(tab==='time'){
+    body='<div style="margin-bottom:12px">'+refAnaDayChart(rows,dims[0])+'</div>'
+      +'<div class="otd-rkgrid" style="grid-template-columns:1fr 1fr">'
+      +dims.slice(1).map(function(d){return refAnaCard(rows,d);}).join('')+'</div>';
+  }else{
+    const cls=dims.length>=4?'rk4':(dims.length===3?'':' ');
+    body='<div class="otd-rkgrid'+(cls==='rk4'?' rk4':(cls===' '?'':' rk3'))+'">'
+      +dims.map(function(d){return refAnaCard(rows,d);}).join('')+'</div>';
+  }
+  if(!rows.length)body='<div class="dim" style="font-size:12px;padding:8px 0">当前筛选下没有记录</div>';
+  return tabs+body;
+}
+
 function refSection(){
   if(REF.state==='idle'||REF.state==='loading'){
     if(REF.state==='idle')refEnsure();
@@ -15941,8 +16093,8 @@ function refSection(){
     +' · <span id="refSyncTip">'+(REF.sync==='cloud'?'云端已同步':(REF.sync==='local'?'仅本机（云端未同步）':(REF.src==='cloud'?'来自云端快照':(REF.src==='idb'?'来自本机缓存':''))))+'</span></div>';
   return refBarHtml()
     +'<div id="refKpi">'+refKpiHtml()+'</div>'
-    +'<div class="otd-rank"><div class="otd-rank-hd">📊 退款分布排名<span class="dim">点某一行＝按该取值筛选下方明细（再点取消）</span></div>'
-    +'<div id="refRank">'+refRankHtml()+'</div></div>'
+    +'<div class="otd-rank"><div class="otd-rank-hd">📊 退款分析<span class="dim">按维度分组看：点某一行＝按该取值筛选明细（再点取消）</span></div>'
+    +'<div id="refAna">'+refAnaHtml()+'</div></div>'
     +'<div class="fbm-scroll" id="refScroll"><div id="refTableWrap">'+refTableHtml()+'</div></div>'
     +'<div id="refPager">'+refPagerHtml()+'</div>'
     +note+fileInput;
