@@ -15911,7 +15911,9 @@ function refLoadingHtml(){
       +'<input type="file" id="refFile" accept=".xlsx,.xls,.csv,.txt" style="display:none"></div>';
   }
   return '<div class="is-empty"><div class="is-ei">⏳</div><div class="is-et">正在读取退款明细…</div>'
-    +'<div class="is-ed">先读本机缓存，没有则从云端快照拉取（首次进入通常十几秒）。</div>'
+    +'<div class="is-ed">先读本机缓存；没有则从云端快照拉取（约 6MB，首次通常十几秒，之后走本机缓存秒开）。</div>'
+    +'<div class="is-ed2" id="refProg">正在连接云端快照…</div>'
+    +'<div style="margin-top:10px"><button class="btn" id="refUploadBtn">⬆ 直接上传退款明细</button></div>'
     +'<input type="file" id="refFile" accept=".xlsx,.xls,.csv,.txt" style="display:none"></div>';
 }
 function refSection(){
@@ -15931,7 +15933,8 @@ function refSection(){
   const miss=(mt.miss||[]).length;
   const win=REF.win||{};
   const note='<div class="fbm-note">数据来源：'+(mt.file?esc(mt.file)+' · '+esc(mt.at||''):'本机缓存')
-    +' · 共 '+rows.length+' 条 · 字段识别 '+(mt.hit||REF_N)+'/'+REF_N+(miss?('（未识别 '+miss+' 个，已留空）'):'')
+    +' · 共 '+rows.length+' 条 · 字段识别 '+Math.min(mt.hit||REF_N,REF_N)+'/'+REF_N+(miss?('（未识别 '+miss+' 个，已留空）'):'')
+    +(REF.migrated?' · 云端快照为旧版结构（含「标题」列），已自动兼容':'')
     +' · 只保留退款时间最新 '+REF_KEEP_DAYS+' 天'+(win.cut?('（≥ '+win.cut+'）'):'')+(win.dropped?('，已自动删除更早的 '+win.dropped+' 条'):'')
     +' · <span id="refSyncTip">'+(REF.sync==='cloud'?'云端已同步':(REF.sync==='local'?'仅本机（云端未同步）':(REF.src==='cloud'?'来自云端快照':(REF.src==='idb'?'来自本机缓存':''))))+'</span></div>';
   return refBarHtml()
@@ -16173,23 +16176,57 @@ function refCloudEtag(){
     return r.ok?(r.headers.get('etag')||''):'';
   }).catch(function(){return '';});
 }
+/* 流式下载：边收边报进度（快照 6MB 左右，慢网时至少让人看到在动） */
 function refFetchCloud(){
-  return fetch(refCloudUrl(),{headers:sbStorageHeaders()}).then(function(r){
+  var ctl=(typeof AbortController!=='undefined')?new AbortController():null;
+  var to=ctl?setTimeout(function(){try{ctl.abort();}catch(e){}},120000):null;
+  var done=function(){if(to)clearTimeout(to);};
+  REF.prog={got:0,total:0};
+  return fetch(refCloudUrl(),{headers:sbStorageHeaders(),signal:ctl?ctl.signal:undefined}).then(function(r){
     if(!r.ok)throw new Error('HTTP '+r.status);
     REF.etag=r.headers.get('etag')||'';
-    return r.arrayBuffer();
-  }).then(function(buf){
+    var total=Number(r.headers.get('content-length')||0)||0;
+    REF.prog={got:0,total:total};
+    if(!r.body||!r.body.getReader){return r.arrayBuffer();}
+    var reader=r.body.getReader(),chunks=[],got=0;
+    return (function pump(){
+      return reader.read().then(function(x){
+        if(x.done){return new Blob(chunks);}
+        chunks.push(x.value);got+=x.value.length;
+        REF.prog={got:got,total:total};
+        refProgTip();
+        return pump();
+      });
+    })();
+  }).then(function(blob){
     if(typeof DecompressionStream==='undefined')throw new Error('浏览器不支持解压');
-    return new Response(new Blob([buf]).stream().pipeThrough(new DecompressionStream('gzip'))).text();
-  }).then(function(txt){return JSON.parse(txt);});
+    return new Response(blob.stream().pipeThrough(new DecompressionStream('gzip'))).text();
+  }).then(function(txt){done();return JSON.parse(txt);}).catch(function(e){done();throw e;});
+}
+function refProgTip(){
+  var el=document.getElementById('refProg');
+  if(!el)return;
+  var p=REF.prog||{got:0,total:0};
+  var mb=function(n){return (n/1048576).toFixed(1)+' MB';};
+  if(!p.got){el.textContent='正在连接云端快照…';return;}
+  el.textContent='已下载 '+mb(p.got)+(p.total?(' / '+mb(p.total)):'')+'，正在解析…';
 }
 function refApply(o,src){
   if(!o||!Array.isArray(o.rows))return false;
-  if(o.v&&o.v!==2)return false;      /* 旧结构（含「标题」列）不兼容，直接忽略，等重新上传 */
-  REF.rows=o.rows.map(function(r){
+  var srcRows=o.rows;
+  if(o.v===1){
+    /* v1 快照是 38 列（第 5 列是「标题」）→ 去掉该列迁移到 v2，别让已上传的数据白等 */
+    srcRows=srcRows.map(function(r){var a=(r||[]).slice();a.splice(4,1);return a;});
+    REF.migrated=true;
+  }else if(o.v&&o.v!==2)return false;
+  REF.rows=srcRows.map(function(r){
     const arr=new Array(REF_N);
     for(let k=0;k<REF_N;k++)arr[k]=r&&r[k]!=null?r[k]:'';
     return arr;
+  }).filter(function(r){
+    /* 退款时间有内容但不是日期 = 表中间重复的表头行，直接剔掉 */
+    const t=refVal(r,'refTime');
+    return !t||!!refDayKey(t);
   });
   const pr=refPrune(REF.rows);
   REF.rows=pr.rows;
@@ -16201,7 +16238,24 @@ function refApply(o,src){
 }
 function refEnsure(){
   if(REF.state==='loading'||REF.state==='loaded'||REF.state==='empty')return;
-  REF.state='loading';REF.err='';
+  REF.state='loading';REF.err='';REF.migrated=false;
+  /* 看门狗：大快照 + 慢网络时不能让人无限转圈 */
+  if(REF.watchdog)clearTimeout(REF.watchdog);
+  REF.tick=0;REF.lastGot=0;
+  var watch=function(){
+    if(REF.state!=='loading')return;
+    REF.tick++;
+    var p=REF.prog||{got:0,total:0};
+    var last=REF.lastGot||0;
+    REF.lastGot=p.got||0;
+    /* 还在往下走就续期（最多 3 分钟）；连续 5 拍没动静才判超时 */
+    if(REF.lastGot>last&&REF.tick<36){REF.watchdog=setTimeout(watch,5000);return;}
+    if(REF.tick<5){REF.watchdog=setTimeout(watch,5000);return;}
+    REF.state='error';
+    REF.err='读取超时：云端快照没有继续下载（可能是网络问题）。可以点「重试」，或直接上传原表。';
+    if(view==='issue'&&isTab==='ref')render();
+  };
+  REF.watchdog=setTimeout(watch,5000);
   var rec=null;
   refIdbGet().then(function(r){
     rec=r||null;
@@ -16221,7 +16275,13 @@ function refEnsure(){
     }
     return refReloadCloud();
   }).then(function(ok){
+    if(REF.watchdog){clearTimeout(REF.watchdog);REF.watchdog=null;}
+    REF.lastGot=0;
     if(!ok&&REF.state==='loading')REF.state='empty';
+    if(view==='issue'&&isTab==='ref')render();
+  }).catch(function(e){
+    if(REF.watchdog){clearTimeout(REF.watchdog);REF.watchdog=null;}
+    if(REF.state==='loading'){REF.state='error';REF.err=String((e&&e.message)||e);}
     if(view==='issue'&&isTab==='ref')render();
   });
 }
