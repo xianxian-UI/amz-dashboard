@@ -1930,6 +1930,7 @@
   .lg-tbl td.lg-g-D{background:#ffeccc;color:#a35b1c;font-weight:700}
   .lg-tbl td.lg-g-E{background:#fde0d0;color:#b5501a;font-weight:700}
   .lg-tbl td.lg-g-F{background:#fadbd8;color:#a33;font-weight:700}
+  .lg-tbl td.lg-na{background:#eef1f4;color:#7a8692;font-weight:700;text-align:center;white-space:nowrap}
   /* 设置页 */
   .lg-cfg-weights{display:flex;align-items:center;flex-wrap:wrap;gap:10px;margin:8px 0 12px;font-size:12.5px;color:#3a4a52}
   .lg-cfg-weights label{display:inline-flex;align-items:center;gap:5px}
@@ -16961,10 +16962,9 @@ function lightBuild(){
   (REF.rows||[]).forEach(function(r){
     var sku=refVal(r,'sku');if(!sku)return;
     var dt=refDayKey(refVal(r,'devTime')),ep=dt?refEpoch(dt):null;
-    /* 无开发时间 / 开发不足 3 个月 → 不同步（口径写在界面说明里） */
-    if(ep==null||ep>cutoff){excluded++;return;}
+    /* 全部同步：开发时间不足 3 个月也同步，仅在按灯类型标注「未超3个月不考核」 */
     var o=map[sku];
-    if(!o)o=map[sku]={sku:sku,state:'',cat1:'',cat2:'',devTime:dt,refAmt:0,refCnt:0};
+    if(!o)o=map[sku]={sku:sku,state:'',cat1:'',cat2:'',devTime:dt,devWithin3m:(ep==null||ep>cutoff),refAmt:0,refCnt:0};
     if(!o.state)o.state=refVal(r,'goodsState');
     if(!o.cat1)o.cat1=refVal(r,'cat1');
     if(!o.cat2)o.cat2=refVal(r,'cat2');
@@ -16990,7 +16990,11 @@ function lightBuild(){
         tLoss=sLoss*(cfg.weights.loss||0)/100,tOrder=sOrder*(cfg.weights.order||0)/100;
     var phi=tSale+tMargin+tLoss+tOrder;
     var g=lightMatch(cfg.grades,phi);
-    out.push({sku:sku,state:o.state,cat1:o.cat1,cat2:o.cat2,devTime:o.devTime,
+    /* 不考核判定：未超3个月优先，其次卖出销量<=1 */
+    var notAssess='';
+    if(o.devWithin3m)notAssess='未超3个月不考核';
+    else if(qty<=1)notAssess='销量过低不考核';
+    out.push({sku:sku,state:o.state,cat1:o.cat1,cat2:o.cat2,devTime:o.devTime,devWithin3m:!!o.devWithin3m,notAssess:notAssess,
       sale:sale,profit:profit,qty:qty,refAmt:o.refAmt,refCnt:o.refCnt,
       lossRate:lossRate,profitRate:profitRate,orderRate:orderRate,
       sSale:sSale,sMargin:sMargin,sLoss:sLoss,sOrder:sOrder,
@@ -17090,7 +17094,7 @@ function lightList(){
   if(F.state)rows=rows.filter(function(r){return r.state===F.state;});
   if(F.cat1)rows=rows.filter(function(r){return r.cat1===F.cat1;});
   if(F.cat2)rows=rows.filter(function(r){return r.cat2===F.cat2;});
-  if(F.grade)rows=rows.filter(function(r){return (r.grade||'').charAt(0)===F.grade;});
+  if(F.grade)rows=rows.filter(function(r){return !r.notAssess&&(r.grade||'').charAt(0)===F.grade;});
   if(F.phi)rows=rows.filter(function(r){return lightPhiBand(r.phi)===F.phi;});
   var s=lightSort;
   rows.sort(function(a,b){
@@ -17106,7 +17110,7 @@ function lightList(){
 function lightLvClass(light){return light==='红灯'?'ll-red':(light==='黄灯'?'ll-yellow':(light==='绿灯'?'ll-green':''));}
 function lightOverviewHtml(){
   var rows=lightBuild().rows,cnt={S:0,A:0,B:0,C:0,D:0,E:0,F:0};
-  rows.forEach(function(r){var g=(r.grade||'').charAt(0);if(cnt[g]!=null)cnt[g]++;});
+  rows.forEach(function(r){if(r.notAssess)return;var g=(r.grade||'').charAt(0);if(cnt[g]!=null)cnt[g]++;});
   var meta={S:['明星','lg-g-S'],A:['优秀','lg-g-A'],B:['良好','lg-g-B'],C:['合格','lg-g-C'],D:['预警','lg-g-D'],E:['危险','lg-g-E'],F:['淘汰','lg-g-F']};
   var cur=(lightF&&lightF.grade)||'';
   var cards=['S','A','B','C','D','E','F'].map(function(g){
@@ -17160,8 +17164,8 @@ function lightTableHtml(){
     s+=td(lightFmt(r.qty))+td(lightFmt(r.refCnt))+td(lightPct(r.orderRate),lightLvClass(r.lightRate),'退款单量 '+r.refCnt+' ÷ 卖出销量 '+r.qty)
       +td(String(r.sOrder),lightLvClass(r.lightOrder))+td('<b>'+r.tOrder.toFixed(1)+'</b>','lg-total');
     s+='<td class="lg-phi"><b>'+(Math.round(r.phi*10)/10)+'</b></td>';
-    s+='<td class="lg-type lg-g-'+esc(r.grade.charAt(0))+'">'+esc(r.grade)+' '+esc(r.status)+'</td>';
-    s+=td(esc(r.devTime||''))+td('否');
+    s+=r.notAssess?('<td class="lg-type lg-na">'+esc(r.notAssess)+'</td>'):('<td class="lg-type lg-g-'+esc(r.grade.charAt(0))+'">'+esc(r.grade)+' '+esc(r.status)+'</td>');
+    s+=td(esc(r.devTime||''))+td(r.devWithin3m?'是':'否');
     return s+'</tr>';
   }).join('')||('<tr><td colspan="24" style="text-align:center;padding:30px" class="fbm-nil">没有匹配的 SKU</td></tr>');
   return '<table class="fbm-tbl lg-tbl"><thead>'+g1+g2+'</thead><tbody>'+body+'</tbody></table>';
@@ -17189,7 +17193,7 @@ function lightExport(){
   rows.forEach(function(r){
     lines.push([r.sku,r.state,r.cat1,r.cat2,r.sale,r.sSale,r.tSale.toFixed(1),r.profit,lightPct(r.profitRate),r.sMargin,r.tMargin.toFixed(1),
       r.refAmt,lightPct(r.lossRate),r.sLoss,r.tLoss.toFixed(1),r.qty,r.refCnt,lightPct(r.orderRate),r.sOrder,r.tOrder.toFixed(1),
-      (Math.round(r.phi*10)/10),r.grade+' '+r.status,r.devTime,'否'].map(q).join(','));
+      (Math.round(r.phi*10)/10),(r.notAssess||(r.grade+' '+r.status)),r.devTime,(r.devWithin3m?'是':'否')].map(q).join(','));
   });
   downloadBlob(new Blob(['\uFEFF'+lines.join('\r\n')],{type:'text/csv;charset=utf-8'}),'产品按灯_'+rows.length+'个SKU_'+todayStr()+'.csv');
 }
@@ -17203,7 +17207,7 @@ function lightSection(){
   var fileInput='<input type="file" id="lightFile" accept=".xlsx,.xls,.csv,.txt" style="display:none">';
   if(!built.rows.length){
     return '<div class="is-empty"><div class="is-ei">💡</div><div class="is-et">还没有可同步的 SKU</div>'
-      +'<div class="is-ed">需先在「退款明细」上传原表；且 SKU 的开发时间距今需满 3 个月。<br>销售额 / 利润 / 卖出销量可再导入一份销售表（按表头识别、按 SKU 求和）。</div>'
+      +'<div class="is-ed">需先在「退款明细」上传原表（全部 SKU 均同步）。<br>销售额 / 利润 / 卖出销量可再导入一份销售表（按表头识别、按 SKU 求和）。</div>'
       +'<button class="btn" id="lightUploadBtn">⬆ 导入销售数据</button>'+fileInput+'</div>';
   }
   var bar='<div class="toolbar is-bar lg-toolbar">'
@@ -17225,7 +17229,7 @@ function lightSection(){
     +'<button class="btn ghost" id="lightUploadBtn">⬆ '+(meta.file?'更换销售数据':'导入销售数据')+'</button>'
     +(meta.file?'<button class="btn ghost" id="lightClearBtn">🗑 清空销售数据</button>':'')
     +'</div>';
-  var note='<div class="fbm-note">来源：退款明细按 SKU 去重同步（退款金额 / 退款单量求和；开发时间不足 3 个月的 '+built.excluded+' 条已剔除）'
+  var note='<div class="fbm-note">来源：退款明细按 SKU 去重同步（退款金额 / 退款单量求和；全部 SKU 均已同步）'
     +(meta.file?(' · 销售数据：'+esc(meta.file)+' · '+esc(String(meta.at||'').slice(0,19).replace('T',' '))+' · '+meta.rows+' 行 → '+Object.keys(DATA.lightSales||{}).length+' 个 SKU'+(meta.miss&&meta.miss.length?('（未识别：'+esc(meta.miss.join('/'))+'）'):'')):' · 尚未导入销售数据（销售额 / 利润 / 卖出销量为 0）')
     +' · 报损率=退款金额÷销售额 · 利润率=利润÷销售额 · 退款单率=退款单量÷卖出销量 · 各项总分=得分×占比 · PHI=四项总分之和 · 规则可在「模块设置 · 达标设置 ⑥」调整</div>';
   return lightOverviewHtml()+bar+'<div class="fbm-scroll" id="lightScroll"><div id="lightTableWrap">'+lightTableHtml()+'</div></div>'
