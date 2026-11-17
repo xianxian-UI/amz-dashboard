@@ -6520,20 +6520,34 @@ const SUM_GO={
   odrCnt:['fbm','FBM订单缺陷率','缺陷订单数不为 0'],
   probCnt:['policy','政策合规性','问题数量不为 0'],
   trackRate:['ctr','有效追踪率','有效追踪率不为 100%'],
-  ontimeRate:['otd','准时送达率','准时送达率不为 100%']
+  ontimeRate:['otd','准时送达率','准时送达率不为 100%'],
+  /* 账号报损：日/周/月 退款量 / 退款额 → 问题明细 · 退款明细（按该账号 + 对应时间窗筛）
+     窗口与汇总表「退款量」同源（refQtyMap 的 max / cut）：日 = 最新一天、周 = 最新 7 天、月 = 全部日期 */
+  baoDRqty:['refd','退款明细','日退款量（明细里最新一天）'],
+  baoDRef:['refd','退款明细','日退款额（明细里最新一天）'],
+  baoWRqty:['refw','退款明细','周退款量（最新 7 天）'],
+  baoWRef:['refw','退款明细','周退款额（最新 7 天）'],
+  baoMRqty:['refm','退款明细','月退款量（全部日期）'],
+  baoMRef:['refm','退款明细','月退款额（全部日期）']
 };
 /* 反向：目标 tab → 列名 / 异常口径（跳转提示条用） */
 const SUM_GO_TAB={
   fbm:{label:'FBM订单缺陷率',tip:'缺陷订单数不为 0'},
   policy:{label:'政策合规性',tip:'问题数量不为 0'},
   ctr:{label:'有效追踪率',tip:'有效追踪率不为 100%'},
-  otd:{label:'准时送达率',tip:'准时送达率不为 100%'}
+  otd:{label:'准时送达率',tip:'准时送达率不为 100%'},
+  ref:{label:'退款明细',tip:'该账号的退款单'}
 };
 /* 只有「有问题」的数值才做成可点链接：0 / 100% 不点（避免满屏蓝字） */
 function sumGoHit(k,showRaw){
   if(!SUM_GO[k])return false;
   const t=String(showRaw==null?'':showRaw).trim();
   if(t==='')return false;
+  /* 账号报损 日/周/月 退款量 / 退款额：只有数字且 > 0 才做成链接（0 / 空值不留死链） */
+  if(String(SUM_GO[k][0]).indexOf('ref')===0){
+    const n=parseFloat(t.replace(/[,\s%]/g,''));
+    return isFinite(n)&&n>0;
+  }
   if(k==='odrCnt'||k==='probCnt'){
     const n=parseFloat(t.replace(/[,\s%]/g,''));
     return isFinite(n)&&n!==0;
@@ -6549,6 +6563,9 @@ function sumGoLink(k,acc,inner){
 /* 跳转：定位到对应明细 tab，并按该账号预设筛选 */
 function sumGoIssue(kind,acc){
   acc=String(acc==null?'':acc).trim();
+  /* 账号报损 日/周/月 → 退款明细（带账号 + 时间窗） */
+  const _wm={refd:'d',refw:'w',refm:'m'}[kind];
+  if(_wm){sumGoRef(_wm,acc);return;}
   const g0=SUM_GO_TAB[kind]||{label:'',tip:''};
   goCtx={kind:kind,acc:acc,label:g0.label,tip:g0.tip};
   if(kind==='fbm'){isTab='fbm';isSearch=acc;isSite=[];isCs=[];isState=[];isOnlyAffect=false;isPage=1;}
@@ -6559,6 +6576,27 @@ function sumGoIssue(kind,acc){
   render();
   if(typeof window!=='undefined'&&window.scrollTo)window.scrollTo(0,0);
 }
+/* 汇总表「账号报损 · 日/周/月 退款量 / 退款额」→ 问题明细 · 退款明细：
+   账号按「账号简称」精确匹配；时间窗与「客服报损情况」「汇总表退款量」完全同一套
+   （refQtyMap 的 max / cut）——日 = 明细里最新那一天、周 = 最新 7 天（含最新那天）、月 = 全部日期。
+   窗口取不到（明细还没载入）时不设日期，只按账号筛，等明细加载完后用户可再点一次。 */
+function sumGoRef(w,acc){
+  const qm=refQtyMap();
+  const mx=(qm&&qm.max)||'';
+  let cut='';
+  if(mx){const t=refEpoch(mx);if(t!=null)cut=refDayKey(new Date(t-6*86400000).toISOString().slice(0,10));}
+  refF={site:'',acc:'',issueCat:'',refReason:'',region:'',cs:'',cat1:'',d1:'',d2:''};
+  refColSel='acc';refSearch=acc;refExact=true;refPage=1;
+  if(w==='d'){refF.d1=mx;refF.d2=mx;}
+  else if(w==='w'){refF.d1=cut;refF.d2=mx;}
+  const lb=(w==='d')?('日 · 最新一天'+(mx?(' '+mx):''))
+    :(w==='w')?('周 · 最新 7 天'+(cut&&mx?(' '+cut+' ~ '+mx):''))
+    :'月 · 全部日期';
+  goCtx={kind:'ref',win:w,acc:acc,label:lb,tip:''};
+  isTab='ref';view='issue';
+  render();
+  if(typeof window!=='undefined'&&window.scrollTo)window.scrollTo(0,0);
+}
 /* 问题明细顶部：提示「是从汇总表哪个指标跳过来的 + 当前筛选的账号」 */
 function isGoCtxHtml(){
   if(!goCtx||!goCtx.acc)return '';
@@ -6566,7 +6604,11 @@ function isGoCtxHtml(){
   let cnt='';
   if(isTab==='fbm')cnt='，当前命中 <b>'+fbmList().length+'</b> 条';
   else if(isTab==='otd')cnt='，当前命中 <b>'+otdList().length+'</b> 条';
-  return '<div class="is-gocx">🔗 来自 AMZ汇总表：账号 <b>'+esc(goCtx.acc)+'</b> · '+esc(goCtx.label||'')+' 异常（'+esc(goCtx.tip||'')+'）'
+  else if(isTab==='ref')cnt='，当前命中 <b>'+refList().length+'</b> 条';
+  const head=goCtx.win
+    ? '🔗 来自 AMZ汇总表：账号 <b>'+esc(goCtx.acc)+'</b> · 退款明细 '+esc(goCtx.label||'')
+    : '🔗 来自 AMZ汇总表：账号 <b>'+esc(goCtx.acc)+'</b> · '+esc(goCtx.label||'')+' 异常（'+esc(goCtx.tip||'')+'）';
+  return '<div class="is-gocx">'+head
     +'→ 已在「'+esc(tab?tab[1]:'')+'」按该账号筛选'+cnt
     +'<button class="is-gocx-x" data-goclear="1">清除筛选 ✕</button></div>';
 }
@@ -10741,7 +10783,9 @@ document.getElementById('app').addEventListener('click',e=>{
   const _sgo=e.target.closest&&e.target.closest('[data-sumgo]');
   if(_sgo){sumGoIssue(_sgo.getAttribute('data-sumgo'),_sgo.getAttribute('data-sumacc'));return;}
   const _gocx=e.target.closest&&e.target.closest('[data-goclear]');
-  if(_gocx){goCtx=null;isSearch='';isColSel='';pcSearch='';otdSearch='';otdColF={};isPage=1;otdPage=1;curPage=1;render();return;}
+  if(_gocx){goCtx=null;isSearch='';isColSel='';pcSearch='';otdSearch='';otdColF={};isPage=1;otdPage=1;curPage=1;
+    refF={site:'',acc:'',issueCat:'',refReason:'',region:'',cs:'',cat1:'',d1:'',d2:''};refSearch='';refColSel='';refExact=false;refPage=1;
+    render();return;}
   const _grs=e.target.closest&&e.target.closest('[data-gorefsku]');
   if(_grs){const _sk=_grs.getAttribute('data-gorefsku')||'';lightF={state:'',cat1:'',cat2:'',grade:'',assess:'',dev:'',full3m:'',phi:''};lightSearch=_sk;lightPage=1;goCtx=null;isTab='light';render();return;}
   const _gls=e.target.closest&&e.target.closest('[data-golightsku]');
@@ -10751,7 +10795,8 @@ document.getElementById('app').addEventListener('click',e=>{
   const _ist=e.target.closest&&e.target.closest('[data-istab]');
   if(_ist){const _nt=_ist.getAttribute('data-istab');
     /* 手工切换 tab：清掉「从汇总表跳转」带来的账号筛选，避免下一个 tab 里筛着看不见的账号 */
-    if(goCtx&&goCtx.kind!==_nt){goCtx=null;isSearch='';pcSearch='';otdSearch='';isPage=1;otdPage=1;}
+    if(goCtx&&goCtx.kind!==_nt){goCtx=null;isSearch='';pcSearch='';otdSearch='';isPage=1;otdPage=1;
+      if(_nt!=='ref'){refF={site:'',acc:'',issueCat:'',refReason:'',region:'',cs:'',cat1:'',d1:'',d2:''};refSearch='';refColSel='';refExact=false;refPage=1;}}
     isTab=_nt;isPage=1;otdPage=1;render();return;}
   const _isp=e.target.closest&&e.target.closest('[data-ispage]');
   if(_isp){
@@ -16209,7 +16254,7 @@ function refLoadingHtml(){
 /* ══════════ 退款分析板块：12 组维度 · 两行卡片（与 FBM「多维度分析」同一套卡片样式） ══════════
    口径：全部基于当前筛选后的明细（refList()）；点某一行＝按该取值筛明细（再点取消）；
         条长 = 该取值单量 ÷ 本卡最大单量；条内 % = 单量 ÷ 本维度合计；
-        行内只放单量，退款金额 / 退>80%（退款金额 ÷ 订单总金额 > 80%）单量与占比 / 超 48 小时发货
+        行内只放单量，退款金额 / 部分退款（≤80%）单量与占比 / 退>80%（>80%）单量与占比 / 超 48 小时发货
         都放在行 title（悬停看，不占横向空间）；
         品类组只统计退款单量 ≥ 2 的 SKU；原因组「其他」不参与排序。
    维度：刊登月份已按需求换成 SKU（刊登月份对客服分析没用，SKU 才能定位到货）；
@@ -16355,12 +16400,15 @@ function refAnaStat(rows,d){
   const m={},order=[];
   list.forEach(function(r){
     const v=refAnaDimVal(r,d)||'（未填）';
-    if(!(v in m)){m[v]={n:0,amt:0,nb:0,nv:0,slow:0};order.push(v);}
+    if(!(v in m)){m[v]={n:0,amt:0,nb:0,nv:0,np:0,slow:0};order.push(v);}
     const o=m[v];o.n++;
-    /* 每张卡都算退款金额与「退款金额 ÷ 订单总金额 > 80%」的单量（悬停看，不占行内空间） */
+    /* 每张卡都算退款金额 +「部分退款（≤80%）」与「大额（>80%）」单量（悬停看，不占行内空间） */
     const ord=refNumK(refVal(r,'orderAmt')),f=refNumK(refVal(r,'refAmt'));
     o.amt+=f;
-    if(ord>0){o.nv++;if(f/ord>REF_BIG_SHARE)o.nb++;}   /* 大额（接近全额）退款 = >80%：80% 本身归「部分退款」，两侧互补不重复计 */
+    /* 部分退款 = 退款金额 ÷ 订单总金额 ≤ 80%（REF_PARTIAL_MAX，含正好 80%）——
+       与「健康看板 · 五、客服报损情况」的「部分退款占比」、退款分析 KPI 同一口径；
+       大额（接近全额）退款 = >80%，与部分退款互补，80% 本身只计部分退款 */
+    if(ord>0){o.nv++;if(f/ord>REF_BIG_SHARE)o.nb++;else o.np++;}
     if(d.slow){const h=parseFloat(refCalc(r,'shipHours'));if(isFinite(h)&&h>REF_SLOW_HOURS)o.slow++;}
   });
   const total=list.length;
@@ -16369,6 +16417,7 @@ function refAnaStat(rows,d){
     /* 日期类只显示「月-日」，完整年份放 title，窄卡里也读得出来 */
     const _lbl=(d.k==='refDay'||d.k==='payDay')?String(k).replace(/^\d{4}-/,''):String(k);
     return {k:k,lbl:_lbl,n:o.n,amt:o.amt,slow:o.slow,
+      part:o.np,partP:(o.nv?Math.round(o.np/o.nv*1000)/10:null),
       big:o.nb,bigP:(o.nv?Math.round(o.nb/o.nv*1000)/10:null),
       share:(total?Math.round(o.n/total*1000)/10:0)};
   });
@@ -16409,6 +16458,9 @@ function refAnaCard(rows,d){
     /* 行内只放单量；退款金额与「退>80%」占比放悬停（客服关注的是大额/接近全额退款的占比） */
     const bits=[refFmtNum(o.n)+' 单','占比 '+o.share+'%',
       '退款额 '+refFmtNum(o.amt,2),
+      /* 部分退款（退款金额 ÷ 订单总金额 ≤ 80%）—— 与「健康看板 · 五、客服报损情况」的
+         「部分退款占比」完全同口径，客服卡这一行能直接对上，别再改成 >80% */
+      '部分退款 '+refFmtNum(o.part)+' 单'+(o.partP==null?'':'（'+o.partP+'%）'),
       '退>80% '+refFmtNum(o.big)+' 单'+(o.bigP==null?'':'（'+o.bigP+'%）')];
     /* 环比 = 两个月度快照的日均差（整月不变），不是「当前 − 基数」，所以提示里把两期都写清楚 */
     const dl=refAnaDelta(o.k,base,prev,isDay,baseAll,prevAll);
@@ -16471,7 +16523,7 @@ function refSection(){
     +' · <span id="refSyncTip">'+(REF.sync==='cloud'?'云端已同步':(REF.sync==='local'?'仅本机（云端未同步）':(REF.src==='cloud'?'来自云端快照':(REF.src==='idb'?'来自本机缓存':''))))+'</span></div>';
   return refBarHtml()
     +'<div id="refKpi">'+refKpiHtml()+'</div>'
-    +'<div class="otd-rank-hd" style="margin:2px 0 8px">📊 退款分析<span class="dim">点某一行＝按该取值筛选明细（再点取消）· 悬停看退款额与退>80% 占比</span></div>'
+    +'<div class="otd-rank-hd" style="margin:2px 0 8px">📊 退款分析<span class="dim">点某一行＝按该取值筛选明细（再点取消）· 悬停看退款额、部分退款占比（≤80%，与客服关注区同口径）与退>80%</span></div>'
     +'<div id="refAna">'+refAnaHtml()+'</div>'
     +'<div class="fbm-scroll" id="refScroll"><div id="refTableWrap">'+refTableHtml()+'</div></div>'
     +'<div id="refPager">'+refPagerHtml()+'</div>'
