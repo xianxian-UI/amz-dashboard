@@ -16990,14 +16990,14 @@ var LIGHT_SALE_COLS=[
 ];
 function lightHeadIdx(label){
   var t=String(label==null?'':label).replace(/\s/g,'').replace(/（/g,'(').replace(/）/g,')').replace(/[＊*:：]/g,'').toLowerCase();
-  if(!t)return -1;
-  var best=-1,bestLen=0;
+  if(!t)return null;
+  var best=null,bestLen=0;
   LIGHT_SALE_COLS.forEach(function(c,i){
     [c.label].concat(c.a||[]).forEach(function(x){
       var a=String(x).replace(/\s/g,'').replace(/（/g,'(').replace(/）/g,')').replace(/[＊*:：]/g,'').toLowerCase();
       if(a.length<2)return;
-      if(a===t){if(best<0||a.length>=bestLen){best=i;bestLen=a.length;}}
-      else if(t.indexOf(a)>=0&&a.length>bestLen){best=i;bestLen=a.length;}
+      if(a===t){if(best==null||a.length>=bestLen){best=c.k;bestLen=a.length;}}
+      else if(t.indexOf(a)>=0&&a.length>bestLen){best=c.k;bestLen=a.length;}
     });
   });
   return best;
@@ -17016,7 +17016,7 @@ function lightReadFileGo(file){
     var hdr=-1,bestN=0,idx={};
     for(var i=0;i<Math.min(rows.length,10);i++){
       var r=rows[i]||[],m={},n=0;
-      for(var j=0;j<r.length;j++){var k=lightHeadIdx(r[j]);if(k>=0&&m[k]==null){m[k]=j;n++;}}
+      for(var j=0;j<r.length;j++){var k=lightHeadIdx(r[j]);if(k!=null&&m[k]==null){m[k]=j;n++;}}
       if(n>bestN){bestN=n;hdr=i;idx=m;}
     }
     if(hdr<0||bestN<2||idx.sku==null){alert('没认出表头：文件需至少含「SKU」列，以及「销售额 / 利润 / 卖出销量」中的至少一列');return;}
