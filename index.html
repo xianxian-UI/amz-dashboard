@@ -1907,6 +1907,19 @@
   .lg-tbl td.lg-total{color:#c0392b;font-variant-numeric:tabular-nums}
   .lg-tbl td.lg-phi{background:#fff9db;text-align:center;font-variant-numeric:tabular-nums}
   .lg-tbl td.lg-sku{font-weight:700;color:#2f4a3e}
+  .sku-jump{color:#2f8a63;cursor:pointer;text-decoration:underline;text-underline-offset:2px;font-weight:700}
+  .sku-jump:hover{color:#1f6e4a;background:#eef8f1;border-radius:4px}
+  .lg-toolbar{position:sticky;top:58px;z-index:8;background:#fff;padding:8px 0;border-bottom:1px solid #e6ede9;box-shadow:0 2px 6px rgba(0,0,0,.04)}
+  .lg-overview{margin-bottom:12px;background:#fff;border:1px solid #e6ede9;border-radius:12px;padding:12px 14px}
+  .lg-ov-hd{font-weight:700;font-size:13px;color:#31564a;margin-bottom:10px}
+  .lg-ov-hint{font-weight:400;font-size:11.5px;color:#8a93a0;margin-left:8px}
+  .lg-cards{display:flex;flex-wrap:wrap;gap:10px}
+  .lg-card{display:flex;flex-direction:column;align-items:center;gap:2px;min-width:86px;padding:9px 12px;border:1.5px solid transparent;border-radius:10px;cursor:pointer;font-family:inherit;transition:.15s}
+  .lg-card:hover{transform:translateY(-1px);box-shadow:0 2px 8px rgba(0,0,0,.08)}
+  .lg-card.on{border-color:#2fa86c;box-shadow:0 0 0 2px rgba(47,168,108,.25)}
+  .lg-card-g{font-size:11.5px;font-weight:700;opacity:.85}
+  .lg-card-n{font-size:24px;font-weight:700;line-height:1.05;font-variant-numeric:tabular-nums}
+  .lg-card-t{font-size:11px;opacity:.8}
   .lg-tbl td.ll-red{color:#c0392b;background:#fdecec;font-weight:700}
   .lg-tbl td.ll-yellow{color:#a67c00;background:#fff6d8;font-weight:700}
   .lg-tbl td.ll-green{color:#1e824c;background:#eaf7ee;font-weight:700}
@@ -10007,6 +10020,10 @@ document.getElementById('app').addEventListener('change',e=>{
   if(id==='lightFile'){const _lf=e.target.files&&e.target.files[0];e.target.value='';if(_lf)lightReadFile(_lf);return;}
   if(id==='lightSearch'){lightSearch=e.target.value;lightPage=1;lightRefresh();return;}
   if(id==='lightSortSel'){lightSort=e.target.value||'phiDesc';lightPage=1;lightRefresh();return;}
+  if(id==='lightFState'||id==='lightFCat1'||id==='lightFCat2'||id==='lightFGrade'||id==='lightFPhi'){
+    var _fk={lightFState:'state',lightFCat1:'cat1',lightFCat2:'cat2',lightFGrade:'grade',lightFPhi:'phi'}[id];
+    lightF=lightF||{};lightF[_fk]=e.target.value;lightPage=1;lightRefresh();return;
+  }
   if(id==='refColSel'){refColSel=e.target.value;refSearch='';refPage=1;render();return;}
   if(id==='refSortSel'){refSort=e.target.value||'refTimeDesc';refPage=1;refRefresh();return;}
   if(id==='refSiteSel'){refF.site=e.target.value;refPage=1;render();return;}
@@ -10701,6 +10718,12 @@ document.getElementById('app').addEventListener('click',e=>{
   if(_sgo){sumGoIssue(_sgo.getAttribute('data-sumgo'),_sgo.getAttribute('data-sumacc'));return;}
   const _gocx=e.target.closest&&e.target.closest('[data-goclear]');
   if(_gocx){goCtx=null;isSearch='';isColSel='';pcSearch='';otdSearch='';otdColF={};isPage=1;otdPage=1;curPage=1;render();return;}
+  const _grs=e.target.closest&&e.target.closest('[data-gorefsku]');
+  if(_grs){const _sk=_grs.getAttribute('data-gorefsku')||'';lightF={state:'',cat1:'',cat2:'',grade:'',phi:''};lightSearch=_sk;lightPage=1;goCtx=null;isTab='light';render();return;}
+  const _gls=e.target.closest&&e.target.closest('[data-golightsku]');
+  if(_gls){const _sk=_gls.getAttribute('data-golightsku')||'';refF={site:'',acc:'',issueCat:'',refReason:'',region:'',cs:'',cat1:'',d1:'',d2:''};refColSel='sku';refSearch=_sk;refExact=true;refPage=1;goCtx=null;isTab='ref';render();return;}
+  const _lgg=e.target.closest&&e.target.closest('[data-lggrade]');
+  if(_lgg){const _g=_lgg.getAttribute('data-lggrade')||'';lightF=lightF||{};lightF.grade=(lightF.grade===_g?'':_g);lightPage=1;render();return;}
   const _ist=e.target.closest&&e.target.closest('[data-istab]');
   if(_ist){const _nt=_ist.getAttribute('data-istab');
     /* 手工切换 tab：清掉「从汇总表跳转」带来的账号筛选，避免下一个 tab 里筛着看不见的账号 */
@@ -16061,10 +16084,11 @@ function refTableHtml(){
     return '<tr>'+REF_COLS.map(function(c){
       const v=refShow(r,c.k);
       const long=(c.w>=150);
+      const isSku=(c.k==='sku'&&v);
       return '<td class="fbm-td"'
         +(c.right?' style="text-align:right;font-variant-numeric:tabular-nums"':'')
         +(long?' style="max-width:'+c.w+'px;overflow:hidden;text-overflow:ellipsis"':'')
-        +' title="'+esc(v)+'">'+(v?esc(v):'<span class="fbm-nil">—</span>')+'</td>';
+        +' title="'+esc(v)+'">'+(isSku?('<a class="sku-jump" data-gorefsku="'+esc(v)+'" title="点击跳转到产品按灯">'+esc(v)+'</a>'):(v?esc(v):'<span class="fbm-nil">—</span>'))+'</td>';
     }).join('')+'</tr>';
   }).join('')||('<tr><td colspan="'+REF_VIEW_N+'" style="text-align:center;padding:30px" class="fbm-nil">没有匹配的记录</td></tr>');
   return '<table class="fbm-tbl">'+head+'<tbody>'+body+'</tbody></table>';
@@ -16984,12 +17008,12 @@ function lightBuild(){
 /* ── 销售表导入：按表头识别字段，按 SKU 求和 ── */
 var LIGHT_SALE_COLS=[
   {k:'sku',label:'SKU',a:['SKU','SKU编码','商品SKU','商品编码','商品编号','SKU码']},
-  {k:'sale',label:'销售额',a:['销售额','销售金额','销售总额','GMV','成交额','支付金额','销售金额RMB']},
+  {k:'sale',label:'销售额',a:['销售额','毛销售额','销售金额','销售总额','GMV','成交额','支付金额','销售金额RMB']},
   {k:'profit',label:'利润',a:['利润','毛利','毛利润','净利润','利润额']},
   {k:'qty',label:'卖出销量',a:['卖出销量','销量','销售数量','销售件数','出库量','销售个数']}
 ];
 function lightHeadIdx(label){
-  var t=String(label==null?'':label).replace(/\s/g,'').replace(/（/g,'(').replace(/）/g,')').replace(/[＊*:：]/g,'').toLowerCase();
+  var t=String(label==null?'':label).replace(/\s/g,'').replace(/（/g,'(').replace(/）/g,')').replace(/[＊*:：¥￥$,]/g,'').toLowerCase();
   if(!t)return null;
   var best=null,bestLen=0;
   LIGHT_SALE_COLS.forEach(function(c,i){
@@ -17055,11 +17079,19 @@ function lightClearSales(){
 }
 /* ── 视图 ── */
 var lightSearch='',lightPage=1,lightSort='phiDesc';
+var lightF={state:'',cat1:'',cat2:'',grade:'',phi:''};
+function lightPhiBand(p){p=Number(p)||0;if(p>=90)return 'ge90';if(p>80)return '80to90';if(p>70)return '70to80';if(p>60)return '60to70';if(p>50)return '50to60';if(p>30)return '30to50';return 'lt30';}
 function lightPct(x){return (x==null||!isFinite(x))?'—':(Math.round(x*10000)/100).toFixed(2)+'%';}
 function lightFmt(n,d){return refFmtNum(n,d==null?0:d);}
 function lightList(){
   var rows=lightBuild().rows.slice(),q=String(lightSearch||'').trim().toLowerCase();
   if(q)rows=rows.filter(function(r){return [r.sku,r.state,r.cat1,r.cat2].some(function(v){return String(v==null?'':v).toLowerCase().indexOf(q)>=0;});});
+  var F=lightF||{};
+  if(F.state)rows=rows.filter(function(r){return r.state===F.state;});
+  if(F.cat1)rows=rows.filter(function(r){return r.cat1===F.cat1;});
+  if(F.cat2)rows=rows.filter(function(r){return r.cat2===F.cat2;});
+  if(F.grade)rows=rows.filter(function(r){return (r.grade||'').charAt(0)===F.grade;});
+  if(F.phi)rows=rows.filter(function(r){return lightPhiBand(r.phi)===F.phi;});
   var s=lightSort;
   rows.sort(function(a,b){
     if(s==='phiAsc')return a.phi-b.phi;
@@ -17072,6 +17104,26 @@ function lightList(){
   return rows;
 }
 function lightLvClass(light){return light==='红灯'?'ll-red':(light==='黄灯'?'ll-yellow':(light==='绿灯'?'ll-green':''));}
+function lightOverviewHtml(){
+  var rows=lightBuild().rows,cnt={S:0,A:0,B:0,C:0,D:0,E:0,F:0};
+  rows.forEach(function(r){var g=(r.grade||'').charAt(0);if(cnt[g]!=null)cnt[g]++;});
+  var meta={S:['明星','lg-g-S'],A:['优秀','lg-g-A'],B:['良好','lg-g-B'],C:['合格','lg-g-C'],D:['预警','lg-g-D'],E:['危险','lg-g-E'],F:['淘汰','lg-g-F']};
+  var cur=(lightF&&lightF.grade)||'';
+  var cards=['S','A','B','C','D','E','F'].map(function(g){
+    var m=meta[g];return '<button class="lg-card '+m[1]+(cur===g?' on':'')+'" data-lggrade="'+g+'" title="点击筛选 '+g+'级'+m[0]+'产品，再点取消">'
+      +'<span class="lg-card-g">'+g+'级</span><span class="lg-card-n">'+cnt[g]+'</span><span class="lg-card-t">'+m[0]+'</span></button>';
+  }).join('');
+  return '<div class="lg-overview" id="lightOverview"><div class="lg-ov-hd">按灯类型数据总览 <span class="lg-ov-hint">共 '+rows.length+' 个 SKU · 点击卡片筛选</span></div><div class="lg-cards">'+cards+'</div></div>';
+}
+function lightOpts(k){
+  var rows=lightBuild().rows,set={};
+  rows.forEach(function(r){
+    var v=k==='grade'?((r.grade||'').charAt(0)):(k==='phi'?lightPhiBand(r.phi):r[k]);
+    if(v)set[v]=1;
+  });
+  var arr=Object.keys(set).sort();
+  return '<option value="">全部</option>'+arr.map(function(v){return '<option value="'+esc(v)+'"'+((lightF&&lightF[k])===v?' selected':'')+'>'+esc(v)+'</option>';}).join('');
+}
 function lightTableHtml(){
   var cfg=lightCfg();
   var rows=lightList(),pages=Math.max(1,Math.ceil(rows.length/isPageSize));
@@ -17100,7 +17152,7 @@ function lightTableHtml(){
   function td(v,cls,title){return '<td'+(cls?' class="'+cls+'"':'')+(title?' title="'+esc(title)+'"':'')+'>'+(v===''||v==null?'<span class="fbm-nil">—</span>':v)+'</td>';}
   var body=part.map(function(r){
     var s='<tr>';
-    s+=td(esc(r.sku),'lg-sku',r.sku);
+    s+='<td class="lg-sku"><a class="sku-jump" data-golightsku="'+esc(r.sku)+'" title="点击跳转到退款明细">'+esc(r.sku)+'</a></td>';
     s+=td(esc(r.state));s+=td(esc(r.cat1));s+=td(esc(r.cat2));
     s+=td(lightFmt(r.sale,2))+td(String(r.sSale),lightLvClass(r.lightSale))+td('<b>'+r.tSale.toFixed(1)+'</b>','lg-total');
     s+=td(lightFmt(r.profit,2))+td(lightPct(r.profitRate))+td(String(r.sMargin),lightLvClass(r.lightMargin))+td('<b>'+r.tMargin.toFixed(1)+'</b>','lg-total');
@@ -17126,6 +17178,7 @@ function lightPagerHtml(){
 function lightRefresh(){
   var t=document.getElementById('lightTableWrap');if(t)t.innerHTML=lightTableHtml();
   var p=document.getElementById('lightPager');if(p)p.innerHTML=lightPagerHtml();
+  var o=document.getElementById('lightOverview');if(o)o.innerHTML=lightOverviewHtml();
 }
 function lightExport(){
   var rows=lightList(),cfg=lightCfg();
@@ -17153,8 +17206,16 @@ function lightSection(){
       +'<div class="is-ed">需先在「退款明细」上传原表；且 SKU 的开发时间距今需满 3 个月。<br>销售额 / 利润 / 卖出销量可再导入一份销售表（按表头识别、按 SKU 求和）。</div>'
       +'<button class="btn" id="lightUploadBtn">⬆ 导入销售数据</button>'+fileInput+'</div>';
   }
-  var bar='<div class="toolbar is-bar">'
-    +'<input id="lightSearch" class="search" style="width:300px;flex:0 0 auto;min-width:180px" placeholder="🔍 搜索 SKU / 商品状态 / 分类" value="'+esc(lightSearch)+'">'
+  var bar='<div class="toolbar is-bar lg-toolbar">'
+    +'<input id="lightSearch" class="search" style="width:230px;flex:0 0 auto;min-width:160px" placeholder="🔍 搜索 SKU / 状态 / 分类" value="'+esc(lightSearch)+'">'
+    +'<span class="is-sel"><label>商品状态</label><select id="lightFState">'+lightOpts('state')+'</select></span>'
+    +'<span class="is-sel"><label>一级分类</label><select id="lightFCat1">'+lightOpts('cat1')+'</select></span>'
+    +'<span class="is-sel"><label>二级分类</label><select id="lightFCat2">'+lightOpts('cat2')+'</select></span>'
+    +'<span class="is-sel"><label>按灯类型</label><select id="lightFGrade">'+lightOpts('grade')+'</select></span>'
+    +'<span class="is-sel"><label>PHI区间</label><select id="lightFPhi"><option value="">全部</option>'
+    +[['ge90','≥90'],['80to90','80~90'],['70to80','70~80'],['60to70','60~70'],['50to60','50~60'],['30to50','30~50'],['lt30','<30']].map(function(o){
+      return '<option value="'+o[0]+'"'+((lightF&&lightF.phi)===o[0]?' selected':'')+'>'+o[1]+'</option>';
+    }).join('')+'</select></span>'
     +'<span class="is-sel"><label>排序</label><select id="lightSortSel">'
     +[['phiDesc','PHI总得分 ↓'],['phiAsc','PHI总得分 ↑'],['lossDesc','报损率 ↓'],['saleDesc','销售额 ↓'],['refDesc','退款金额 ↓'],['sku','SKU']].map(function(o){
       return '<option value="'+o[0]+'"'+(lightSort===o[0]?' selected':'')+'>'+o[1]+'</option>';
@@ -17167,7 +17228,7 @@ function lightSection(){
   var note='<div class="fbm-note">来源：退款明细按 SKU 去重同步（退款金额 / 退款单量求和；开发时间不足 3 个月的 '+built.excluded+' 条已剔除）'
     +(meta.file?(' · 销售数据：'+esc(meta.file)+' · '+esc(String(meta.at||'').slice(0,19).replace('T',' '))+' · '+meta.rows+' 行 → '+Object.keys(DATA.lightSales||{}).length+' 个 SKU'+(meta.miss&&meta.miss.length?('（未识别：'+esc(meta.miss.join('/'))+'）'):'')):' · 尚未导入销售数据（销售额 / 利润 / 卖出销量为 0）')
     +' · 报损率=退款金额÷销售额 · 利润率=利润÷销售额 · 退款单率=退款单量÷卖出销量 · 各项总分=得分×占比 · PHI=四项总分之和 · 规则可在「模块设置 · 达标设置 ⑥」调整</div>';
-  return bar+'<div class="fbm-scroll" id="lightScroll"><div id="lightTableWrap">'+lightTableHtml()+'</div></div>'
+  return lightOverviewHtml()+bar+'<div class="fbm-scroll" id="lightScroll"><div id="lightTableWrap">'+lightTableHtml()+'</div></div>'
     +'<div id="lightPager">'+lightPagerHtml()+'</div>'+note+fileInput;
 }
 /* ── 模块设置 · 达标设置 ⑥ 按灯数据设置 ── */
