@@ -1915,13 +1915,22 @@
   .sku-jump:hover{color:#1f6e4a;background:#eef8f1;border-radius:4px}
   .lg-toolbar{position:sticky;top:58px;z-index:8;background:#fff;padding:8px 0;border-bottom:1px solid #e6ede9;box-shadow:0 2px 6px rgba(0,0,0,.04)}
   .lg-overview{margin-bottom:12px;background:#fff;border:1px solid #e6ede9;border-radius:12px;padding:9px 14px}
-  .lg-ov-hd{font-weight:700;font-size:12.5px;color:#31564a;margin-bottom:8px}
+  .lg-ov-hd{font-weight:700;font-size:12.5px;color:#31564a;margin-bottom:8px;display:flex;align-items:center;flex-wrap:wrap}
+  .lg-ov-actions{margin-left:auto;display:flex;gap:6px;flex-wrap:wrap}
   .lg-ov-hint{font-weight:400;font-size:11.5px;color:#8a93a0;margin-left:8px}
   .lg-cards{display:flex;flex-wrap:wrap;gap:8px}
   .lg-card{display:inline-flex;flex-direction:row;align-items:center;gap:7px;min-width:0;padding:5px 12px;border:1.5px solid transparent;border-radius:8px;cursor:pointer;font-family:inherit;transition:.15s}
   .lg-card:hover{transform:translateY(-1px);box-shadow:0 2px 8px rgba(0,0,0,.08)}
   .lg-card.on{border-color:#2fa86c;box-shadow:0 0 0 2px rgba(47,168,108,.25)}
   .lg-card.lg-card-na{background:#eef1f4;color:#7a8692}
+  /* 卡片颜色跟表格等级色一致，只是浅底 + 深字，不用大色块 */
+  .lg-card.lg-g-S{background:#d8f3dc;color:#166534}
+  .lg-card.lg-g-A{background:#e7f7ea;color:#2f7d3a}
+  .lg-card.lg-g-B{background:#f0f7d9;color:#5d7d1e}
+  .lg-card.lg-g-C{background:#fff6d8;color:#8a6d00}
+  .lg-card.lg-g-D{background:#ffeccc;color:#a35b1c}
+  .lg-card.lg-g-E{background:#fde0d0;color:#b5501a}
+  .lg-card.lg-g-F{background:#fadbd8;color:#a33}
   .lg-card-g{font-size:12px;font-weight:700;opacity:.9;white-space:nowrap}
   .lg-card-n{font-size:18px;font-weight:700;line-height:1;font-variant-numeric:tabular-nums}
   .lg-card-t{font-size:11px;opacity:.8;white-space:nowrap}
@@ -17295,7 +17304,14 @@ function lightOverviewHtml(){
   }).join('');
   cards+='<button class="lg-card lg-card-na'+(cur==='__na'?' on':'')+'" data-lggrade="__na" title="点击筛选不考核产品，再点取消">'
     +'<span class="lg-card-g">不考核</span><span class="lg-card-n">'+cnt.NA+'</span><span class="lg-card-t">不计分级</span></button>';
-  return '<div class="lg-overview" id="lightOverview"><div class="lg-ov-hd">按灯类型数据总览 <span class="lg-ov-hint">共 '+rows.length+' 个 SKU · 点击卡片筛选</span></div><div class="lg-cards">'+cards+'</div></div>';
+  /* 导出 / 更换销售数据 / 清空数据 放到总览标题右侧（用户 2026-11-17 要求） */
+  var sm=DATA.lightSalesMeta||{};
+  var acts='<span class="lg-ov-actions">'
+    +'<button class="btn ghost xs" id="lightExportBtn">⬇ 导出</button>'
+    +'<button class="btn ghost xs" id="lightUploadBtn">⬆ '+(sm.file?'更换销售数据':'导入销售数据')+'</button>'
+    +(sm.file?'<button class="btn ghost xs" id="lightClearBtn">🗑 清空销售数据</button>':'')
+    +'</span>';
+  return '<div class="lg-overview" id="lightOverview"><div class="lg-ov-hd">按灯类型数据总览 <span class="lg-ov-hint">共 '+rows.length+' 个 SKU · 点击卡片筛选</span>'+acts+'</div><div class="lg-cards">'+cards+'</div></div>';
 }
 function lightOpts(k){
   var rows=lightBuild().rows,set={},arr;
@@ -17427,10 +17443,6 @@ function lightSection(){
     +[['phiDesc','PHI总得分 ↓'],['phiAsc','PHI总得分 ↑'],['lossDesc','报损率 ↓'],['saleDesc','销售额 ↓'],['refDesc','退款金额 ↓'],['sku','SKU']].map(function(o){
       return '<option value="'+o[0]+'"'+(lightSort===o[0]?' selected':'')+'>'+o[1]+'</option>';
     }).join('')+'</select></span>'
-    +'<span style="flex:1 1 auto"></span>'
-    +'<button class="btn ghost" id="lightExportBtn">⬇ 导出</button>'
-    +'<button class="btn ghost" id="lightUploadBtn">⬆ '+(meta.file?'更换销售数据':'导入销售数据')+'</button>'
-    +(meta.file?'<button class="btn ghost" id="lightClearBtn">🗑 清空销售数据</button>':'')
     +'</div>';
   var lc=(DATA.lightDailyMeta&&DATA.lightDailyMeta.lastClean)?(' · 最近一次满期清洗：'+esc(String(DATA.lightDailyMeta.lastClean.at||''))+'，保留 '+DATA.lightDailyMeta.lastClean.kept+' 个、删除 '+DATA.lightDailyMeta.lastClean.removed+' 个'):'';
   var note='<div class="fbm-note">数值口径：销售额 / 利润 / 退款金额 / 卖出销量 / 退款单量均取<b>最近 3 个月每日值之和</b>（同日重导入覆盖、不累加；日值之间不互相求和）'
