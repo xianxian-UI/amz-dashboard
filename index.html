@@ -1904,6 +1904,10 @@
   .lg-tbl th.lg-total{color:#c0392b}
   .lg-tbl th.lg-phi{background:#fff6cc;color:#8a6d00;text-align:center}
   .lg-tbl th.lg-type{background:#d9ecff;color:#1c5fa8;text-align:center}
+  .lg-tbl th.lg-assess{background:#f2f0ff;color:#5b4ea8;text-align:center}
+  .lg-tbl th.lg-full3m{background:#e8f6f2;color:#20735c;text-align:center}
+  .lg-tbl td.lg-yes{background:#eaf7ee;color:#1e824c;font-weight:700;text-align:center}
+  .lg-tbl td.lg-no{background:#f4f6f8;color:#8a93a0;text-align:center}
   .lg-tbl td.lg-total{color:#c0392b;font-variant-numeric:tabular-nums}
   .lg-tbl td.lg-phi{background:#fff9db;text-align:center;font-variant-numeric:tabular-nums}
   .lg-tbl td.lg-sku{font-weight:700;color:#2f4a3e}
@@ -1917,6 +1921,7 @@
   .lg-card{display:inline-flex;flex-direction:row;align-items:center;gap:7px;min-width:0;padding:5px 12px;border:1.5px solid transparent;border-radius:8px;cursor:pointer;font-family:inherit;transition:.15s}
   .lg-card:hover{transform:translateY(-1px);box-shadow:0 2px 8px rgba(0,0,0,.08)}
   .lg-card.on{border-color:#2fa86c;box-shadow:0 0 0 2px rgba(47,168,108,.25)}
+  .lg-card.lg-card-na{background:#eef1f4;color:#7a8692}
   .lg-card-g{font-size:12px;font-weight:700;opacity:.9;white-space:nowrap}
   .lg-card-n{font-size:18px;font-weight:700;line-height:1;font-variant-numeric:tabular-nums}
   .lg-card-t{font-size:11px;opacity:.8;white-space:nowrap}
@@ -2865,6 +2870,21 @@ function migrateData(d){
   if(!d.lightSales||typeof d.lightSales!=='object'||Array.isArray(d.lightSales))d.lightSales={};
   if(!d.lightSalesAt)d.lightSalesAt='';
   if(!d.lightSalesMeta||typeof d.lightSalesMeta!=='object')d.lightSalesMeta=null;
+  /* 产品按灯 · 最近 3 个月每日值历史（2026-11 新增）
+     {sku:{first:'YYYY-MM-DD',lastClean:0,meta:{state,cat1,cat2,devTime},d:{'YYYY-MM-DD':[sale,profit,qty,refAmt,refCnt]}}}
+     同日同 SKU 再次导入 = 覆盖不累加；表格取窗口内各日之和。老版本 lightSales 一次性迁移成「导入日」那一份日值。 */
+  if(!d.lightDaily||typeof d.lightDaily!=='object'||Array.isArray(d.lightDaily))d.lightDaily={};
+  if(!d.lightDailyMeta||typeof d.lightDailyMeta!=='object'||Array.isArray(d.lightDailyMeta))d.lightDailyMeta={};
+  if(!d.lightDailyVer)d.lightDailyVer=0;
+  if(!d.lightDailyMigrated){
+    var _lday=(d.lightSalesAt?String(d.lightSalesAt).slice(0,10):'')||todayStr();
+    Object.keys(d.lightSales).forEach(function(sk){
+      var v=d.lightSales[sk]||{},o=d.lightDaily[sk]||(d.lightDaily[sk]={first:_lday,lastClean:0,meta:{},d:{}});
+      if(!o.d[_lday])o.d[_lday]=[Number(v.sale)||0,Number(v.profit)||0,Number(v.qty)||0,0,0];
+      if(!o.first||_lday<o.first)o.first=_lday;
+    });
+    d.lightDailyMigrated=1;
+  }
   if(!d.accSrc||typeof d.accSrc!=='object'||Array.isArray(d.accSrc))d.accSrc={};
   if(!d.accSrcMeta||typeof d.accSrcMeta!=='object')d.accSrcMeta={file:'',at:''};
   /* 数据来源标记：builtin=文件内置底稿（打包快照）/ upload=本机上传过 / pkg=导入了数据包 */
@@ -7922,7 +7942,8 @@ function secDiff(){
     closeCases: 'policy', policySync: 'policy', policyReadAt: 'policy', riskReadAt: 'policy',
     riskLogicVer: 'policy', riskSig: 'policy', riskBuiltAt: 'policy',
     fbmIssues: 'issue', fbmMeta: 'issue', otdMeta: 'issue',
-    lightSales: 'issue', lightSalesAt: 'issue', lightSalesMeta: 'issue'
+    lightSales: 'issue', lightSalesAt: 'issue', lightSalesMeta: 'issue',
+    lightDaily: 'issue', lightDailyMeta: 'issue', lightDailyVer: 'issue', lightDailyMigrated: 'issue'
   };
   Object.keys(DATA).forEach(function (k) {
     if (skip[k]) return;
@@ -10021,8 +10042,8 @@ document.getElementById('app').addEventListener('change',e=>{
   if(id==='lightFile'){const _lf=e.target.files&&e.target.files[0];e.target.value='';if(_lf)lightReadFile(_lf);return;}
   if(id==='lightSearch'){lightSearch=e.target.value;lightPage=1;lightRefresh();return;}
   if(id==='lightSortSel'){lightSort=e.target.value||'phiDesc';lightPage=1;lightRefresh();return;}
-  if(id==='lightFState'||id==='lightFCat1'||id==='lightFCat2'||id==='lightFGrade'||id==='lightFPhi'){
-    var _fk={lightFState:'state',lightFCat1:'cat1',lightFCat2:'cat2',lightFGrade:'grade',lightFPhi:'phi'}[id];
+  if(id==='lightFState'||id==='lightFCat1'||id==='lightFCat2'||id==='lightFGrade'||id==='lightFAssess'||id==='lightFDev'||id==='lightF3m'||id==='lightFPhi'){
+    var _fk={lightFState:'state',lightFCat1:'cat1',lightFCat2:'cat2',lightFGrade:'grade',lightFAssess:'assess',lightFDev:'dev',lightF3m:'full3m',lightFPhi:'phi'}[id];
     lightF=lightF||{};lightF[_fk]=e.target.value;lightPage=1;lightRefresh();return;
   }
   if(id==='refColSel'){refColSel=e.target.value;refSearch='';refPage=1;render();return;}
@@ -10720,7 +10741,7 @@ document.getElementById('app').addEventListener('click',e=>{
   const _gocx=e.target.closest&&e.target.closest('[data-goclear]');
   if(_gocx){goCtx=null;isSearch='';isColSel='';pcSearch='';otdSearch='';otdColF={};isPage=1;otdPage=1;curPage=1;render();return;}
   const _grs=e.target.closest&&e.target.closest('[data-gorefsku]');
-  if(_grs){const _sk=_grs.getAttribute('data-gorefsku')||'';lightF={state:'',cat1:'',cat2:'',grade:'',phi:''};lightSearch=_sk;lightPage=1;goCtx=null;isTab='light';render();return;}
+  if(_grs){const _sk=_grs.getAttribute('data-gorefsku')||'';lightF={state:'',cat1:'',cat2:'',grade:'',assess:'',dev:'',full3m:'',phi:''};lightSearch=_sk;lightPage=1;goCtx=null;isTab='light';render();return;}
   const _gls=e.target.closest&&e.target.closest('[data-golightsku]');
   if(_gls){const _sk=_gls.getAttribute('data-golightsku')||'';refF={site:'',acc:'',issueCat:'',refReason:'',region:'',cs:'',cat1:'',d1:'',d2:''};refColSel='sku';refSearch=_sk;refExact=true;refPage=1;goCtx=null;isTab='ref';render();return;}
   const _lgg=e.target.closest&&e.target.closest('[data-lggrade]');
@@ -16582,6 +16603,12 @@ function refImportRows(rows,fname){
   REF.meta={file:String(fname||''),at:todayStr(),hit:hitN,miss:missLabels.slice(0,20)};
   REF.state='loaded';
   REF.ver=(REF.ver||0)+1;
+  /* 产品按灯 · 3 个月每日值：本次文件覆盖的退款日期区间整体替换（同日不累加），
+     用 out（裁剪 30 天之前的原始行）保证 3 个月历史不会因为明细只留 30 天而断档 */
+  try{
+    var histRows=(typeof refIsDropped==='function')?out.filter(function(r){return !refIsDropped(r);}):out;
+    lightHistFromRef(histRows,[d1,d2]);
+  }catch(e){}
   /* 环比快照：没有基数就记这一份；跨月（每月 1~3 日那次导入）才滚动成「本月 vs 上月」 */
   try{refAnaRoll();}catch(e){}
   refSave();
@@ -16951,61 +16978,181 @@ function lightLight(row,x){
   var m=lightMatch(row,x);
   return m?m.light:'';
 }
-/* ── 从退款明细按 SKU 去重聚合 + 销售表求和 → 全部派生值 ── */
-var LIGHT_CACHE=null;
+/* ── 产品按灯 · 最近 3 个月「每日值」历史（2026-11 新增） ──
+   DATA.lightDaily[sku]={first,lastClean,meta:{state,cat1,cat2,devTime},d:{'YYYY-MM-DD':[sale,profit,qty,refAmt,refCnt]}}
+   口径（用户已确认）：每天导入一份日值；同一天重导入覆盖、不累加；跨天值不互相累加到日值里，
+   表格显示的是「最近 3 个月窗口内每日值之和」（自动计算总和）。窗口 = 今天往前 3 个自然月。 */
+var LIGHT_DAY_IX={sale:0,profit:1,qty:2,refAmt:3,refCnt:4};
+var LIGHT_CACHE=null,LIGHT_SAVE_T=null;
+function lightDailyStore(){
+  if(!DATA.lightDaily||typeof DATA.lightDaily!=='object'||Array.isArray(DATA.lightDaily))DATA.lightDaily={};
+  return DATA.lightDaily;
+}
+function lightDailyTouch(){DATA.lightDailyVer=(Number(DATA.lightDailyVer)||0)+1;LIGHT_CACHE=null;}
+function lightDailyPersist(){
+  if(LIGHT_SAVE_T)clearTimeout(LIGHT_SAVE_T);
+  LIGHT_SAVE_T=setTimeout(function(){LIGHT_SAVE_T=null;try{save();}catch(e){}},800);
+}
 function lightThreeMonthsAgo(){var d=new Date();d.setMonth(d.getMonth()-3);return d.getTime();}
+function lightCutoff(){
+  var d=new Date();d.setMonth(d.getMonth()-3);
+  return d.getFullYear()+'-'+('0'+(d.getMonth()+1)).slice(-2)+'-'+('0'+d.getDate()).slice(-2);
+}
+function lightMonthIdx(day){var p=String(day||'').slice(0,7).split('-');return (Number(p[0])||0)*12+(Number(p[1])||0)-1;}
+function lightHistEnt(sku,day){
+  var st=lightDailyStore(),o=st[sku];
+  if(!o)o=st[sku]={first:day,lastClean:0,meta:{},d:{}};
+  if(!o.d||typeof o.d!=='object'||Array.isArray(o.d))o.d={};
+  if(!o.meta||typeof o.meta!=='object'||Array.isArray(o.meta))o.meta={};
+  if(!o.first||day<o.first)o.first=day;
+  return o;
+}
+/* 某段日期里的指定字段整体替换（只清这些字段，不动其它指标） */
+function lightHistClearRange(d1,d2,fields){
+  if(!d1||!d2||d1>d2||!fields||!fields.length)return;
+  var st=lightDailyStore(),n=0;
+  Object.keys(st).forEach(function(sk){
+    var o=st[sk];Object.keys(o.d||{}).forEach(function(day){
+      if(day<d1||day>d2)return;
+      var a=o.d[day]||[0,0,0,0,0];
+      fields.forEach(function(k){a[LIGHT_DAY_IX[k]]=0;});
+      o.d[day]=a;n++;
+    });
+  });
+  if(n)lightDailyTouch();
+}
+function lightHistPut(sku,day,vals,fields,meta){
+  if(!sku||!day)return;
+  var o=lightHistEnt(sku,day),a=o.d[day]||[0,0,0,0,0];
+  (fields||[]).forEach(function(k){a[LIGHT_DAY_IX[k]]=Number(vals[k])||0;});
+  o.d[day]=a;
+  if(meta)['state','cat1','cat2','devTime'].forEach(function(k){if(meta[k]&&!o.meta[k])o.meta[k]=meta[k];});
+  lightDailyTouch();
+}
+/* 退款明细导入：按「SKU × 退款日」聚合后写历史；range=[d1,d2] 为本次文件覆盖的退款日期区间 */
+function lightHistFromRef(rows,range){
+  if(!Array.isArray(rows)||!rows.length)return;
+  var d1=range&&range[0],d2=range&&range[1];
+  lightHistClearRange(d1,d2,['refAmt','refCnt']);
+  var agg={};
+  rows.forEach(function(r){
+    var sku=refVal(r,'sku');if(!sku)return;
+    var day=refDayKey(refVal(r,'refTime'))||todayStr();
+    var a=agg[sku]||(agg[sku]={}),v=a[day]||(a[day]={refAmt:0,refCnt:0,meta:{}});
+    v.refAmt+=refNumK(refVal(r,'refAmt'));v.refCnt++;
+    ['state','cat1','cat2','devTime'].forEach(function(k){
+      if(!v.meta[k])v.meta[k]=(k==='devTime')?refDayKey(refVal(r,'devTime')):refVal(r,k);
+    });
+  });
+  Object.keys(agg).forEach(function(sk){
+    Object.keys(agg[sk]).forEach(function(day){
+      var v=agg[sk][day],o=lightHistEnt(sk,day),a=o.d[day]||[0,0,0,0,0];
+      a[3]=v.refAmt;a[4]=v.refCnt;o.d[day]=a;
+      ['state','cat1','cat2','devTime'].forEach(function(k){if(v.meta[k]&&!o.meta[k])o.meta[k]=v.meta[k];});
+    });
+  });
+  if(Object.keys(agg).length)lightDailyTouch();
+}
+/* 滚动只留 3 个月：窗口外的日值直接丢 */
+function lightDailyPrune(){
+  var cut=lightCutoff(),stamp=cut+'|p';
+  if(DATA.lightDailyMeta.pruneStamp===stamp)return 0;
+  var st=lightDailyStore(),n=0;
+  Object.keys(st).forEach(function(sk){
+    var o=st[sk];Object.keys(o.d||{}).forEach(function(day){if(day<cut){delete o.d[day];n++;}});
+  });
+  DATA.lightDailyMeta.pruneStamp=stamp;
+  if(n){lightDailyTouch();lightDailyPersist();}
+  return n;
+}
+/* 新一轮清洗：SKU 首次出现那个月算第 1 个月，第 5 个月 1 日起执行一次，之后每 5 个月一次。
+   判定口径（用户确认）：清洗当时「问题明细」里有这个 SKU 就保留，否则整条历史删除。
+   ⚠ 问题明细没载入 / 为空时绝不删，防网络失败把数据清空。 */
+function lightDailyCycleClean(){
+  if(!REF.rows||!REF.rows.length)return 0;
+  var now=todayStr(),stamp=now+'|c'+(REF.ver||0);
+  if(DATA.lightDailyMeta.cleanStamp===stamp)return 0;
+  var skuSet={};REF.rows.forEach(function(r){var s=refVal(r,'sku');if(s)skuSet[s]=1;});
+  var st=lightDailyStore(),n=0,kept=0;
+  Object.keys(st).forEach(function(sk){
+    var o=st[sk],first=o.first||now,elapsed=lightMonthIdx(now)-lightMonthIdx(first);
+    if(elapsed<4)return;                                   /* 还没到第 5 个月 */
+    var cycle=Math.floor((elapsed-4)/5)+1;                 /* 5/10/15…月各一次；错过当月下次打开补做 */
+    if(cycle<=(Number(o.lastClean)||0))return;
+    o.lastClean=cycle;
+    if(!skuSet[sk]){delete st[sk];n++;}else kept++;
+  });
+  DATA.lightDailyMeta.cleanStamp=stamp;
+  if(n||kept){DATA.lightDailyMeta.lastClean={at:now,removed:n,kept:kept};lightDailyTouch();lightDailyPersist();}
+  return n;
+}
+/* ── 3 个月每日值历史 + 当前问题明细 → 表格行 ── */
 function lightBuild(){
-  var cfg=lightCfg(),sales=lightSales();
-  var key=(REF.ver||0)+'|'+(REF.rows||[]).length+'|'+(DATA.lightSalesAt||'')+'|'+JSON.stringify(cfg)+'|'+JSON.stringify(sales);
+  lightDailyPrune();lightDailyCycleClean();
+  var cfg=lightCfg(),st=lightDailyStore(),cut=lightCutoff();
+  var key=(REF.ver||0)+'|'+(REF.rows||[]).length+'|'+(DATA.lightDailyVer||0)+'|'+(DATA.lightSalesAt||'')+'|'+JSON.stringify(cfg);
   if(LIGHT_CACHE&&LIGHT_CACHE.key===key)return LIGHT_CACHE.data;
-  var cutoff=lightThreeMonthsAgo(),map={},excluded=0;
+  var cur={},out=[];
+  /* 当前问题明细：新推 SKU 立即可见，也给历史缺字段兜底 */
   (REF.rows||[]).forEach(function(r){
     var sku=refVal(r,'sku');if(!sku)return;
-    var dt=refDayKey(refVal(r,'devTime')),ep=dt?refEpoch(dt):null;
-    /* 全部同步：开发时间不足 3 个月也同步，仅在按灯类型标注「未超3个月不考核」 */
-    var o=map[sku];
-    if(!o)o=map[sku]={sku:sku,state:'',cat1:'',cat2:'',devTime:dt,devWithin3m:(ep==null||ep>cutoff),refAmt:0,refCnt:0};
+    var o=cur[sku]||(cur[sku]={state:'',cat1:'',cat2:'',devTime:'',refAmt:0,refCnt:0});
     if(!o.state)o.state=refVal(r,'goodsState');
     if(!o.cat1)o.cat1=refVal(r,'cat1');
     if(!o.cat2)o.cat2=refVal(r,'cat2');
-    o.refAmt+=refNumK(refVal(r,'refAmt'));
-    o.refCnt+=1;
+    if(!o.devTime)o.devTime=refDayKey(refVal(r,'devTime'));
+    o.refAmt+=refNumK(refVal(r,'refAmt'));o.refCnt+=1;
   });
-  var out=[];
-  Object.keys(map).forEach(function(sku){
-    var o=map[sku],s=sales[sku]||{};
-    var sale=Number(s.sale)||0,profit=Number(s.profit)||0,qty=Number(s.qty)||0;
-    var lossRate=sale>0?o.refAmt/sale:0;
-    var profitRate=sale>0?profit/sale:0;
-    var orderRate=qty>0?o.refCnt/qty:0;
-    /* 口径：得分表的区间按「百分比数值」配置（如 2、10），比率需 ×100 再匹配；
-       销售额是金额原值，不换算。显示时才用 lightPct 转回百分数。 */
+  /* 历史：窗口内逐日求和（同日不重复累加，跨日才是合计） */
+  var hist={};
+  Object.keys(st).forEach(function(sk){
+    var o=st[sk],t={sale:0,profit:0,qty:0,refAmt:0,refCnt:0,months:{}},any=false;
+    Object.keys(o.d||{}).forEach(function(day){
+      if(day<cut)return;
+      var a=o.d[day]||[0,0,0,0,0];
+      if(a[0]||a[1]||a[2]||a[3]||a[4]){
+        any=true;t.sale+=a[0];t.profit+=a[1];t.qty+=a[2];t.refAmt+=a[3];t.refCnt+=a[4];
+        t.months[day.slice(0,7)]=1;
+      }
+    });
+    if(any)hist[sk]={t:t,meta:o.meta||{}};
+  });
+  var universe={};Object.keys(cur).forEach(function(s){universe[s]=1;});Object.keys(hist).forEach(function(s){universe[s]=1;});
+  Object.keys(universe).forEach(function(sku){
+    var h=hist[sku],c=cur[sku]||{},m=(h&&h.meta)||{};
+    var t=h?h.t:{sale:0,profit:0,qty:0,refAmt:0,refCnt:0,months:{}};
+    var sale=t.sale,profit=t.profit,qty=t.qty,refAmt=t.refAmt,refCnt=t.refCnt;
+    /* 历史还没建起来时（旧快照刚载入）退款值回落到当前问题明细，页面不留白 */
+    if(!h){refAmt=c.refAmt||0;refCnt=c.refCnt||0;}
+    var devTime=c.devTime||m.devTime||'',ep=devTime?refEpoch(devTime):null;
+    var devWithin3m=(ep==null||ep>lightThreeMonthsAgo());
+    var lossRate=sale>0?refAmt/sale:0,profitRate=sale>0?profit/sale:0,orderRate=qty>0?refCnt/qty:0;
+    /* 口径：得分表区间按百分比数值配置（如 2、10），比率 ×100 后匹配；销售额是金额原值 */
     var lossPct=lossRate*100,profitPct=profitRate*100,orderPct=orderRate*100;
-    var rSale=lightMatch(cfg.dims.sale.rows,sale);
-    var rMargin=lightMatch(cfg.dims.margin.rows,profitPct);
-    var rLoss=lightMatch(cfg.dims.loss.rows,lossPct);
-    var rOrder=lightMatch(cfg.dims.order.rows,orderPct);
+    var rSale=lightMatch(cfg.dims.sale.rows,sale),rMargin=lightMatch(cfg.dims.margin.rows,profitPct),
+        rLoss=lightMatch(cfg.dims.loss.rows,lossPct),rOrder=lightMatch(cfg.dims.order.rows,orderPct);
     var sSale=rSale?rSale.score:0,sMargin=rMargin?rMargin.score:0,sLoss=rLoss?rLoss.score:0,sOrder=rOrder?rOrder.score:0;
     var tSale=sSale*(cfg.weights.sale||0)/100,tMargin=sMargin*(cfg.weights.margin||0)/100,
         tLoss=sLoss*(cfg.weights.loss||0)/100,tOrder=sOrder*(cfg.weights.order||0)/100;
-    var phi=tSale+tMargin+tLoss+tOrder;
-    var g=lightMatch(cfg.grades,phi);
-    /* 不考核判定：未超3个月优先，其次卖出销量<=1 */
+    var phi=tSale+tMargin+tLoss+tOrder,g=lightMatch(cfg.grades,phi);
+    /* 不考核不影响按灯类型的计算与取值，只单独标注（用户要求「栏里有对应数值」） */
     var notAssess='';
-    if(o.devWithin3m)notAssess='未超3个月不考核';
+    if(devWithin3m)notAssess='未超3个月不考核';
     else if(qty<=1)notAssess='销量过低不考核';
-    out.push({sku:sku,state:o.state,cat1:o.cat1,cat2:o.cat2,devTime:o.devTime,devWithin3m:!!o.devWithin3m,notAssess:notAssess,
-      sale:sale,profit:profit,qty:qty,refAmt:o.refAmt,refCnt:o.refCnt,
+    var full3m=Object.keys(t.months).length>=3;
+    out.push({sku:sku,state:c.state||m.state||'',cat1:c.cat1||m.cat1||'',cat2:c.cat2||m.cat2||'',devTime:devTime,
+      devWithin3m:!!devWithin3m,notAssess:notAssess,full3m:full3m,
+      sale:sale,profit:profit,qty:qty,refAmt:refAmt,refCnt:refCnt,
       lossRate:lossRate,profitRate:profitRate,orderRate:orderRate,
       sSale:sSale,sMargin:sMargin,sLoss:sLoss,sOrder:sOrder,
       tSale:tSale,tMargin:tMargin,tLoss:tLoss,tOrder:tOrder,phi:phi,
       grade:g?g.grade:'',status:g?g.status:'',
       lightSale:lightLight(cfg.zones.score,sSale),lightMargin:lightLight(cfg.zones.score,sMargin),
       lightLoss:lightLight(cfg.zones.score,sLoss),lightOrder:lightLight(cfg.zones.score,sOrder),
-      lightRate:(o.refCnt>1&&qty>1)?lightLight(cfg.zones.rate,orderPct):''
+      lightRate:(refCnt>1&&qty>1)?lightLight(cfg.zones.rate,orderPct):''
     });
   });
-  var data={rows:out,excluded:excluded};
+  var data={rows:out,excluded:0};
   LIGHT_CACHE={key:key,data:data};
   return data;
 }
@@ -17014,7 +17161,9 @@ var LIGHT_SALE_COLS=[
   {k:'sku',label:'SKU',a:['SKU','SKU编码','商品SKU','商品编码','商品编号','SKU码']},
   {k:'sale',label:'销售额',a:['销售额','毛销售额','销售金额','销售总额','GMV','成交额','支付金额','销售金额RMB']},
   {k:'profit',label:'利润',a:['利润','毛利','毛利润','净利润','利润额']},
-  {k:'qty',label:'卖出销量',a:['卖出销量','销量','销售数量','销售件数','出库量','销售个数']}
+  {k:'qty',label:'卖出销量',a:['卖出销量','销量','销售数量','销售件数','出库量','销售个数']},
+  /* 可选日期列：有就按文件里的日期落日值，没有就记到「导入当天」 */
+  {k:'date',label:'日期',a:['日期','统计日期','数据日期','订单日期','date','Date']}
 ];
 function lightHeadIdx(label){
   var t=String(label==null?'':label).replace(/\s/g,'').replace(/（/g,'(').replace(/）/g,')').replace(/[＊*:：¥￥$,]/g,'').toLowerCase();
@@ -17048,20 +17197,32 @@ function lightReadFileGo(file){
       if(n>bestN){bestN=n;hdr=i;idx=m;}
     }
     if(hdr<0||bestN<2||idx.sku==null){alert('没认出表头：文件需至少含「SKU」列，以及「销售额 / 利润 / 卖出销量」中的至少一列');return;}
-    var map={},cnt=0,miss=[];
-    LIGHT_SALE_COLS.forEach(function(c){if(idx[c.k]==null)miss.push(c.label);});
+    var map={},cnt=0,miss=[],byday={},days=[];
+    LIGHT_SALE_COLS.forEach(function(c){if(c.k==='date')return;if(idx[c.k]==null)miss.push(c.label);});
     for(var i=hdr+1;i<rows.length;i++){
       var r=rows[i]||[];
       var sku=String(r[idx.sku]==null?'':r[idx.sku]).trim();if(!sku)continue;
+      var day=idx.date!=null?(refDayKey(r[idx.date])||todayStr()):todayStr();
       var o=map[sku]||(map[sku]={sku:sku,sale:0,profit:0,qty:0});
-      ['sale','profit','qty'].forEach(function(k){if(idx[k]!=null)o[k]+=refNumK(r[idx[k]]);});
+      var bd=byday[day]||(byday[day]={}),bo=bd[sku]||(bd[sku]={sku:sku,sale:0,profit:0,qty:0});
+      ['sale','profit','qty'].forEach(function(k){if(idx[k]!=null){var v=refNumK(r[idx[k]]);o[k]+=v;bo[k]+=v;}});
+      if(days.indexOf(day)<0)days.push(day);
       cnt++;
     }
     if(!cnt){alert('表头下面没有可识别的数据行');return;}
+    /* 本次文件覆盖的日期整体替换：同日重导入覆盖不累加，跨天各自保留成一份日值 */
+    days.sort();
+    lightHistClearRange(days[0],days[days.length-1],['sale','profit','qty']);
+    Object.keys(byday).forEach(function(day){
+      Object.keys(byday[day]).forEach(function(sk){
+        var v=byday[day][sk];
+        lightHistPut(sk,day,{sale:v.sale,profit:v.profit,qty:v.qty},['sale','profit','qty']);
+      });
+    });
     DATA.lightSales=map;DATA.lightSalesAt=new Date().toISOString();
-    DATA.lightSalesMeta={file:file.name,at:DATA.lightSalesAt,rows:cnt,hit:bestN,miss:miss};
+    DATA.lightSalesMeta={file:file.name,at:DATA.lightSalesAt,rows:cnt,hit:bestN,miss:miss,dayCol:idx.date!=null,days:days.length};
     save();LIGHT_CACHE=null;render();
-    alert('导入完成：'+cnt+' 行 → '+Object.keys(map).length+' 个 SKU（按表头识别并求和）');
+    alert('导入完成：'+cnt+' 行 → '+Object.keys(map).length+' 个 SKU · '+days.length+' 天（按表头识别；同日重导入覆盖、不累加）');
   };
   if((ext==='xlsx'||ext==='xls')&&window.XLSX){
     rd.onload=function(){
@@ -17079,11 +17240,12 @@ function lightReadFileGo(file){
 function lightClearSales(){
   if(!confirm('将清空已导入的销售数据（销售额 / 利润 / 卖出销量），退款明细同步的来源不变。确定继续？'))return;
   DATA.lightSales={};DATA.lightSalesAt='';DATA.lightSalesMeta=null;
+  lightHistClearRange('0000-01-01','9999-12-31',['sale','profit','qty']);
   save();LIGHT_CACHE=null;render();
 }
 /* ── 视图 ── */
 var lightSearch='',lightPage=1,lightSort='phiDesc';
-var lightF={state:'',cat1:'',cat2:'',grade:'',phi:''};
+var lightF={state:'',cat1:'',cat2:'',grade:'',assess:'',dev:'',full3m:'',phi:''};
 function lightPhiBand(p){p=Number(p)||0;if(p>=90)return 'ge90';if(p>80)return '80to90';if(p>70)return '70to80';if(p>60)return '60to70';if(p>50)return '50to60';if(p>30)return '30to50';return 'lt30';}
 function lightPct(x){return (x==null||!isFinite(x))?'—':(Math.round(x*10000)/100).toFixed(2)+'%';}
 function lightFmt(n,d){return refFmtNum(n,d==null?0:d);}
@@ -17094,7 +17256,18 @@ function lightList(){
   if(F.state)rows=rows.filter(function(r){return r.state===F.state;});
   if(F.cat1)rows=rows.filter(function(r){return r.cat1===F.cat1;});
   if(F.cat2)rows=rows.filter(function(r){return r.cat2===F.cat2;});
-  if(F.grade)rows=rows.filter(function(r){return !r.notAssess&&(r.grade||'').charAt(0)===F.grade;});
+  /* 按灯类型：S~F 全部可筛；__na = 不考核（用户反馈「不是全部都能筛选 / 不考核没筛选」） */
+  if(F.grade){
+    if(F.grade==='__na')rows=rows.filter(function(r){return !!r.notAssess;});
+    else rows=rows.filter(function(r){return !r.notAssess&&(r.grade||'').charAt(0)===F.grade;});
+  }
+  /* 考核状态：__ok = 纳入考核，其余按具体不考核原因筛 */
+  if(F.assess){
+    if(F.assess==='__ok')rows=rows.filter(function(r){return !r.notAssess;});
+    else rows=rows.filter(function(r){return r.notAssess===F.assess;});
+  }
+  if(F.dev==='1'||F.dev==='0')rows=rows.filter(function(r){return !!r.devWithin3m===(F.dev==='1');});
+  if(F.full3m==='1'||F.full3m==='0')rows=rows.filter(function(r){return !!r.full3m===(F.full3m==='1');});
   if(F.phi)rows=rows.filter(function(r){return lightPhiBand(r.phi)===F.phi;});
   var s=lightSort;
   rows.sort(function(a,b){
@@ -17109,23 +17282,45 @@ function lightList(){
 }
 function lightLvClass(light){return light==='红灯'?'ll-red':(light==='黄灯'?'ll-yellow':(light==='绿灯'?'ll-green':''));}
 function lightOverviewHtml(){
-  var rows=lightBuild().rows,cnt={S:0,A:0,B:0,C:0,D:0,E:0,F:0};
-  rows.forEach(function(r){if(r.notAssess)return;var g=(r.grade||'').charAt(0);if(cnt[g]!=null)cnt[g]++;});
+  var rows=lightBuild().rows,cnt={S:0,A:0,B:0,C:0,D:0,E:0,F:0,NA:0};
+  rows.forEach(function(r){
+    if(r.notAssess){cnt.NA++;return;}
+    var g=(r.grade||'').charAt(0);if(cnt[g]!=null)cnt[g]++;
+  });
   var meta={S:['明星','lg-g-S'],A:['优秀','lg-g-A'],B:['良好','lg-g-B'],C:['合格','lg-g-C'],D:['预警','lg-g-D'],E:['危险','lg-g-E'],F:['淘汰','lg-g-F']};
   var cur=(lightF&&lightF.grade)||'';
   var cards=['S','A','B','C','D','E','F'].map(function(g){
     var m=meta[g];return '<button class="lg-card '+m[1]+(cur===g?' on':'')+'" data-lggrade="'+g+'" title="点击筛选 '+g+'级'+m[0]+'产品，再点取消">'
       +'<span class="lg-card-g">'+g+'级</span><span class="lg-card-n">'+cnt[g]+'</span><span class="lg-card-t">'+m[0]+'</span></button>';
   }).join('');
+  cards+='<button class="lg-card lg-card-na'+(cur==='__na'?' on':'')+'" data-lggrade="__na" title="点击筛选不考核产品，再点取消">'
+    +'<span class="lg-card-g">不考核</span><span class="lg-card-n">'+cnt.NA+'</span><span class="lg-card-t">不计分级</span></button>';
   return '<div class="lg-overview" id="lightOverview"><div class="lg-ov-hd">按灯类型数据总览 <span class="lg-ov-hint">共 '+rows.length+' 个 SKU · 点击卡片筛选</span></div><div class="lg-cards">'+cards+'</div></div>';
 }
 function lightOpts(k){
-  var rows=lightBuild().rows,set={};
-  rows.forEach(function(r){
-    var v=k==='grade'?((r.grade||'').charAt(0)):(k==='phi'?lightPhiBand(r.phi):r[k]);
-    if(v)set[v]=1;
-  });
-  var arr=Object.keys(set).sort();
+  var rows=lightBuild().rows,set={},arr;
+  if(k==='grade'){
+    var order=['S','A','B','C','D','E','F'];
+    rows.forEach(function(r){if(!r.notAssess&&r.grade)set[(r.grade||'').charAt(0)]=1;});
+    arr=order.filter(function(g){return set[g];});
+    if(rows.some(function(r){return !!r.notAssess;}))arr.push('__na');
+    return '<option value="">全部</option>'+arr.map(function(v){
+      return '<option value="'+esc(v)+'"'+((lightF&&lightF.grade)===v?' selected':'')+'>'+(v==='__na'?'不考核':esc(v)+'级')+'</option>';
+    }).join('');
+  }
+  if(k==='assess'){
+    arr=['__ok'];rows.forEach(function(r){if(r.notAssess)set[r.notAssess]=1;});
+    arr=arr.concat(Object.keys(set).sort());
+    return '<option value="">全部</option>'+arr.map(function(v){
+      return '<option value="'+esc(v)+'"'+((lightF&&lightF.assess)===v?' selected':'')+'>'+(v==='__ok'?'纳入考核':esc(v))+'</option>';
+    }).join('');
+  }
+  if(k==='dev')return [['','全部'],['1','是'],['0','否']].map(function(o){
+    return '<option value="'+o[0]+'"'+(((lightF&&lightF.dev)||'')===o[0]?' selected':'')+'>'+o[1]+'</option>';}).join('');
+  if(k==='full3m')return [['','全部'],['1','是'],['0','否']].map(function(o){
+    return '<option value="'+o[0]+'"'+(((lightF&&lightF.full3m)||'')===o[0]?' selected':'')+'>'+o[1]+'</option>';}).join('');
+  rows.forEach(function(r){var v=r[k];if(v)set[v]=1;});
+  arr=Object.keys(set).sort();
   return '<option value="">全部</option>'+arr.map(function(v){return '<option value="'+esc(v)+'"'+((lightF&&lightF[k])===v?' selected':'')+'>'+esc(v)+'</option>';}).join('');
 }
 function lightTableHtml(){
@@ -17144,8 +17339,10 @@ function lightTableHtml(){
     +'<th colspan="5" class="lg-order">退款单率--'+(cfg.weights.order)+'%</th>'
     +'<th rowspan="2" class="lg-phi">PHI总得分</th>'
     +'<th rowspan="2" class="lg-type">按灯类型</th>'
+    +'<th rowspan="2" class="lg-assess">是否考核</th>'
     +'<th rowspan="2" style="min-width:92px">开发时间</th>'
     +'<th rowspan="2" style="min-width:112px">是否开发时间3个月内</th>'
+    +'<th rowspan="2" class="lg-full3m" style="min-width:118px">是否是3个月数据</th>'
     +'</tr>';
   var g2='<tr>'
     +'<th>销售额</th><th>销售额得分</th><th class="lg-total">销售额总分</th>'
@@ -17164,10 +17361,13 @@ function lightTableHtml(){
     s+=td(lightFmt(r.qty))+td(lightFmt(r.refCnt))+td(lightPct(r.orderRate),lightLvClass(r.lightRate),'退款单量 '+r.refCnt+' ÷ 卖出销量 '+r.qty)
       +td(String(r.sOrder),lightLvClass(r.lightOrder))+td('<b>'+r.tOrder.toFixed(1)+'</b>','lg-total');
     s+='<td class="lg-phi"><b>'+(Math.round(r.phi*10)/10)+'</b></td>';
-    s+=r.notAssess?('<td class="lg-type lg-na">'+esc(r.notAssess)+'</td>'):('<td class="lg-type lg-g-'+esc(r.grade.charAt(0))+'">'+esc(r.grade)+' '+esc(r.status)+'</td>');
+    /* 按灯类型始终给出等级值（不考核不再占着这一栏，改到「是否考核」列显示） */
+    s+=r.grade?('<td class="lg-type lg-g-'+esc(r.grade.charAt(0))+'">'+esc(r.grade)+' '+esc(r.status)+'</td>'):'<td class="lg-type">—</td>';
+    s+=r.notAssess?('<td class="lg-assess lg-na">'+esc(r.notAssess)+'</td>'):'<td class="lg-assess">纳入考核</td>';
     s+=td(esc(r.devTime||''))+td(r.devWithin3m?'是':'否');
+    s+=td(r.full3m?'是':'否',r.full3m?'lg-yes':'lg-no');
     return s+'</tr>';
-  }).join('')||('<tr><td colspan="24" style="text-align:center;padding:30px" class="fbm-nil">没有匹配的 SKU</td></tr>');
+  }).join('')||('<tr><td colspan="26" style="text-align:center;padding:30px" class="fbm-nil">没有匹配的 SKU</td></tr>');
   return '<table class="fbm-tbl lg-tbl"><thead>'+g1+g2+'</thead><tbody>'+body+'</tbody></table>';
 }
 function lightPagerHtml(){
@@ -17187,13 +17387,13 @@ function lightRefresh(){
 function lightExport(){
   var rows=lightList(),cfg=lightCfg();
   var head=['SKU','商品状态','星耀一级分类','星耀二级分类','销售额','销售额得分','销售额总分','利润','利润率','利润得分','利润总分',
-    '退款金额','报损率','报损得分','报损总分','卖出销量','退款单量','退款单率','退款单得分','退款单总分','PHI总得分','按灯类型','开发时间','是否开发时间3个月内'];
+    '退款金额','报损率','报损得分','报损总分','卖出销量','退款单量','退款单率','退款单得分','退款单总分','PHI总得分','按灯类型','是否考核','开发时间','是否开发时间3个月内','是否是3个月数据'];
   var q=function(v){var s=String(v==null?'':v);return /[",\r\n]/.test(s)?'"'+s.replace(/"/g,'""')+'"':s;};
   var lines=[head.map(q).join(',')];
   rows.forEach(function(r){
     lines.push([r.sku,r.state,r.cat1,r.cat2,r.sale,r.sSale,r.tSale.toFixed(1),r.profit,lightPct(r.profitRate),r.sMargin,r.tMargin.toFixed(1),
       r.refAmt,lightPct(r.lossRate),r.sLoss,r.tLoss.toFixed(1),r.qty,r.refCnt,lightPct(r.orderRate),r.sOrder,r.tOrder.toFixed(1),
-      (Math.round(r.phi*10)/10),(r.notAssess||(r.grade+' '+r.status)),r.devTime,(r.devWithin3m?'是':'否')].map(q).join(','));
+      (Math.round(r.phi*10)/10),(r.grade+' '+r.status).trim(),(r.notAssess||'纳入考核'),r.devTime,(r.devWithin3m?'是':'否'),(r.full3m?'是':'否')].map(q).join(','));
   });
   downloadBlob(new Blob(['\uFEFF'+lines.join('\r\n')],{type:'text/csv;charset=utf-8'}),'产品按灯_'+rows.length+'个SKU_'+todayStr()+'.csv');
 }
@@ -17216,6 +17416,9 @@ function lightSection(){
     +'<span class="is-sel"><label>一级分类</label><select id="lightFCat1">'+lightOpts('cat1')+'</select></span>'
     +'<span class="is-sel"><label>二级分类</label><select id="lightFCat2">'+lightOpts('cat2')+'</select></span>'
     +'<span class="is-sel"><label>按灯类型</label><select id="lightFGrade">'+lightOpts('grade')+'</select></span>'
+    +'<span class="is-sel"><label>是否考核</label><select id="lightFAssess">'+lightOpts('assess')+'</select></span>'
+    +'<span class="is-sel"><label>3个月内</label><select id="lightFDev">'+lightOpts('dev')+'</select></span>'
+    +'<span class="is-sel"><label>3个月数据</label><select id="lightF3m">'+lightOpts('full3m')+'</select></span>'
     +'<span class="is-sel"><label>PHI区间</label><select id="lightFPhi"><option value="">全部</option>'
     +[['ge90','≥90'],['80to90','80~90'],['70to80','70~80'],['60to70','60~70'],['50to60','50~60'],['30to50','30~50'],['lt30','<30']].map(function(o){
       return '<option value="'+o[0]+'"'+((lightF&&lightF.phi)===o[0]?' selected':'')+'>'+o[1]+'</option>';
@@ -17229,9 +17432,10 @@ function lightSection(){
     +'<button class="btn ghost" id="lightUploadBtn">⬆ '+(meta.file?'更换销售数据':'导入销售数据')+'</button>'
     +(meta.file?'<button class="btn ghost" id="lightClearBtn">🗑 清空销售数据</button>':'')
     +'</div>';
-  var note='<div class="fbm-note">来源：退款明细按 SKU 去重同步（退款金额 / 退款单量求和；全部 SKU 均已同步）'
+  var lc=(DATA.lightDailyMeta&&DATA.lightDailyMeta.lastClean)?(' · 最近一次满期清洗：'+esc(String(DATA.lightDailyMeta.lastClean.at||''))+'，保留 '+DATA.lightDailyMeta.lastClean.kept+' 个、删除 '+DATA.lightDailyMeta.lastClean.removed+' 个'):'';
+  var note='<div class="fbm-note">数值口径：销售额 / 利润 / 退款金额 / 卖出销量 / 退款单量均取<b>最近 3 个月每日值之和</b>（同日重导入覆盖、不累加；日值之间不互相求和）'
     +(meta.file?(' · 销售数据：'+esc(meta.file)+' · '+esc(String(meta.at||'').slice(0,19).replace('T',' '))+' · '+meta.rows+' 行 → '+Object.keys(DATA.lightSales||{}).length+' 个 SKU'+(meta.miss&&meta.miss.length?('（未识别：'+esc(meta.miss.join('/'))+'）'):'')):' · 尚未导入销售数据（销售额 / 利润 / 卖出销量为 0）')
-    +' · 报损率=退款金额÷销售额 · 利润率=利润÷销售额 · 退款单率=退款单量÷卖出销量 · 各项总分=得分×占比 · PHI=四项总分之和 · 规则可在「模块设置 · 达标设置 ⑥」调整</div>';
+    +lc+' · 报损率=退款金额÷销售额 · 利润率=利润÷销售额 · 退款单率=退款单量÷卖出销量 · 各项总分=得分×占比 · PHI=四项总分之和 · 规则可在「模块设置 · 达标设置 ⑥」调整</div>';
   return lightOverviewHtml()+bar+'<div class="fbm-scroll" id="lightScroll"><div id="lightTableWrap">'+lightTableHtml()+'</div></div>'
     +'<div id="lightPager">'+lightPagerHtml()+'</div>'+note+fileInput;
 }
