@@ -6882,7 +6882,8 @@ function refQtyMap(){
     if(!acc)return;
     const d=refDayKey(refVal(r,'refTime'));
     const ord0=refNumK(refVal(r,'orderAmt')),f0=refNumK(refVal(r,'refAmt'));
-    const hasOrd=ord0>0,isPart=hasOrd&&(f0/ord0)<=REF_PARTIAL_MAX;   /* 统一口径：退款额 ÷ 订单额 ≤ 80% 计「部分退款」（含正好 80%） */
+    /* 统一口径：退款额 ÷ 订单额 ≤ 80% 计「部分退款」（含正好 80%，带 REF_PARTIAL_EPS_PCT 容差） */
+    const hasOrd=ord0>0,isPart=hasOrd&&(f0/ord0*100<=REF_PARTIAL_MAX*100+REF_PARTIAL_EPS_PCT);
     M[acc]=(M[acc]||0)+1;
     mark(PM,acc,isPart,hasOrd);
     if(d&&d===max){D[acc]=(D[acc]||0)+1;mark(PD,acc,isPart,hasOrd);}
@@ -15795,6 +15796,10 @@ const REF_IGNORE=['标题','商品标题','产品标题'];
 const REF_KEEP_DAYS=30;              /* 退款时间只保留最新 30 天 */
 const REF_PARTIAL_MAX=0.8;           /* 退款金额 ÷ 订单总金额 ≤ 80% 视为「部分退款」（全站唯一口径，含正好 80%） */
 const REF_BIG_SHARE=0.8;             /* 退款金额 ÷ 订单总金额 > 80%：接近全额的退款（大额退款）——与「部分退款 ≤80%」互补 */
+/* 判定容差（百分点）：金额是两位小数，用 double 算 f/o 会有 1e-16 级噪声（如 80% 算成 80.00000000000001），
+   直接比大小会把「正好 80%」漏到「大额」里去。容差取「明细列显示精度的一半」（列显示 2 位小数），
+   于是：看到 80.00% 的单一定算部分退款，看到 80.01% 的单一定算大额，数字和判定永远不会打架。 */
+const REF_PARTIAL_EPS_PCT=0.005;
 function refNormHead(s){
   return String(s==null?'':s).replace(/\s/g,'').replace(/（/g,'(').replace(/）/g,')')
     .replace(/[＊*:：]/g,'').toLowerCase();
@@ -15907,7 +15912,10 @@ function refCalc(r,k){
   if(k==='partialRate'){
     const amt=refNumK(refVal(r,'refAmt')),ord=refNumK(refVal(r,'orderAmt'));
     if(!(ord>0))return '';
-    return Math.round(amt/ord*100)+'%';
+    /* 最多 2 位小数、去掉末尾 0：80.42% / 80.4% / 80% / 120%。
+       以前四舍五入到整数，80.4% 会显示成「80%」，看着像部分退款、实际按 >80% 算大额 */
+    const pct=amt/ord*100;
+    return (Math.round(pct*100)/100).toFixed(2).replace(/\.?0+$/,'')+'%';
   }
   return '';
 }
@@ -16092,7 +16100,7 @@ function refStats(rows){
     const st=refSiteOf(r);if(st)sites[st]=1;
     const f=refNumK(refVal(r,'refAmt')),o=refNumK(refVal(r,'orderAmt'));
     amtR+=f;amtO+=o;
-    if(o>0){nV++;if(f/o<=REF_PARTIAL_MAX)nP++;}
+    if(o>0){nV++;if(f/o*100<=REF_PARTIAL_MAX*100+REF_PARTIAL_EPS_PCT)nP++;}
   });
   return {n:rows.length,accs:Object.keys(accs).length,skus:Object.keys(skus).length,sites:Object.keys(sites).length,
     amtR:amtR,amtO:amtO,nV:nV,nP:nP};
@@ -16408,7 +16416,7 @@ function refAnaStat(rows,d){
     /* 部分退款 = 退款金额 ÷ 订单总金额 ≤ 80%（REF_PARTIAL_MAX，含正好 80%）——
        与「健康看板 · 五、客服报损情况」的「部分退款占比」、退款分析 KPI 同一口径；
        大额（接近全额）退款 = >80%，与部分退款互补，80% 本身只计部分退款 */
-    if(ord>0){o.nv++;if(f/ord>REF_BIG_SHARE)o.nb++;else o.np++;}
+    if(ord>0){o.nv++;if(f/ord*100>REF_BIG_SHARE*100+REF_PARTIAL_EPS_PCT)o.nb++;else o.np++;}
     if(d.slow){const h=parseFloat(refCalc(r,'shipHours'));if(isFinite(h)&&h>REF_SLOW_HOURS)o.slow++;}
   });
   const total=list.length;
