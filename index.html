@@ -269,6 +269,71 @@
   .hk-tabs{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
   .hk-tabp{background:#34c759;color:#fff;border:none;border-radius:8px;padding:6px 15px;font-size:13.5px;font-weight:500;line-height:1.4;cursor:pointer;font-family:inherit;white-space:nowrap}
   .hk-tabp:hover{background:#2eb14f}
+  /* ===== 健康看板 · 报损透视台（红色主题） ===== */
+  .ls-wrap{font-size:13px}
+  .ls-mhead{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:4px 0 11px}
+  .ls-mtag{display:inline-block;background:#d93b2b;color:#fff;font-size:13px;font-weight:700;
+    padding:5px 13px;border-radius:7px;letter-spacing:.3px;box-shadow:0 2px 6px rgba(217,59,43,.18)}
+  .ls-bar-red{width:4px;height:19px;border-radius:3px;background:linear-gradient(180deg,#e8553f,#c0392b);display:inline-block;flex:none}
+  .ls-seg{display:inline-flex;border:1px solid #f0cfc9;border-radius:8px;overflow:hidden;background:#fff}
+  .ls-seg button{border:0;background:#fff;color:#a4473a;font-size:12.5px;font-weight:700;padding:5px 16px;cursor:pointer;font-family:inherit}
+  .ls-seg button+button{border-left:1px solid #f6e2de}
+  .ls-seg button:hover{background:#fdf3f1}
+  .ls-seg button.on{background:#d93b2b;color:#fff}
+  .ls-scope{font-size:11.5px;font-weight:700;color:#a4473a;background:#fdf1ef;border:1px solid #f3d5d0;border-radius:20px;padding:2px 10px}
+  .ls-src{font-size:11px;color:#9aa1ad}
+  .ls-kpis{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:9px;margin:0 0 13px}
+  @media(max-width:1240px){.ls-kpis{grid-template-columns:repeat(3,minmax(0,1fr))}}
+  .ls-kpi{background:linear-gradient(160deg,#fff 0%,#fdf8f7 100%);border:1px solid #f1e4e1;
+    border-left:3px solid var(--ac,#d93b2b);border-radius:9px;padding:8px 11px 7px;min-width:0}
+  .ls-kpi .k{font-size:11.5px;color:#8d7a76;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .ls-kpi .v{font-size:19px;font-weight:800;line-height:1.32;font-variant-numeric:tabular-nums;margin-top:1px;
+    white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .ls-kpi .d{margin-top:1px;line-height:1.3}
+  .ls-wow{font-size:11px;font-weight:700;border-radius:20px;padding:1px 7px;display:inline-block}
+  .ls-wow.good{background:#eaf7f0;color:#1f8a5b}
+  .ls-wow.bad{background:#fdecea;color:#c0392b}
+  .ls-wow.flat{background:#f4f5f8;color:#9aa1ad}
+  .ls-sec{margin:12px 0;background:#fff;border:1px solid #f0e5e2;border-radius:12px;padding:12px 15px 13px;
+    box-shadow:0 2px 9px rgba(120,50,40,.05)}
+  .ls-sec h3{margin:0 0 9px;font-size:15px;font-weight:700;color:#2b2740;border-left:5px solid #d93b2b;
+    padding-left:9px;display:flex;align-items:center;justify-content:space-between;gap:10px}
+  .ls-legend{display:flex;gap:13px;flex-wrap:wrap;font-size:11.5px;color:#7a828f;align-items:center;margin:0 0 4px}
+  .ls-legend i{width:9px;height:9px;border-radius:2px;display:inline-block;margin-right:5px;vertical-align:middle}
+  .ls-legend.ls-lamp-lg i{width:9px;height:9px}
+  .ls-legend .dim{color:#a3a8b4}
+  .ls-chart{width:100%;overflow:hidden}
+  .ls-chart svg{display:block;width:100%}
+  .ls-row2{display:grid;grid-template-columns:1fr 1fr;gap:26px;margin-top:12px;padding-top:11px;border-top:1px dashed #f0e5e2}
+  @media(max-width:1100px){.ls-row2{grid-template-columns:1fr}}
+  .ls-sub{font-size:12px;font-weight:700;color:#8d6f68;margin:0 0 2px;letter-spacing:.2px}
+  .ls-empty{padding:26px 14px;text-align:center;color:#9aa1ad;font-size:12.5px;background:#fcfbfb;border-radius:9px}
+  .ls-flt{display:flex;align-items:center;gap:9px;flex-wrap:wrap;margin:0 0 8px;font-size:12px;color:#7a828f}
+  .ls-flt label{display:inline-flex;align-items:center;gap:5px;white-space:nowrap}
+  .ls-flt select{font-family:inherit;font-size:12.5px;padding:4px 7px;border:1px solid #e3e7ef;border-radius:7px;
+    background:#fff;color:#3f444d;min-width:104px;max-width:180px}
+  .ls-lv{display:inline-flex;border:1px solid #f0cfc9;border-radius:8px;overflow:hidden;background:#fff}
+  .ls-lv button{border:0;background:#fff;color:#a4473a;font-size:12px;font-weight:700;padding:4px 12px;cursor:pointer;font-family:inherit}
+  .ls-lv button+button{border-left:1px solid #f6e2de}
+  .ls-lv button:hover{background:#fdf3f1}
+  .ls-lv button.on{background:#d93b2b;color:#fff}
+  .ls-sep{width:1px;height:17px;background:#eee5e2}
+  .ls-cnt{margin-left:auto;font-size:11.5px;color:#9aa1ad}
+  .ls-tblwrap{max-height:520px;overflow:auto;border-radius:8px}
+  .ls-tbl{margin:0}
+  .ls-tbl thead th{position:sticky;top:0;z-index:2}
+  .ls-tbl td.num,.ls-tbl th:nth-child(n+4){text-align:right;font-variant-numeric:tabular-nums}
+  .ls-tbl .ls-rk{width:46px;color:#b0b5c0;font-weight:700}
+  .ls-tbl .ls-cat{text-align:left;font-weight:600;color:#3a3656;max-width:250px;overflow:hidden;text-overflow:ellipsis}
+  .ls-tbl tbody tr[data-lscat]{cursor:pointer}
+  .ls-tbl tbody tr[data-lscat]:hover{background:#fdf6f4}
+  .ls-tbl .ls-cat-a{color:#3a3656;border-bottom:1px dashed #d8dce6}
+  .ls-tbl tbody tr[data-lscat]:hover .ls-cat-a{color:#c0392b;border-bottom-color:#e8b8b0}
+  .ls-tbl .ls-lamp{white-space:nowrap;font-weight:700;font-size:12px}
+  .ls-tbl .ls-lamp i{width:9px;height:9px;border-radius:50%;display:inline-block;margin-right:5px;vertical-align:middle}
+  .ls-tbl .ls-ref{color:#c0392b;font-weight:700}
+  .ls-tbl .ls-sum{background:#fdf8f7;font-weight:700}
+  .ls-tbl .ls-sum td{border-top:2px solid #efd9d4}
   .hk-bar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:-2px 0 8px}
   .hk-tools{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
   .hk-note{color:#9aa0ad;font-size:12px}
@@ -9890,6 +9955,14 @@ document.getElementById('app').addEventListener('change',e=>{
   }
   /* 2.1（分区域）切换周次 */
   if(e.target.id==='hkRegWeek'||e.target.id==='hkRegWeek2'||e.target.id==='hkRegWeek3'){hkRegWeek=e.target.value;render();return;}
+  /* 报损透视台：区域 / 核算组 / 站点 级联筛选（改上级清空下级） */
+  if(e.target.hasAttribute&&e.target.hasAttribute('data-lsflt')){
+    const lf=e.target.getAttribute('data-lsflt');
+    lsFlt[lf]=String(e.target.value||'');
+    if(lf==='region'){lsFlt.group='';lsFlt.site='';}
+    if(lf==='group'){lsFlt.site='';}
+    render();return;
+  }
   if(e.target.id==='asfWeekSel'){opsWeek=e.target.value;render();return;}
   /* 周次字段：手动修改 → 写入该周映射，看板/筛选/汇总表同步 */
   if(e.target.hasAttribute&&e.target.hasAttribute('data-wkspan')){
@@ -11122,6 +11195,20 @@ document.getElementById('app').addEventListener('click',e=>{
   /* 健康看板：顶部模块切换（账号安全总览 / 客服 / 运营 / 物流关注区） */
   const hktab=t.closest('[data-hktab]');
   if(hktab){hkTab=hktab.dataset.hktab;render();return;}
+  /* 报损透视台：日/周/月切换、星耀1级/2级、排序、点品类行 → 退款明细 */
+  const lsdim=t.closest&&t.closest('[data-lsdim]');
+  if(lsdim){lsDim=lsdim.getAttribute('data-lsdim');render();return;}
+  const lslv=t.closest&&t.closest('[data-lslv]');
+  if(lslv){lsLevel=lslv.getAttribute('data-lslv');render();return;}
+  const lssort=t.closest&&t.closest('[data-lssort]');
+  if(lssort){lsSort=lssort.getAttribute('data-lssort');render();return;}
+  const lscat=t.closest&&t.closest('[data-lscat]');
+  if(lscat){
+    refSearch=lscat.getAttribute('data-lscat')||'';
+    refColSel='';isPage=1;
+    isTab='ref';view='issue';
+    render();return;
+  }
   /* 健康看板：维度切换（主站/小站/全站） */
   const hdim=t.closest('[data-hdim]');
   const hkn=t.closest('[data-hknote]');
@@ -14394,7 +14481,8 @@ const HK_TABS=[
   {k:'overview',icon:'🏥',label:'账号安全总览'},
   {k:'cs',icon:'👥',label:'客服关注区'},
   {k:'ops',icon:'📦',label:'运营关注区'},
-  {k:'logi',icon:'🚚',label:'物流关注区'}
+  {k:'logi',icon:'🚚',label:'物流关注区'},
+  {k:'loss',icon:'🩸',label:'报损透视台'}
 ];
 function hkTabCur(){for(let i=0;i<HK_TABS.length;i++){if(HK_TABS[i].k===hkTab)return HK_TABS[i];}return HK_TABS[0];}
 /* ═════════════ 问题明细：FBM订单缺陷率 / 政策合规性 / 准时送达率 / 有效追踪率 ═════════════
@@ -19645,11 +19733,493 @@ function opsFocusSection(){
   return h;
 }
 
+/* ═══════════════ 报损透视台（健康看板 · 物流关注区右侧 tab，红色主题） ═══════════════
+   【一、趋势】日 / 周 / 月 → 近 30 天 / 近 4 周 / 近 12 个月
+     数据源优先级（UI 只显示窗口与数值，口径写在这里）：
+       · 日：问题明细 · 退款明细按「退款时间」逐日聚合（明细本身只保留最新 30 天），缺数据的日补 0；
+       · 周 / 月：优先 AMZ汇总表 · 账号报损的历次快照（DATA.sumBao.meta.hist，周留 4 期 / 月留 12 期）；
+                 快照不足 2 期时回落到退款明细按周 / 月聚合（此时覆盖范围只有 30 天）。
+     指标口径：
+       · 销售额 = 订单总金额（同一平台单号只计一次，取该单号下最大订单金额）
+       · 退款额 = 退款金额合计
+       · 订单量 = 去重平台单号数（= 有退款的订单数，不是店铺全量订单）
+       · 退款量 = 退款明细行数（一行一次退款，全站与「账号报损 / 退款分析」同口径）
+       · 退款额占比 = 退款额 ÷ 销售额；退款量占比 = 退款量 ÷ 订单量
+       · 账号达标 = 该账号退款率（退款额 ÷ 销售额）≤ 「目标设置 · 退款率持平值」；
+                    没配目标的账号不计入分母；整表没配目标时用该范围整体退款率当基准。
+   【二、品类透视】行 = 星耀一级 / 二级分类，按 区域 → 核算组 → 站点 级联筛选
+       · 区域 / 核算组 / 站点：明细有该列就用，空则按账号简称映射账号管理（区域 / 核算分组 / 站点）
+       · 排名 = 当前排序下的位次（默认按退款额降序：损失最大的排第 1）
+       · 灯（三档，界面只用图例表达颜色含义）：
+           绿 达标  = 退款率 ≤ 基准线
+           黄 预警  = 基准线 < 退款率 ≤ 1.5 × 基准线
+           红 超线  = 退款率 > 1.5 × 基准线
+         基准线 = 目标设置里的「退款率」总计目标（没配则取该筛选范围整体退款率）
+   ⚠ 界面上不写计算口径说明（无 note / 脚注），只保留数值、图表与颜色图例。 */
+const LS_KINDS=[['d','日','近 30 天'],['w','周','近 4 周'],['m','月','近 12 个月']];
+const LS_N={d:30,w:4,m:12};
+const LS_C={sale:'#2f5fbf',ref:'#d93b2b',ord:'#2f9e6f',rqty:'#e08a2f',rate:'#c0392b',share:'#e2872f'};
+let lsDim='d',lsLevel='1',lsSort='ref';
+let lsFlt={region:'',group:'',site:''};
+let LS_CACHE={};
+
+function lsAccIdx(){
+  const m={};
+  (DATA.accounts||[]).forEach(function(a){
+    const k=String(a.short==null?'':a.short).trim().toUpperCase();
+    if(!k)return;
+    m[k]={region:String(a.region==null?'':a.region).trim(),group:String(a.bigGroup==null?'':a.bigGroup).trim(),
+      site:String(a.site==null?'':a.site).trim(),cs:String(a.cs==null?'':a.cs).trim()};
+  });
+  return m;
+}
+function lsS(s){return String(s==null?'':s).trim();}
+/* 退款明细 → 统一记录（带区域 / 核算组 / 站点 / 星耀一二级分类） */
+function lsRows(){
+  const sig=(REF.ver||0)+'|'+((REF.rows||[]).length);
+  if(LS_CACHE.sig===sig&&LS_CACHE.rows)return LS_CACHE.rows;
+  const ai=lsAccIdx(),out=[];
+  (REF.rows||[]).forEach(function(r,i){
+    try{if(typeof refIsDropped==='function'&&refIsDropped(r))return;}catch(e){}
+    const acc=lsS(refVal(r,'acc')).toUpperCase();
+    const d=ai[acc]||{};
+    let region=lsS(refVal(r,'region'));if(!region||region==='-')region=d.region||'';
+    let grp=lsS(refVal(r,'team'));if(!grp||grp==='-')grp=d.group||'';
+    let site='';try{site=lsS(refSiteOf(r));}catch(e){site='';}
+    if(!site||site==='-')site=d.site||'';
+    const day=refDayKey(refVal(r,'refTime'));
+    const ok=lsS(refVal(r,'platNo'))||lsS(refVal(r,'sumNo'))||('R'+i);
+    out.push({acc:acc,cs:d.cs||'',region:region||'',group:grp||'',site:site||'',day:day,ok:ok,
+      sale:refNumK(refVal(r,'orderAmt')),amt:refNumK(refVal(r,'refAmt')),
+      c1:lsS(refVal(r,'cat1'))||'（未分类）',c2:lsS(refVal(r,'cat2'))||'（未分类）'});
+  });
+  LS_CACHE={sig:sig,rows:out};
+  return out;
+}
+/* 退款率基准（小数比率）：目标设置 · 客服 · 退款率总计目标 → 均值；都没有返回 null */
+function lsTargetRate(){
+  try{
+    const t=tgtTotGet('cs','refRate');
+    if(t!==''&&isFinite(Number(t))&&Number(t)>0)return Number(t)/100;
+    const a=tgtAvg('cs','refRate');
+    if(a!=null&&isFinite(a)&&a>0)return a/100;
+  }catch(e){}
+  return null;
+}
+function lsPct(v,d){return (v==null||!isFinite(v))?'—':(v*100).toFixed(d==null?2:d)+'%';}
+function lsMoney(v){
+  if(v==null||!isFinite(v))return '—';
+  const a=Math.abs(v);
+  if(a>=1e8)return (v/1e8).toFixed(2)+'亿';
+  if(a>=1e4){const w=v/1e4;return (Math.abs(w)>=100?w.toFixed(0):w.toFixed(1))+'万';}
+  return Math.round(v).toLocaleString('zh-CN');
+}
+function lsNum(v){
+  if(v==null||!isFinite(v))return '—';
+  return Math.round(v).toLocaleString('zh-CN');
+}
+/* 环比：按「指标变好 / 变差」上色，不按涨跌符号（销售额、订单量涨为好；退款额、退款量、两个占比涨为差） */
+function lsWow(cur,prev,goodUp){
+  if(prev==null||cur==null||!isFinite(cur)||!isFinite(prev)||prev===0)return '<span class="ls-wow flat">—</span>';
+  const ch=(cur-prev)/Math.abs(prev)*100;
+  if(Math.abs(ch)<0.05)return '<span class="ls-wow flat">持平</span>';
+  const good=goodUp?(ch>0):(ch<0);
+  return '<span class="ls-wow '+(good?'good':'bad')+'">'+(ch>0?'▲':'▼')+Math.abs(ch).toFixed(1)+'%</span>';
+}
+/* ── 期间分桶 ── */
+function lsBucketOf(kind){
+  if(kind==='w')return function(day){return day?baoWeekKey(day):'';};
+  if(kind==='m')return function(day){return day?String(day).slice(0,7):'';};
+  return function(day){return day||'';};
+}
+function lsLab(kind,k){
+  if(!k)return '';
+  if(kind==='w')return baoWeekLabel(k);
+  if(kind==='m')return String(k).slice(2);
+  return String(k).slice(5,7)+'/'+String(k).slice(8,10);
+}
+/* 明细 → 期间序列（日补 0 到 30 天；周 / 月只出有数据的期） */
+function lsDetailPoints(kind){
+  const rows=lsRows();
+  if(!rows.length)return [];
+  let maxDay='';
+  rows.forEach(function(r){if(r.day&&r.day>maxDay)maxDay=r.day;});
+  if(!maxDay)return [];
+  const bucket=lsBucketOf(kind);
+  const keys=[],pt={};
+  const get=function(k){
+    if(!pt[k]){pt[k]={k:k,lab:lsLab(kind,k),sale:0,amt:0,rqty:0,ordSet:{},ok:0,bad:0};keys.push(k);}
+    return pt[k];
+  };
+  if(kind==='d'){
+    const end=refEpoch(maxDay);
+    for(let i=LS_N.d-1;i>=0;i--){
+      const d=refDayKey(new Date(end-i*86400000).toISOString().slice(0,10));
+      get(d);
+    }
+  }else{
+    /* 周 / 月：先按分桶建期（不预填空期，避免把很久以前的空月份画出来） */
+    rows.forEach(function(r){const bk=bucket(r.day);if(bk)get(bk);});
+  }
+  /* 销售额：同单号去重，归到「该单号最早那条明细」的期间 */
+  const keySale={},keyDay={},keyAcc={},keyCat={};
+  rows.forEach(function(r){
+    if(r.sale>0&&(keySale[r.ok]==null||r.sale>keySale[r.ok]))keySale[r.ok]=r.sale;
+    if(!keyDay[r.ok]||(r.day&&r.day<keyDay[r.ok]))keyDay[r.ok]=r.day;
+    if(!keyAcc[r.ok])keyAcc[r.ok]=r.acc;if(!keyCat[r.ok])keyCat[r.ok]=r.c1;
+  });
+  Object.keys(keySale).forEach(function(k){
+    const bk=bucket(keyDay[k]);if(!bk||!pt[bk])return;
+    pt[bk].sale+=keySale[k];
+  });
+  /* 退款额 / 退款量 / 订单量 */
+  rows.forEach(function(r){
+    const bk=bucket(r.day);if(!bk||!pt[bk])return;
+    pt[bk].amt+=r.amt;pt[bk].rqty++;
+    if(r.ok)pt[bk].ordSet[r.ok]=1;
+  });
+  /* 账号达标：同一账号在该期的退款额 ÷ 销售额（销售额从订单金额反推） */
+  const accSale={},accAmt={};
+  Object.keys(keySale).forEach(function(k){
+    const bk=bucket(keyDay[k]);if(!bk||!pt[bk])return;
+    const a=keyAcc[k]||'';if(!a)return;
+    accSale[a+'|'+bk]=(accSale[a+'|'+bk]||0)+keySale[k];
+  });
+  rows.forEach(function(r){
+    const bk=bucket(r.day);if(!bk||!pt[bk])return;
+    const a=r.acc;if(!a)return;
+    accAmt[a+'|'+bk]=(accAmt[a+'|'+bk]||0)+r.amt;
+  });
+  const base=lsTargetRate();
+  const totSale=Object.keys(accSale).reduce(function(s,k){return s+accSale[k];},0);
+  const totAmt=Object.keys(accAmt).reduce(function(s,k){return s+accAmt[k];},0);
+  const bench=(base!=null)?base:(totSale>0?totAmt/totSale:null);
+  if(bench!=null){
+    Object.keys(accSale).forEach(function(kk){
+      const sale=accSale[kk];if(!(sale>0))return;
+      const bk=kk.split('|').slice(1).join('|');if(!pt[bk])return;
+      const rate=(accAmt[kk]||0)/sale;
+      if(rate<=bench)pt[bk].ok++;else pt[bk].bad++;
+    });
+  }
+  keys.sort();
+  return keys.map(function(k){
+    const p=pt[k];
+    p.ordn=Object.keys(p.ordSet).length;
+    p.rate=p.sale>0?p.amt/p.sale:null;
+    p.share=p.ordn>0?p.rqty/p.ordn:null;
+    return p;
+  });
+}
+/* 报损快照 → 期间序列（周 / 月历史） */
+function lsSnapPoints(kind){
+  let h=[];
+  try{h=baoHistOf(kind)||[];}catch(e){h=[];}
+  const out=[];
+  h.forEach(function(e){
+    if(!e||!e.all)return;
+    const a=e.all;
+    const sale=Number(a.sale)||0,amt=Number(a.ref)||0,ordn=Number(a.ord)||0,rqty=Number(a.rqty)||0;
+    out.push({k:e.d,lab:lsLab(kind,e.d),sale:sale,amt:amt,ordn:ordn,rqty:rqty,
+      ok:Number(a.ok)||0,bad:Number(a.bad)||0,rate:sale>0?amt/sale:null,share:ordn>0?rqty/ordn:null});
+  });
+  out.sort(function(a,b){return String(a.k)<String(b.k)?-1:1;});
+  return out;
+}
+/* 当前视图的序列 + 数据来源标记 */
+function lsSeries(kind){
+  let pts=[],src='明细';
+  const sn=lsSnapPoints(kind);
+  if(sn.length>=2){pts=sn;src='快照';}
+  else{pts=lsDetailPoints(kind);src='明细';}
+  pts=pts.slice(-(LS_N[kind]||12));
+  return {pts:pts,src:src};
+}
+/* ── 灯 ── */
+function lsLamp(rate,base){
+  if(rate==null||!isFinite(rate))return {k:'na',t:'无数据',c:'#b9bfca'};
+  if(!(base>0))return {k:'na',t:'待设目标',c:'#b9bfca'};
+  if(rate<=base)return {k:'g',t:'达标',c:'#1f8a5b'};
+  if(rate<=base*1.5)return {k:'y',t:'预警',c:'#d99a1f'};
+  return {k:'r',t:'超线',c:'#d93b2b'};
+}
+/* ── SVG 绘图内核：左轴柱 + 左右轴线 ── */
+function lsNice(v){
+  if(!(v>0))return 1;
+  const p=Math.pow(10,Math.floor(Math.log10(v)));
+  const n=v/p;
+  const s=n<=1?1:(n<=2?2:(n<=2.5?2.5:(n<=5?5:10)));
+  return s*p;
+}
+function lsPlot(cfg){
+  const labels=cfg.labels||[],n=labels.length||1;
+  const W=cfg.w||900,H=cfg.h||205,PL=(cfg.noLeft?8:46),PR=(cfg.right?44:8),PT=12,PB=22;
+  const iw=Math.max(60,W-PL-PR),ih=Math.max(40,H-PT-PB);
+  const bars=cfg.bars||[],lines=cfg.lines||[];
+  let lmax=0;
+  bars.forEach(function(s){s.vals.forEach(function(v){if(v>lmax)lmax=v;});});
+  lines.forEach(function(s){if(s.axis!=='r')s.vals.forEach(function(v){if(v>lmax)lmax=v;});});
+  lmax=lsNice(lmax*1.06);
+  let rmax=0;
+  lines.forEach(function(s){if(s.axis==='r')s.vals.forEach(function(v){if(v>rmax)rmax=v;});});
+  if(cfg.tgt!=null&&isFinite(cfg.tgt))rmax=Math.max(rmax,cfg.tgt);
+  rmax=(rmax<=200)?(Math.ceil(rmax*1.06/4)*4||4):lsNice(rmax*1.12);
+  const cx=function(i){return PL+iw*(i+0.5)/n;};
+  const y=function(v){return PT+ih*(1-(v/(lmax||1)));};
+  const yr=function(v){return PT+ih*(1-(v/(rmax||1)));};
+  let g='';
+  /* 网格 + 左轴刻度 */
+  for(let t=0;t<=4;t++){
+    const gy=PT+ih*t/4;
+    g+='<line x1="'+PL+'" y1="'+gy.toFixed(1)+'" x2="'+(W-PR)+'" y2="'+gy.toFixed(1)+'" stroke="#eef1f6" stroke-width="1"/>';
+    if(!cfg.noLeft){
+      const lv=lmax*(1-t/4);
+      g+='<text x="'+(PL-6)+'" y="'+(gy+3.5).toFixed(1)+'" text-anchor="end" font-size="9.5" fill="#9aa1ad">'+esc(cfg.fmtL?cfg.fmtL(lv):lsMoney(lv))+'</text>';
+    }
+    if(cfg.right){
+      const rv=rmax*(1-t/4);
+      g+='<text x="'+(W-PR+5)+'" y="'+(gy+3.5).toFixed(1)+'" text-anchor="start" font-size="9.5" fill="#9aa1ad">'+esc(cfg.fmtR?cfg.fmtR(rv):lsPct(rv))+'</text>';
+    }
+  }
+  /* 柱 */
+  const bc=bars.length;
+  if(bc){
+    const gw=iw/n,bw=Math.max(3,Math.min(26,gw*0.62/bc));
+    bars.forEach(function(s,si){
+      s.vals.forEach(function(v,i){
+        if(!(v>0))return;
+        const h=(ih*v/(lmax||1)),x0=cx(i)-bw*bc/2+bw*si;
+        g+='<rect x="'+x0.toFixed(1)+'" y="'+(PT+ih-h).toFixed(1)+'" width="'+(bw-1.2).toFixed(1)+'" height="'+h.toFixed(1)+'" rx="1.6" fill="'+s.color+'" opacity="'+(s.op==null?0.92:s.op)+'"><title>'+esc(labels[i]+' · '+s.name+' '+(cfg.fmtTip?cfg.fmtTip(s.name,v):(cfg.fmtL?cfg.fmtL(v):lsMoney(v))))+'</title></rect>';
+      });
+    });
+  }
+  /* 线 */
+  lines.forEach(function(s){
+    const yy=(s.axis==='r')?yr:y;
+    const pts=s.vals.map(function(v,i){return (v==null||!isFinite(v))?null:[cx(i),yy(v)];});
+    let seg=[];
+    const flush=function(){
+      if(seg.length>1)g+='<polyline points="'+seg.map(function(p){return p[0].toFixed(1)+','+p[1].toFixed(1);}).join(' ')+'" fill="none" stroke="'+s.color+'" stroke-width="'+(s.w||1.8)+'" stroke-linejoin="round" stroke-linecap="round"'+(s.dash?' stroke-dasharray="'+s.dash+'"':'')+'/>';
+      seg=[];
+    };
+    pts.forEach(function(p){if(p)seg.push(p);else flush();});
+    flush();
+    pts.forEach(function(p,i){
+      if(!p)return;
+      g+='<circle cx="'+p[0].toFixed(1)+'" cy="'+p[1].toFixed(1)+'" r="2.4" fill="#fff" stroke="'+s.color+'" stroke-width="1.5"><title>'+esc(labels[i]+' · '+s.name+' '+(s.fmt?s.fmt(s.vals[i]):lsPct(s.vals[i])))+'</title></circle>';
+    });
+  });
+  /* 目标虚线 */
+  if(cfg.tgt!=null&&isFinite(cfg.tgt)&&cfg.tgt>0&&cfg.tgt<=rmax){
+    const ty=(cfg.tgtAxis==='l')?y(cfg.tgt):yr(cfg.tgt);
+    g+='<line x1="'+PL+'" y1="'+ty.toFixed(1)+'" x2="'+(W-PR)+'" y2="'+ty.toFixed(1)+'" stroke="#8a6d3b" stroke-width="1" stroke-dasharray="4 3"/>';
+
+  }
+  /* x 轴标签 */
+  const step=Math.ceil(n/12);
+  labels.forEach(function(lb,i){
+    if(n>12&&i%step!==0&&i!==n-1)return;
+    g+='<text x="'+cx(i).toFixed(1)+'" y="'+(H-6)+'" text-anchor="middle" font-size="9.5" fill="#8a8fa3">'+esc(lb)+'</text>';
+  });
+  return '<svg viewBox="0 0 '+W+' '+H+'" preserveAspectRatio="none" style="width:100%;height:'+H+'px">'+g+'</svg>';
+}
+function lsLegend(items){
+  return '<div class="ls-legend">'+items.map(function(x){
+    return '<span><i style="background:'+x[1]+'"></i>'+esc(x[0])+'</span>';
+  }).join('')+'</div>';
+}
+/* ── 品类透视 ── */
+function lsCatAgg(){
+  const rows=lsRows();
+  const fr=lsFlt.region,fg=lsFlt.group,fs=lsFlt.site;
+  const sub=rows.filter(function(r){
+    if(fr&&r.region!==fr)return false;
+    if(fg&&r.group!==fg)return false;
+    if(fs&&r.site!==fs)return false;
+    return true;
+  });
+  const keySale={},keyCat={};
+  sub.forEach(function(r){
+    if(r.sale>0&&(keySale[r.ok]==null||r.sale>keySale[r.ok]))keySale[r.ok]=r.sale;
+    if(!keyCat[r.ok])keyCat[r.ok]=(lsLevel==='2'?r.c2:r.c1);
+  });
+  const m={},order=[];
+  const get=function(c){const k=c||'（未分类）';if(!m[k]){m[k]={cat:k,sale:0,amt:0,rqty:0,ordSet:{}};order.push(k);}return m[k];};
+  Object.keys(keySale).forEach(function(k){get(keyCat[k]).sale+=keySale[k];});
+  sub.forEach(function(r){
+    const t=get(lsLevel==='2'?r.c2:r.c1);
+    t.amt+=r.amt;t.rqty++;t.ordSet[r.ok]=1;
+  });
+  let totSale=0,totAmt=0,totOrd=0,totRqty=0;
+  const list=order.map(function(c){
+    const t=m[c],ordn=Object.keys(t.ordSet).length;
+    totSale+=t.sale;totAmt+=t.amt;totOrd+=ordn;totRqty+=t.rqty;
+    return {cat:c,sale:t.sale,amt:t.amt,ordn:ordn,rqty:t.rqty,
+      rate:t.sale>0?t.amt/t.sale:null,share:ordn>0?t.rqty/ordn:null};
+  });
+  const tgt=lsTargetRate();
+  const base=(tgt!=null)?tgt:(totSale>0?totAmt/totSale:null);
+  list.forEach(function(x){x.lamp=lsLamp(x.rate,base);});
+  const key=lsSort==='rate'?'rate':(lsSort==='sale'?'sale':'amt');
+  list.sort(function(a,b){
+    const av=(a[key]==null)?-1:a[key],bv=(b[key]==null)?-1:b[key];
+    return bv-av||b.amt-a.amt||String(a.cat).localeCompare(String(b.cat),'zh');
+  });
+  list.forEach(function(x,i){x.rank=i+1;});
+  return {list:list,base:base,tot:{sale:totSale,amt:totAmt,ordn:totOrd,rqty:totRqty,
+    rate:totSale>0?totAmt/totSale:null,share:totOrd>0?totRqty/totOrd:null},n:sub.length};
+}
+function lsOpts(field){
+  const rows=lsRows();
+  const set={};
+  rows.forEach(function(r){
+    if(field==='region'){if(r.region)set[r.region]=1;}
+    else if(field==='group'){if(r.group&&(!lsFlt.region||r.region===lsFlt.region))set[r.group]=1;}
+    else if(field==='site'){if(r.site&&(!lsFlt.region||r.region===lsFlt.region)&&(!lsFlt.group||r.group===lsFlt.group))set[r.site]=1;}
+  });
+  return Object.keys(set).sort(function(a,b){return a.localeCompare(b,'zh');});
+}
+function lsSel(field,label){
+  const cur=lsFlt[field]||'';
+  const opts=lsOpts(field);
+  let h='<label>'+esc(label)+'<select data-lsflt="'+field+'"><option value="">全部</option>';
+  opts.forEach(function(v){h+='<option value="'+esc(v)+'"'+(v===cur?' selected':'')+'>'+esc(v)+'</option>';});
+  return h+'</select></label>';
+}
+/* ── 主体 ── */
+function lsInner(){
+  LS_CACHE={};
+  try{if(REF.state==='idle'&&typeof refEnsure==='function')refEnsure();}catch(e){}
+  const kind=lsDim;
+  const ser=lsSeries(kind);
+  const P=ser.pts||[];
+  const K=LS_KINDS.filter(function(x){return x[0]===kind;})[0]||LS_KINDS[0];
+  const win=P.length?('最近一期 '+P[P.length-1].lab):'暂无数据';
+  const cur=P.length?P[P.length-1]:null;
+  const pre=P.length>1?P[P.length-2]:null;
+  const seg='<span class="ls-seg">'+LS_KINDS.map(function(kp){
+    return '<button data-lsdim="'+kp[0]+'" class="'+(lsDim===kp[0]?'on':'')+'" title="'+esc(kp[2]+'趋势')+'">'+kp[1]+'</button>';
+  }).join('')+'</span>';
+  /* KPI */
+  const kpi=function(lab,val,wow,c){
+    return '<div class="ls-kpi" style="--ac:'+c+'"><div class="k">'+esc(lab)+'</div><div class="v" style="color:'+c+'">'+val+'</div><div class="d">'+wow+'</div></div>';
+  };
+  let kpis='';
+  if(cur){
+    kpis='<div class="ls-kpis">'
+      +kpi('销售额',lsMoney(cur.sale),lsWow(cur.sale,pre?pre.sale:null,true),LS_C.sale)
+      +kpi('退款额',lsMoney(cur.amt),lsWow(cur.amt,pre?pre.amt:null,false),LS_C.ref)
+      +kpi('订单量',lsNum(cur.ordn),lsWow(cur.ordn,pre?pre.ordn:null,true),LS_C.ord)
+      +kpi('退款量',lsNum(cur.rqty),lsWow(cur.rqty,pre?pre.rqty:null,false),LS_C.rqty)
+      +kpi('退款额占比',lsPct(cur.rate),lsWow(cur.rate,pre?pre.rate:null,false),LS_C.rate)
+      +kpi('退款量占比',lsPct(cur.share),lsWow(cur.share,pre?pre.share:null,false),LS_C.share)
+      +'</div>';
+  }
+  /* 图一：规模 + 单量 */
+  const labels=P.map(function(x){return x.lab;});
+  let chart1='';
+  if(P.length){
+    chart1=lsLegend([['销售额',LS_C.sale],['退款额',LS_C.ref],['订单量（右轴）',LS_C.ord],['退款量（右轴）',LS_C.rqty]])
+      +lsPlot({labels:labels,h:206,right:true,tgtAxis:'r',
+        bars:[{name:'销售额',color:LS_C.sale,vals:P.map(function(x){return x.sale;})},
+              {name:'退款额',color:LS_C.ref,vals:P.map(function(x){return x.amt;})}],
+        lines:[{name:'订单量',color:LS_C.ord,vals:P.map(function(x){return x.ordn;}),axis:'r',fmt:lsNum},
+               {name:'退款量',color:LS_C.rqty,vals:P.map(function(x){return x.rqty;}),axis:'r',fmt:lsNum}],
+        fmtL:lsMoney,fmtR:function(v){return lsNum(v);},
+        fmtTip:function(nm,v){return nm==='销售额'||nm==='退款额'?lsMoney(v):lsNum(v);}});
+  }else{
+    chart1='<div class="ls-empty">还没有可用的报损数据 —— 到「AMZ汇总表 · ⬆ 上传指标数据源」上传退款明细 / 账号报损后这里会自动出现</div>';
+  }
+  /* 图二：占比趋势 */
+  const base=lsTargetRate();
+  let chart2='';
+  if(P.length){
+    const tgt=(base!=null)?base*100:null;
+    chart2=lsLegend([['退款额占比',LS_C.rate],['退款量占比',LS_C.share],['目标线（虚线）','#b9a06a']])
+      +lsPlot({labels:labels,h:172,right:true,noLeft:true,tgt:tgt,tgtLab:'目标线',
+        lines:[{name:'退款额占比',color:LS_C.rate,vals:P.map(function(x){return x.rate==null?null:x.rate*100;}),axis:'r',w:2},
+               {name:'退款量占比',color:LS_C.share,vals:P.map(function(x){return x.share==null?null:x.share*100;}),axis:'r',w:2,dash:'5 3'}],
+        fmtR:function(v){return (v>=10?Math.round(v):Math.round(v*10)/10)+'%';}});
+  }
+  /* 图三：账号达标 / 不达标 */
+  let chart3='';
+  if(P.length){
+    chart3=lsLegend([['达标账号',LS_C.ord],['不达标账号',LS_C.ref],['达标率（右轴）',LS_C.sale]])
+      +lsPlot({labels:labels,h:172,right:true,
+        bars:[{name:'达标账号',color:'#2f9e6f',vals:P.map(function(x){return x.ok||0;})},
+              {name:'不达标账号',color:'#d93b2b',vals:P.map(function(x){return x.bad||0;})}],
+        lines:[{name:'达标率',color:LS_C.sale,vals:P.map(function(x){const t=(x.ok||0)+(x.bad||0);return t?x.ok/t*100:null;}),axis:'r',w:2}],
+        fmtL:function(v){return Math.round(v);},fmtR:function(v){return Math.round(v)+'%';},
+        fmtTip:function(nm,v){return lsNum(v)+' 个';}});
+  }
+  /* 品类透视 */
+  const ag=lsCatAgg();
+  const lv='<span class="ls-lv">'+[['1','星耀1级'],['2','星耀2级']].map(function(x){
+    return '<button data-lslv="'+x[0]+'" class="'+(lsLevel===x[0]?'on':'')+'">'+x[1]+'</button>';
+  }).join('')+'</span>';
+  const sortBtn='<span class="ls-lv">'+[['ref','退款额'],['rate','退款率'],['sale','销售额']].map(function(x){
+    return '<button data-lssort="'+x[0]+'" class="'+(lsSort===x[0]?'on':'')+'" title="按'+x[1]+'降序排名">'+x[1]+'</button>';
+  }).join('')+'</span>';
+  const lampLegend='<div class="ls-legend ls-lamp-lg"><span><i style="background:#1f8a5b;border-radius:50%"></i>达标</span>'
+    +'<span><i style="background:#d99a1f;border-radius:50%"></i>预警</span>'
+    +'<span><i style="background:#d93b2b;border-radius:50%"></i>超线</span>'
+    +'<span class="dim">基准线 '+(ag.base!=null?lsPct(ag.base):'待设目标')+'</span></div>';
+  let rowsHtml='';
+  if(!ag.list.length){
+    rowsHtml='<tr><td colspan="9" class="dim">当前筛选下没有退款明细数据</td></tr>';
+  }else{
+    ag.list.forEach(function(x){
+      const lamp=x.lamp;
+      rowsHtml+='<tr data-lscat="'+esc(x.cat)+'" title="点击查看该品类的退款明细">'
+        +'<td class="ls-rk">'+x.rank+'</td>'
+        +'<td class="ls-cat"><a class="ls-cat-a">'+esc(x.cat)+'</a></td>'
+        +'<td class="ls-lamp"><i style="background:'+lamp.c+'"></i><span style="color:'+lamp.c+'">'+esc(lamp.t)+'</span></td>'
+        +'<td class="num">'+lsMoney(x.sale)+'</td>'
+        +'<td class="num ls-ref">'+lsMoney(x.amt)+'</td>'
+        +'<td class="num"><b style="color:'+lamp.c+'">'+lsPct(x.rate)+'</b></td>'
+        +'<td class="num">'+lsNum(x.ordn)+'</td>'
+        +'<td class="num">'+lsNum(x.rqty)+'</td>'
+        +'<td class="num dim">'+lsPct(ag.tot.amt>0?x.amt/ag.tot.amt:null)+'</td>'
+        +'</tr>';
+    });
+    rowsHtml+='<tr class="ls-sum"><td>—</td><td class="ls-cat">合计</td><td>—</td>'
+      +'<td class="num">'+lsMoney(ag.tot.sale)+'</td><td class="num">'+lsMoney(ag.tot.amt)+'</td>'
+      +'<td class="num"><b>'+lsPct(ag.tot.rate)+'</b></td><td class="num">'+lsNum(ag.tot.ordn)+'</td>'
+      +'<td class="num">'+lsNum(ag.tot.rqty)+'</td><td class="num dim">100.00%</td></tr>';
+  }
+  const tbl='<div class="ls-flt">'
+    +lsSel('region','区域')+lsSel('group','核算组')+lsSel('site','站点')
+    +'<span class="ls-sep"></span>'+lv+'<span class="ls-sep"></span>'+sortBtn
+    +'<span class="ls-cnt">'+ag.list.length+' 个'+(lsLevel==='2'?'二级':'一级')+'品类 · '+ag.n+' 条退款</span>'
+    +'</div>'+lampLegend
+    +'<div class="ls-tblwrap"><table class="hk-tbl ls-tbl"><thead><tr>'
+    +'<th style="width:46px">排名</th><th>品类</th><th style="width:82px">灯</th>'
+    +'<th>销售额</th><th>退款额</th><th>退款率</th><th>订单量</th><th>退款量</th><th>退款额占比</th>'
+    +'</tr></thead><tbody>'+rowsHtml+'</tbody></table></div>';
+  return '<div class="ls-wrap">'
+    +'<div class="ls-mhead"><span class="ls-bar-red"></span>'+seg
+    +'<span class="ls-scope" title="数据来源：问题明细 · 退款明细 / AMZ汇总表 · 账号报损">'+esc(K[2])+' · '+esc(win)+'</span></div>'
+    +kpis
+    +'<section class="ls-sec"><h3>一、报损规模与占比趋势</h3>'
+    +'<div class="ls-chart">'+chart1+'</div>'
+    +(P.length?('<div class="ls-row2"><div><div class="ls-sub">占比趋势</div>'+chart2+'</div>'
+    +'<div><div class="ls-sub">账号达标 / 不达标趋势</div>'+chart3+'</div></div>'):'')
+    +'</section>'
+    +'<section class="ls-sec"><h3>二、品类报损透视 · 按灯</h3>'+tbl+'</section>'
+    +'</div>';
+}
+function lossFocusSection(){return '<div id="lsWrap">'+lsInner()+'</div>';}
+function lsRefresh(){
+  const w=document.getElementById('lsWrap');
+  if(w)w.innerHTML=lsInner();else render();
+}
+
 function healthView(){
   HKC_ROWS={};   /* 悬浮图表行缓存按渲染重建（数据/筛选变了必须重算） */
   const weeks=healthWeeks();
   const dimBtns=['main','small','all'].map(function(d){return '<button class="btn xs'+(healthDim===d?' primary':' ghost')+'" data-hdim="'+d+'">'+esc(HEALTH_DIM_LABEL[d])+'</button>';}).join('');
   let h='<div class="panel hk">'+hkTabBar();
+  if(hkTab==='loss')return h+lossFocusSection()+'</div>';
   if(!weeks.length){
     if(hkTab==='cs')h+='<div class="hk-empty">👥 客服关注区<br><br>尚未载入指标数据。请先在「AMZ汇总表」或「AMZ达标表」上传指标数据源（与汇总表/达标表共用），本模块将按周统计客服的主账号健康率、ODR、店铺评分、目标达成差距与净值。</div>';
     else if(hkTab==='ops'||hkTab==='logi')h+=hkTabEmpty();
