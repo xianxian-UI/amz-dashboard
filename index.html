@@ -267,8 +267,14 @@
   .hk-title{font-size:18px;font-weight:700;color:#2b2740}
   /* 看板顶部模块切换：当前模块显示为大标题，其余为绿色胶囊按钮 */
   .hk-tabs{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
-  .hk-tabp{background:#34c759;color:#fff;border:none;border-radius:8px;padding:6px 15px;font-size:13.5px;font-weight:500;line-height:1.4;cursor:pointer;font-family:inherit;white-space:nowrap}
-  .hk-tabp:hover{background:#2eb14f}
+  /* 顶部模块胶囊：邻近紫配色——紫/蓝紫/粉紫/玫紫明度接近、跟主题同调；每颗自带细微渐变；浅底深字/深底白字保证对比 */
+  .hk-tabp{border:none;border-radius:8px;padding:6px 15px;font-size:13.5px;font-weight:500;line-height:1.4;cursor:pointer;font-family:inherit;white-space:nowrap}
+  .hk-tabp[data-hktab="overview"]{background:linear-gradient(135deg,#CECBF6,#AFA9EC);color:#3C3489}
+  .hk-tabp[data-hktab="cs"]{background:linear-gradient(135deg,#AFA9EC,#7F77DD);color:#fff}
+  .hk-tabp[data-hktab="ops"]{background:linear-gradient(135deg,#B5D4F4,#7F77DD);color:#fff}
+  .hk-tabp[data-hktab="logi"]{background:linear-gradient(135deg,#D6A9E8,#A56FCB);color:#fff}
+  .hk-tabp[data-hktab="loss"]{background:linear-gradient(135deg,#EFA9C8,#C75E96);color:#fff}
+  .hk-tabp:hover{filter:brightness(.93)}
   /* ===== 健康看板 · 报损透视台（红色主题） ===== */
   .ls-wrap{font-size:13px}
   .ls-mhead{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:4px 0 11px}
