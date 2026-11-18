@@ -2787,7 +2787,7 @@ function matchKB(reason){for(const k of RISK_KB){if(k.re.test(reason))return k;}
 function kbByType(type){return RISK_KB.find(k=>k.type===type)||null;}
 
 let DATA={accounts:[],riskCases:[],closeCases:[],compliance:[],manualPolicies:[],manualCases:[],sumWeekMeta:{},healthTarget:{},targetCfg:{cs:{},leader:{},cat:{}},accSrc:{},accSrcMeta:{file:'',at:''}};
-let view='health',tab='全部账号',policyTab='政策知识',polCat=POLICY_CATS[0],accSearch='',caseSearch='',kbQuery='',curPage=1,pageSize=100,formAcc=null,policyCase=null,chat=[],quickOpen=false,quickText='',reasonAcc=null,accScope='all',accExact=false,stopAcc=null,accSel={},stopBatch=null,uploadOpen=false,uploadKind='',pcSearch='',pcCat='all',pcFollowOnly=false,pcEdit=null,pcShow=null,pcFollowId=null,pcbTab='',pcDim={},pcbOpen={},pcSortK='',pcSortDir=1,pcFocusFor=null,isUpOpen=false,isUpTab='',isUpClear=false,riskCat='all',riskNoteFor=null,sumSearch='',sumSortK='',sumSortDir=0,sumFilterOpen='',sumFilter={site:[],bigGroup:[],group:[],mgr:[],supervisor:[],sales:[],cs:[],region:[],fdate:'',fspan:''},stdSearch='',stdSortK='',stdSortDir=0,stdFilterOpen='',stdFilter={site:[],bigGroup:[],group:[],mgr:[],supervisor:[],sales:[],cs:[],region:[],stdHealthy:[],stdMain:[],stdEU3:[],stdCsLeader:[],stdCoField:[],stdFail:'',fdate:'',fspan:''},kbAddOpen=false,kbAddImg='',kbAddModule='订单缺陷率',kbLightbox='',kbAddForm={},kbAddDoc='',kbAddFile='',sumGrpOpen='',stdGrpOpen='',sumMetricCond=[],stdMetricCond=[],stdCellTip=null,healthDim='main',sumColsSel=null,stdColsSel=null,sumColsKeep=false,stdColsKeep=false,colPanel='',hkDet='',hkNote=false,csNote=false,hkRegWeek='',cfgTab='cfg',hkTab='overview',hkFilter={},csCoreFlt={cs:'',leader:'',cat:''},odrScope='main',odrNote=false,shopNote=false,netNote=false,isTab='fbm',isSearch='',isExact=false,isColSel='',isSite=[],isCs=[],isState=[],isOnlyAffect=false,isPage=1,isPageSize=100,fbmNote=false,ctrOnlyInvalid=false,ctrReasonShow={carrier:1,trackno:1,earlyship:1,scanmiss:1},ctrReasonOpen={},ctrRankFilter={dim:'',val:''},ctrRankOpen={reason:false,carrier:false,method:false,region:false,site:false},ctrSearch='',ctrColSel='',ctrExact=false,fbmInfo={total:0,dropped:0,week:''},fbmDim={},fbmAnaOpen=false,fbmCardOpen={},isIntentVal='',kbPage=1,kbSel={},kbKwFilter='',kbKwEdit={},kbBatchIntent='',kbSmart=null,
+let view='health',tab='全部账号',policyTab='政策知识',polCat=POLICY_CATS[0],accSearch='',caseSearch='',kbQuery='',curPage=1,pageSize=100,formAcc=null,policyCase=null,chat=[],quickOpen=false,quickText='',reasonAcc=null,accScope='all',accExact=false,stopAcc=null,accSel={},stopBatch=null,uploadOpen=false,uploadKind='',pcSearch='',pcCat='all',pcFollowOnly=false,pcEdit=null,pcShow=null,pcFollowId=null,pcbTab='',pcDim={},pcbOpen={},pcSortK='',pcSortDir=1,pcFocusFor=null,isUpOpen=false,isUpTab='',isUpClear=false,amzUpOpen=false,amzUpKind='',amzUpMode='',riskCat='all',riskNoteFor=null,sumSearch='',sumSortK='',sumSortDir=0,sumFilterOpen='',sumFilter={site:[],bigGroup:[],group:[],mgr:[],supervisor:[],sales:[],cs:[],region:[],fdate:'',fspan:''},stdSearch='',stdSortK='',stdSortDir=0,stdFilterOpen='',stdFilter={site:[],bigGroup:[],group:[],mgr:[],supervisor:[],sales:[],cs:[],region:[],stdHealthy:[],stdMain:[],stdEU3:[],stdCsLeader:[],stdCoField:[],stdFail:'',fdate:'',fspan:''},kbAddOpen=false,kbAddImg='',kbAddModule='订单缺陷率',kbLightbox='',kbAddForm={},kbAddDoc='',kbAddFile='',sumGrpOpen='',stdGrpOpen='',sumMetricCond=[],stdMetricCond=[],stdCellTip=null,healthDim='main',sumColsSel=null,stdColsSel=null,sumColsKeep=false,stdColsKeep=false,colPanel='',hkDet='',hkNote=false,csNote=false,hkRegWeek='',cfgTab='cfg',hkTab='overview',hkFilter={},csCoreFlt={cs:'',leader:'',cat:''},odrScope='main',odrNote=false,shopNote=false,netNote=false,isTab='fbm',isSearch='',isExact=false,isColSel='',isSite=[],isCs=[],isState=[],isOnlyAffect=false,isPage=1,isPageSize=100,fbmNote=false,ctrOnlyInvalid=false,ctrReasonShow={carrier:1,trackno:1,earlyship:1,scanmiss:1},ctrReasonOpen={},ctrRankFilter={dim:'',val:''},ctrRankOpen={reason:false,carrier:false,method:false,region:false,site:false},ctrSearch='',ctrColSel='',ctrExact=false,fbmInfo={total:0,dropped:0,week:''},fbmDim={},fbmAnaOpen=false,fbmCardOpen={},isIntentVal='',kbPage=1,kbSel={},kbKwFilter='',kbKwEdit={},kbBatchIntent='',kbSmart=null,
 otdSearch='',otdSite='',otdCarrier='',otdOnlyLate=false,otdPage=1,otdNote=false,otdInfo={total:0,done:0,late:0},otdRankOpen={carrier:false,method:false,site:false},
 /* 从 AMZ汇总表 点指标数值跳到「问题明细」时带过来的上下文：{kind,acc,metric,label,val} */
 goCtx=null
@@ -9649,7 +9649,7 @@ function render(){
   if(_vw&&WB.user&&_vw!==WB._lastUsageView){WB._lastUsageView=_vw;wbLogUsage(_vw);}
   if(view==='stdcfg'&&cfgTab==='usage'&&!(UM.usage&&UM.usage.since))umUsageLoad();
   const content=(view==='summary')?sumView():(view==='standard')?stdView():(view==='stdcfg')?stdCfgView():(view==='issue')?issueView():(view==='compliance')?pcView():(view==='account')?accountView():(view==='policy')?policyView():(view==='health')?healthView():healthView();
-  document.getElementById('app').innerHTML=`<div class="layout${navFold?' navfold':''}">${navFold?'<div class="navpeek" title="鼠标移到左边缘展开模块导航"><i>›</i></div>':''}${navBar()}<section class="content">${scopeBand()}${content}</section></div>${formModal()}${policyModal()}${quickModal()}${reasonModal()}${uploadModal()}${pcFormModal()}${pcDetailModal()}${pcFollowModal()}${pcFocusModal()}${isUploadModal()}${riskNoteModal()}${kbAddModal()}${sumSrcModal()}${lightbox()}${umAddModal()}${umPwModal()}${umScopeModal()}${umBulkModal()}${umReqApModal()}${stopModal()}`;
+  document.getElementById('app').innerHTML=`<div class="layout${navFold?' navfold':''}">${navFold?'<div class="navpeek" title="鼠标移到左边缘展开模块导航"><i>›</i></div>':''}${navBar()}<section class="content">${scopeBand()}${content}</section></div>${formModal()}${policyModal()}${amzUploadModal()}${quickModal()}${reasonModal()}${uploadModal()}${pcFormModal()}${pcDetailModal()}${pcFollowModal()}${pcFocusModal()}${isUploadModal()}${riskNoteModal()}${kbAddModal()}${sumSrcModal()}${lightbox()}${umAddModal()}${umPwModal()}${umScopeModal()}${umBulkModal()}${umReqApModal()}${stopModal()}`;
 }
 function goPage(p){
   const list=filtered();const pages=Math.max(1,Math.ceil(list.length/pageSize));
@@ -10192,6 +10192,13 @@ document.getElementById('app').addEventListener('change',e=>{
   if(id==='refD2'){refF.d2=e.target.value;refPage=1;render();return;}
   if(id==='otdFile'){const f=e.target.files&&e.target.files[0];e.target.value='';if(f)otdReadFile(f);return;}
   if(id==='isUpClearChk'){isUpClear=!!e.target.checked;return;}
+  if(e.target.name==='amzUpMode'){amzUpMode=String(e.target.value||'');return;}
+  if(id==='amzUpFile'){
+    const _f=e.target.files&&e.target.files[0];e.target.value='';
+    if(_f){const _k=amzUpKind,_m=amzUpMode;amzUpOpen=false;render();
+      if(_k==='ref')refReadFile(_f,_m);else if(_k==='light')lightReadFile(_f,_m);}
+    return;
+  }
   if(id==='isUpFile'){const f=e.target.files&&e.target.files[0];e.target.value='';if(f){const _t=isUpTab,_c=isUpClear;isUpOpen=false;if(_t==='fbm')fbmReadFile(f,_c);else if(_t==='otd')otdReadFile(f,_c);else ctrReadFile(f,_c);}return;}
 });
 /* FBM 多选筛选浮层：点外部关闭 */
@@ -10979,13 +10986,13 @@ document.getElementById('app').addEventListener('click',e=>{
     const _rr=document.getElementById('refAna');if(_rr)_rr.innerHTML=refAnaHtml();
     return;
   }
-  if(e.target.id==='lightUploadBtn'){const _lf=document.getElementById('lightFile');if(_lf)_lf.click();return;}
+  if(e.target.id==='lightUploadBtn'){openAmzUp('light');return;}
   if(e.target.id==='lightExportBtn'){lightExport();return;}
   if(e.target.id==='lightClearBtn'){lightClearSales();return;}
   if(e.target.id==='lightCfgReset'){if(confirm('恢复按灯默认规则？')){DATA.stdCfg=DATA.stdCfg||stdCfgDefault();DATA.stdCfg.lightCfg=lightCfgDefault();LIGHT_CACHE=null;save();render();}return;}
   const _lp=e.target.closest&&e.target.closest('[data-lightpage]');
   if(_lp){const v=_lp.getAttribute('data-lightpage');lightPage=(v==='prev')?lightPage-1:(v==='next')?lightPage+1:(v==='last')?1e9:1;lightRefresh();return;}
-  if(e.target.id==='refUploadBtn'){const _f=document.getElementById('refFile');if(_f)_f.click();return;}
+  if(e.target.id==='refUploadBtn'){openAmzUp('ref');return;}
   if(e.target.id==='refExportBtn'){refExport();return;}
   if(e.target.id==='refClearBtn'){refClearAll();return;}
   if(e.target.id==='refRetryBtn'){REF.state='idle';REF.err='';refEnsure();render();return;}
@@ -11312,6 +11319,7 @@ document.getElementById('app').addEventListener('click',e=>{
   if(dpc){const r=DATA.compliance.find(x=>x.id===dpc.dataset.delpc);if(r&&confirm('确定删除该政策合规记录（'+(r.pcAccount||r.id)+'）？')){DATA.compliance=DATA.compliance.filter(x=>x.id!==r.id);save();render();}return;}
   if(t.id==='closeUpload'||t.id==='closeUpload2'){uploadOpen=false;render();return;}
   if(t.id==='closeIsUp'||t.id==='closeIsUp2'){isUpOpen=false;render();return;}
+  if(t.id==='closeAmzUp'||t.id==='closeAmzUp2'){amzUpOpen=false;render();return;}
   const cb=t.closest('[data-copybrand]');
   if(cb){
     const cc=(DATA.riskCases||[]).find(function(x){return x.id===cb.dataset.copybrand;});
@@ -11413,6 +11421,40 @@ function uploadModal(){
     </div>
     <footer><button class="btn" id="closeUpload2">取消</button></footer>
   </div></div>`;
+}
+/* ══════════ 退款明细 / 产品按灯 上传弹窗（2026-11-19）：点上传按钮先弹此框，
+   在里面选「合并 / 替换 / 清除」再选文件——不再把选项藏在页面底部，用户能一眼看到模式。
+   模式存全局 amzUpMode，确认时传给读取函数，避免 render 重建 DOM 丢失选择。 ══════════ */
+function openAmzUp(kind){amzUpKind=kind;amzUpOpen=true;amzUpMode=(kind==='ref'?'merge':'replace');render();}
+function amzUploadModal(){
+  if(!amzUpOpen)return '';
+  const isRef=amzUpKind==='ref';
+  const title=isRef?'上传退款明细':'上传销售数据（产品按灯）';
+  const opts=isRef
+    ? [['merge','与历史合并（默认）','按「平台单号 + SKU + 退款时间」合并：已有记录更新，新记录追加，退款30天保留不变'],
+       ['clear','清除历史后完全替换','先清空本看板已导入的退款明细（含环比历史），再用本次表格作为全新一批导入']]
+    : [['add','同 SKU 合并相加','本次与历史同 SKU 的销售额/利润/销量累加（适合分多次传同一批货的不同明细）'],
+       ['replace','替换同 SKU（默认）','用本次覆盖历史同 SKU 数据，其它 SKU 保持不变'],
+       ['clear','清除历史后完全替换','先清空全部历史销售数据，再用本次表格完全替换（退款同步字段不受影响）']];
+  const radios=opts.map(function(o){
+    return '<label class="chk" style="display:flex;align-items:flex-start;gap:8px;margin:8px 0;padding:8px 10px;border:1px solid #e4ede8;border-radius:8px;cursor:pointer">'
+      +'<input type="radio" name="amzUpMode" value="'+o[0]+'"'+(amzUpMode===o[0]?' checked':'')+' style="margin-top:2px">'
+      +'<span><b>'+esc(o[1])+'</b><br><span style="color:#8a85a6;font-size:11px">'+esc(o[2])+'</span></span></label>';
+  }).join('');
+  const tip=isRef
+    ? '按<b>表头字段名</b>自动识别（不按列顺序），至少认出「账号简称 / 平台单号 / 退款原因」等字段中的 1 个即可导入。若识别失败，会列出识别到的表头供你核对。'
+    : '按<b>表头字段名</b>自动识别，需含「SKU」列，以及「销售额 / 利润 / 卖出销量」中的至少一列。';
+  return '<div class="mask" id="mask"><div class="modal">'
+    +'<header><h2>'+title+'</h2><button class="btn ghost xs" id="closeAmzUp">关闭</button></header>'
+    +'<div class="body one-col">'
+      +'<p style="margin:0 0 8px;font-size:13px;color:#4a4560">'+tip+'</p>'
+      +'<div style="font-size:12px;font-weight:700;color:#2f6f5b;margin:2px 0 4px">① 选择导入方式</div>'
+      +radios
+      +'<div style="font-size:12px;font-weight:700;color:#2f6f5b;margin:12px 0 4px">② 选择文件</div>'
+      +'<div><input type="file" id="amzUpFile" accept=".xlsx,.xls,.csv,.txt"></div>'
+    +'</div>'
+    +'<footer><button class="btn" id="closeAmzUp2">取消</button></footer>'
+  +'</div></div>';
 }
 /* ══════════ 问题明细上传弹窗：FBM / 准时送达率 / 有效追踪率 共用 ══════════
    默认「按主键合并」（账号+订单编号），勾选「清除全部历史数据」才整体替换 —— 与政策合规性上传一致。 */
@@ -16783,19 +16825,19 @@ function refSection(){
     +note+fileInput;
 }
 /* ── 导入 ── */
-function refReadFile(file){
+function refReadFile(file,mode){
   if(!file)return;
   /* 大表解析要 5~10 秒（3 万行 xlsx 实测），先把提示打出来，别让人以为点没反应 */
   const tip0=document.getElementById('saveTip');
   if(tip0)tip0.textContent='正在解析 '+file.name+'…（大表约 5~10 秒）';
-  setTimeout(function(){refReadFileGo(file);},60);
+  setTimeout(function(){refReadFileGo(file,mode);},60);
 }
-function refReadFileGo(file){
+function refReadFileGo(file,mode){
   if(!file)return;
   const ext=String((file.name.split('.').pop()||'')).toLowerCase();
   const rd=new FileReader();
   const fin=function(rows){
-    const msg=refImportRows(rows,file.name);
+    const msg=refImportRows(rows,file.name,mode);
     if(msg.indexOf('导入完成')===0){refPage=1;}
     if(view==='issue')render();
     alert(msg);
@@ -16825,11 +16867,11 @@ function refKeyOf(r){
   if(p)return 'P|'+p+'|'+s+'|'+t;
   return 'W|'+refVal(r,'wmsNo')+'|'+s+'|'+t;
 }
-function refImportRows(rows,fname){
+function refImportRows(rows,fname,mode){
   if(!Array.isArray(rows)||!rows.length)return '文件是空的';
   /* 上传选项「清除历史数据（完全替换，不做合并）」：先清空明细与环比基线，本次表格作为全新一批导入。
      与政策合规 / 问题明细的「清除全部历史数据」同一语义。 */
-  const _upClear=!!(document.getElementById('refUpClear')&&document.getElementById('refUpClear').checked);
+  const _upClear=(mode?mode==='clear':!!(document.getElementById('refUpClear')&&document.getElementById('refUpClear').checked));
   if(_upClear){REF.rows=[];REF.base=null;REF.basePrev=null;REF.hist=[];REF.topReason=null;REF.topPrev=null;}
   /* ① 找表头行：前 10 行里「命中已知字段最多」的那一行（至少 3 个） */
   let hdr=-1,bestN=0;
@@ -16838,7 +16880,11 @@ function refImportRows(rows,fname){
     for(let j=0;j<r.length;j++){if(refHeadIdx(r[j])>=0)n++;}
     if(n>bestN){bestN=n;hdr=i;}
   }
-  if(hdr<0||bestN<3)return '没认出表头行：需要至少含「账号简称 / 平台单号 / 退款原因」等已知字段名中的 3 个';
+  if(hdr<0||bestN<1){
+    /* 识别失败时把前几行原文回显，方便用户核对表头到底写成了什么，而不是干巴巴一句报错 */
+    const sample=(rows.slice(0,3)||[]).map(function(r){return Array.prototype.slice.call(r||[],0,12).join(' | ');}).join('　/　');
+    return '没认出表头行：至少要能认出「账号简称 / 平台单号 / 退款原因 / SKU」等字段中的 1 个。\n识别到的前几行：'+sample;
+  }
   /* ② 列映射：每个上传列 → 固定表结构的下标；重复字段只认第一个 */
   const head=rows[hdr]||[];
   const map=[],used={},missLabels=[];
@@ -17514,12 +17560,12 @@ function lightHeadIdx(label){
   });
   return best;
 }
-function lightReadFile(file){
+function lightReadFile(file,mode){
   if(!file)return;
   var tip=document.getElementById('saveTip');if(tip)tip.textContent='正在解析 '+file.name+'…';
-  setTimeout(function(){lightReadFileGo(file);},60);
+  setTimeout(function(){lightReadFileGo(file,mode);},60);
 }
-function lightReadFileGo(file){
+function lightReadFileGo(file,mode){
   if(!file)return;
   var ext=String(file.name.split('.').pop()||'').toLowerCase();
   var rd=new FileReader();
@@ -17546,8 +17592,8 @@ function lightReadFileGo(file){
        add=合并相加（本次同 SKU 与历史当前值累加）；replace=替换（本次覆盖同 SKU，旧默认）；
        clear=清除（先清空全部历史销售三项，不动退款同步字段与已固定快照）。
        同 SKU 在文件内部已先行求和；这里处理的是「本次 vs 历史」的关系。 */
-    var _mode='replace',_rg=document.getElementsByName('lightUpMode');
-    for(var _i=0;_i<_rg.length;_i++){if(_rg[_i].checked){_mode=_rg[_i].value||'replace';break;}}
+    var _mode=mode||'';
+    if(!_mode){var _rg=document.getElementsByName('lightUpMode');for(var _i=0;_i<_rg.length;_i++){if(_rg[_i].checked){_mode=_rg[_i].value||'replace';break;}}}
     if(_mode==='clear'){
       DATA.lightSales={};
       var _cv=lightCurStore();
