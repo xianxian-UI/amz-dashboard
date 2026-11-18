@@ -6308,7 +6308,7 @@ const SUM_BAO_KIND=[['d','日','baoD'],['w','周','baoW'],['m','月','baoM']];
 /* 默认不显示的列：订单量 / 销售额 / 更新时间 —— 到「🧩 显示字段」里勾选才出现 */
 const SUM_COL_DEFAULT_OFF=['baoDOrd','baoDSale','baoWOrd','baoWSale','baoMOrd','baoMSale','baoAt'];
 /* 上传面板开关 / 截图目标账号 */
-let sumUpOpen=false,sumUpFallback='';
+let sumUpOpen=false,sumUpFallback='',sumUpMode='';
 const SUM_METRIC_GROUPS=[
   ['订单缺陷率',[['fbmOdr','FBM订单缺陷率'],['odrCnt','缺陷订单数'],['ordTotal','订单总数'],['invDefRate','发票缺陷率']]],
   ['店铺评分',[['shopScore','店铺评分']]],
@@ -6579,7 +6579,8 @@ function sumToolbarInner(){
       <input id="sumSearch" class="search" placeholder="🔍 搜索 账号 / 站点 / 小组 / 经理 / 销售 / 指标…（空格/逗号分隔可批量）" value="${esc(sumSearch)}">
       <span class="src-date">${weekMetaLine(ds,'填表日期由上传文件决定；周次可直接编辑，等于数据源「周次」字段')}</span>
       <label class="keep" title="勾选=与历史周合并；周指标固定只保留最近 4 周，导入第 5 周会自动删除最老一周"><input type="checkbox" id="sumKeep" checked> 保留历史周数据</label>
-      <button class="btn ghost" id="sumSrcBtn" title="打开上传面板：主指标表 + 账号报损的日/周/月三张退款明细（分开上传）">⬆ 上传指标数据源</button>
+      <button class="btn ghost" id="sumMainBtn" title="只上传 Amazon汇总表 指标主表（周指标/健康度/评分）；与账号报损分开，互不影响">⬆ 上传主表指标</button>
+      <button class="btn ghost" id="sumBaoBtn" title="只上传账号报损的日/周/月退款明细；不需要先传主表，也不会改主表当前周">⬆ 上传账号报损</button>
       <button class="btn ghost" id="sumColBtn" title="选择要显示的列（账号必选；默认全部显示）">🧩 显示字段</button>
       <button class="btn ghost" id="sumExportBtn" title="把当前筛选结果（当前周）导出为 xlsx（无 Excel 环境时导出 csv）">⬇ 导出</button>
       <input type="file" id="sumSrcFile" accept=".xlsx,.xls,.csv,.txt" style="display:none">
@@ -7157,8 +7158,9 @@ function sumUploadFiles(files,fallback){
     p=p.then(function(){
       return sumReadSrcAoa(f).then(function(r){
         if(!r.aoa){msgs.push('✗ 「'+f.name+'」：表头里既没有「账号」也没有指标列，已跳过');return;}
-        const kind=sumKindGuess(r.aoa,fallback,f.name);
-        if(!kind){msgs.push('✗ 「'+f.name+'」：看不出是主表还是日/周/月（三份格式相同），请点对应卡片单独上传');return;}
+        let kind=sumKindGuess(r.aoa,fallback,f.name);
+        if(sumUpMode==='bao'){kind=(fallback==='d'||fallback==='w'||fallback==='m')?fallback:'';}
+        if(!kind){msgs.push('✗ 「'+f.name+'」：认不出是日 / 周 / 月退款表，请点对应卡片单独上传');return;}
         if(kind==='main'){sumUseSrcFile(f,msgs);return;}
         sumBaoCommit(r.aoa,r.sheet,f.name,fallback).forEach(function(m){msgs.push(m);});
       });
@@ -7180,31 +7182,22 @@ function sumUpPick(kind){
 /* 上传面板：主表（紫）+ 日/周/月三张退款明细（绿）；四个入口互相独立，也可一次多选 */
 function sumSrcModal(){
   if(!sumUpOpen)return '';
-  const mt=sumBaoMetaStore(),m0=DATA.sumMeta||{};
-  const mainSt=m0.srcFile?('已导入 <b>'+sumWeekList().length+'</b> 周 · '+esc(m0.srcAt||'')+'<br>'+esc(m0.srcFile)):'<span class="dim">还没导入</span>';
-  const card=function(title,cols,status,btn,cls){
-    return '<div class="sp-card'+(cls?' '+cls:'')+'"><div class="sp-hd">'+esc(title)+'</div>'
-      +'<div class="sp-bd"><div class="sp-cols">识别列：'+esc(cols)+'</div><div class="sp-st">'+status+'</div>'+btn+'</div></div>';
-  };
+  const mt=sumBaoMetaStore();
   const baoCard=function(kind){
     const kp=SUM_BAO_KIND.filter(function(x){return x[0]===kind;})[0]||['d','',''];
     const m=mt[kind];
     const st=m?('命中 <b>'+m.n+'</b> 个账号'+(m.raw&&m.raw>m.n?(' <span class="dim">/ 文件 '+m.raw+' 行</span>'):'')
       +' · '+esc(m.at||'')+(m.file?('<br><span class="dim">'+esc(m.file)+'</span>'):'')):'<span class="dim">还没导入</span>';
-    return card(kp[1]+'退款明细','账号简称 · 订单量 · 订单总金额(RMB) · 退款金额(RMB) · 退款率',st,
-      '<button class="btn ghost xs" data-baoup="'+kind+'">选择文件</button>','bao k-'+(kind==='d'?'day':(kind==='w'?'week':'month')));
+    return '<div class="sp-card bao k-'+(kind==='d'?'day':(kind==='w'?'week':'month'))+'"><div class="sp-hd">'+kp[1]+'退款明细</div>'
+      +'<div class="sp-bd"><div class="sp-cols">账号简称 · 订单量 · 订单总金额(RMB) · 退款金额(RMB) · 退款率</div><div class="sp-st">'+st+'</div>'
+      +'<button class="btn ghost xs" data-baoup="'+kind+'">选择文件</button></div></div>';
   };
   return '<div class="mask" id="sumSrcMask"><div class="modal srcpanel">'
-    +'<header><h2>⬆ 上传指标数据源</h2><button class="btn ghost xs" id="sumSrcClose">关闭</button></header>'
+    +'<header><h2>⬆ 上传账号报损</h2><button class="btn ghost xs" id="sumSrcClose">关闭</button></header>'
     +'<div class="body one-col">'
-    +'<p style="margin:0 0 10px;font-size:13px;color:#4a4560">按<b>表头字段名</b>自动匹配（不看列顺序、<b>不看文件名</b>，全角括号和单位后缀也认）。日 / 周 / 月 三份表<b>格式一样</b>，各自独立上传，只传其中一个也可以。</p>'
-    +'<div class="sp-top"><button class="btn" id="sumUpAll">一次选择多个文件</button>'
-    +'<span class="sp-tip">多选时按文件名里的 日/周/月（或 daily/weekly/monthly）分派；文件格式相同认不出，就单独点对应的卡片传。</span></div>'
-    +'<div class="sp-grid">'
-    +card('Amazon汇总表（指标主表）','账号 · 订单缺陷率 / 缺陷订单数 / 店铺评分 / 政策合规性 / 物流考核 等',mainSt,'<button class="btn ghost xs" data-baoup="main">选择文件</button>','main')
-    +baoCard('d')+baoCard('w')+baoCard('m')
-    +'</div>'
-    +'<p style="margin:12px 0 0;font-size:12px;color:#8a85a6">汇总表里「账号报损」分组默认显示 日/周/月 的 退款量 + 退款占比 + 退款额 + 退款率（退款占比 = 退款量 ÷ 订单量），订单量 / 销售额 / 更新时间到「🧩 显示字段」里勾选才出现。</p>'
+    +'<p style="margin:0 0 10px;font-size:13px;color:#4a4560">只上传退款明细，和指标主表<b>各传各的、互不影响</b>；不需要先传主表，也不会改主表当前周。按<b>表头字段名</b>自动匹配（不看列顺序、不看文件名），日 / 周 / 月三份各自独立。</p>'
+    +'<div class="sp-grid">'+baoCard('d')+baoCard('w')+baoCard('m')+'</div>'
+    +'<p style="margin:12px 0 0;font-size:12px;color:#8a85a6">上传后，汇总表 / 达标表的「账号报损」列、客服报损情况、报损透视台都会立即刷新。指标主表请点「⬆ 上传主表指标」单独上传。</p>'
     +'</div><footer><button class="btn" id="sumSrcClose2">关闭</button></footer></div></div>';
 }
 function sumUseSrcFile(f,msgs){
@@ -11175,11 +11168,12 @@ document.getElementById('app').addEventListener('click',e=>{
   if(t.id==='pcExportBtn'){exportPc();return;}
   if(t.id==='pcFollowOnly'){pcFollowOnly=!pcFollowOnly;curPage=1;render();return;}
   if(t.id==='sumExportBtn'){exportSum();return;}
-  if(t.id==='sumSrcBtn'){sumUpOpen=true;render();return;}
-  if(t.id==='sumSrcClose'||t.id==='sumSrcClose2'||t.id==='sumSrcMask'){sumUpOpen=false;render();return;}
+  if(t.id==='sumMainBtn'){sumUpMode='main';const si=document.getElementById('sumSrcFile');if(si){si.value='';si.click();}return;}
+  if(t.id==='sumBaoBtn'){sumUpMode='bao';sumUpOpen=true;render();return;}
+  if(t.id==='sumSrcClose'||t.id==='sumSrcClose2'||t.id==='sumSrcMask'){sumUpOpen=false;sumUpMode='';render();return;}
   if(t.id==='sumUpAll'){sumUpPick('');return;}
   const baoup=t.closest('[data-baoup]');
-  if(baoup){sumUpPick(baoup.getAttribute('data-baoup')||'bao');return;}
+  if(baoup){sumUpMode='bao';sumUpPick(baoup.getAttribute('data-baoup')||'d');return;}
   const msClr=t.closest('[data-msclr]');
   if(msClr){if(msClr.closest('#stdFilterBar')){stdFilter[msClr.dataset.msclr]=[];curPage=1;stdRefreshFilterUI();}else{sumFilter[msClr.dataset.msclr]=[];curPage=1;sumRefreshFilterUI();}return;}
   if(t.closest('.ms-pop'))return;                       /* 弹层内点击（勾选/滚动）不关闭 */
@@ -11796,7 +11790,7 @@ function stdToolbarInner(){
       <input id="stdSearch" class="search" placeholder="🔍 搜索 账号 / 站点 / 小组 / 客服组长 / 合作客服…（空格/逗号分隔可批量）" value="${esc(stdSearch)}">
       <span class="src-date">${weekMetaLine(ds,'与 AMZ汇总表 共用同一指标数据源；周次可直接编辑')}</span>
       <label class="keep" title="勾选=与历史周合并；周指标固定只保留最近 4 周，导入第 5 周会自动删除最老一周"><input type="checkbox" id="stdKeep" checked> 保留历史周数据</label>
-      <button class="btn ghost" id="stdSrcBtn" title="上传指标数据源（与 AMZ汇总表 共用）">⬆ 上传指标数据源</button>
+      <button class="btn ghost" id="stdSrcBtn" title="只上传 Amazon汇总表 指标主表（与汇总表共用）">⬆ 上传主表指标</button>
       <button class="btn ghost" id="stdCfgJump" title="打开「达标设置」定义每个指标达到什么算达标">⚙ 达标设置</button>
       <button class="btn ghost" id="stdColBtn" title="选择要显示的列（账号必选；默认全部显示）">🧩 显示字段</button>
       <button class="btn ghost" id="stdExportBtn" title="把当前筛选结果（当前周）导出为 xlsx（无 Excel 环境时导出 csv）">⬇ 导出</button>
