@@ -282,8 +282,9 @@
   .ls-seg button.on{background:#d93b2b;color:#fff}
   .ls-scope{font-size:11.5px;font-weight:700;color:#a4473a;background:#fdf1ef;border:1px solid #f3d5d0;border-radius:20px;padding:2px 10px}
   .ls-src{font-size:11px;color:#9aa1ad}
-  .ls-kpis{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:9px;margin:0 0 13px}
-  @media(max-width:1240px){.ls-kpis{grid-template-columns:repeat(3,minmax(0,1fr))}}
+  .ls-kpis{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:9px;margin:0 0 13px}
+  @media(max-width:1400px){.ls-kpis{grid-template-columns:repeat(4,minmax(0,1fr))}}
+  @media(max-width:1050px){.ls-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}}
   .ls-kpi{background:linear-gradient(160deg,#fff 0%,#fdf8f7 100%);border:1px solid #f1e4e1;
     border-left:3px solid var(--ac,#d93b2b);border-radius:9px;padding:8px 11px 7px;min-width:0}
   .ls-kpi .k{font-size:11.5px;color:#8d7a76;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -14482,7 +14483,7 @@ const HK_TABS=[
   {k:'cs',icon:'👥',label:'客服关注区'},
   {k:'ops',icon:'📦',label:'运营关注区'},
   {k:'logi',icon:'🚚',label:'物流关注区'},
-  {k:'loss',icon:'🩸',label:'报损透视台'}
+  {k:'loss',icon:'<svg width="17" height="17" viewBox="0 0 24 24" style="vertical-align:-2px"><path fill="#d93b2b" d="M12 2S5 10 5 14.5a7 7 0 0 0 14 0C19 10 12 2 12 2z"/></svg>',label:'报损透视台'}
 ];
 function hkTabCur(){for(let i=0;i<HK_TABS.length;i++){if(HK_TABS[i].k===hkTab)return HK_TABS[i];}return HK_TABS[0];}
 /* ═════════════ 问题明细：FBM订单缺陷率 / 政策合规性 / 准时送达率 / 有效追踪率 ═════════════
@@ -20086,6 +20087,44 @@ function lsSel(field,label){
   opts.forEach(function(v){h+='<option value="'+esc(v)+'"'+(v===cur?' selected':'')+'>'+esc(v)+'</option>';});
   return h+'</select></label>';
 }
+/* KPI 取数：AMZ汇总表「账号报损」当前维度各账号列 —— 销售额/退款额/订单量/退款量分别求和。
+   口径与「AMZ汇总表」里给每个账号显示的 bao{D/W/M}{Sale/Ref/Ord/Rqty} 完全一致（含退款量取自退款明细的同源口径），
+   不是退款明细按单号去重的反推值。界面不写口径，只在此注释。 */
+function lsAccountSum(kind){
+  const P={d:'baoD',w:'baoW',m:'baoM'}[kind]||'baoM';
+  let sale=0,ref=0,ord=0,rqty=0,n=0;
+  (DATA.accounts||[]).forEach(function(a){
+    if(!a||a.status!=='启用'||a.assess!=='纳入考核')return;
+    const k=String(a.short==null?'':a.short).trim().toUpperCase();
+    if(!k)return;
+    const f=sumBaoFields(k);
+    sale+=Number(f[P+'Sale'])||0;
+    ref +=Number(f[P+'Ref'])||0;
+    ord +=Number(f[P+'Ord'])||0;
+    rqty+=Number(f[P+'Rqty'])||0;
+    n++;
+  });
+  return {sale:sale,ref:ref,ord:ord,rqty:rqty,n:n};
+}
+/* 账号退款达标率：取值按「AMZ达标表」口径 —— 当前维度退款率(bao{D/W/M}Rate)逐账号用「达标设置③」阈值判定。
+   达标率=判定为达标(ok)的账号 ÷ 有退款率取值的账号；不达标账号数=判定为 fail 的账号。
+   临界(warn)计入分母但不算达标，与达标表去重达标率 csRateOf 的口径一致。界面不写口径，只在此注释。 */
+function lsRefStdStat(kind){
+  const mk=BAO_DIM_KEY[kind]||'baoWRate';
+  let tot=0,ok=0,bad=0;
+  (DATA.accounts||[]).forEach(function(a){
+    if(!a||a.status!=='启用'||a.assess!=='纳入考核')return;
+    const k=String(a.short==null?'':a.short).trim().toUpperCase();
+    if(!k)return;
+    const raw=sumBaoFields(k)[mk];
+    if(raw==null||String(raw).trim()==='')return;
+    const lv=stdLevel(mk,raw,null);
+    if(lv==null)return;
+    tot++;
+    if(lv==='ok')ok++;else if(lv==='fail')bad++;
+  });
+  return {tot:tot,ok:ok,bad:bad,rate:tot?ok/tot:null};
+}
 /* ── 主体 ── */
 function lsInner(){
   LS_CACHE={};
@@ -20100,21 +20139,24 @@ function lsInner(){
   const seg='<span class="ls-seg">'+LS_KINDS.map(function(kp){
     return '<button data-lsdim="'+kp[0]+'" class="'+(lsDim===kp[0]?'on':'')+'" title="'+esc(kp[2]+'趋势')+'">'+kp[1]+'</button>';
   }).join('')+'</span>';
-  /* KPI */
+  /* KPI：销售额/退款额/订单量/退款量 = AMZ汇总表账号列分别求和；退款率 = 退款额÷销售额（放在销售额之前）；
+     账号退款达标率 = AMZ达标表口径，卡片下方显示不达标账号数。口径只写源码注释，不进界面。 */
   const kpi=function(lab,val,wow,c){
     return '<div class="ls-kpi" style="--ac:'+c+'"><div class="k">'+esc(lab)+'</div><div class="v" style="color:'+c+'">'+val+'</div><div class="d">'+wow+'</div></div>';
   };
-  let kpis='';
-  if(cur){
-    kpis='<div class="ls-kpis">'
-      +kpi('销售额',lsMoney(cur.sale),lsWow(cur.sale,pre?pre.sale:null,true),LS_C.sale)
-      +kpi('退款额',lsMoney(cur.amt),lsWow(cur.amt,pre?pre.amt:null,false),LS_C.ref)
-      +kpi('订单量',lsNum(cur.ordn),lsWow(cur.ordn,pre?pre.ordn:null,true),LS_C.ord)
-      +kpi('退款量',lsNum(cur.rqty),lsWow(cur.rqty,pre?pre.rqty:null,false),LS_C.rqty)
-      +kpi('退款额占比',lsPct(cur.rate),lsWow(cur.rate,pre?pre.rate:null,false),LS_C.rate)
-      +kpi('退款量占比',lsPct(cur.share),lsWow(cur.share,pre?pre.share:null,false),LS_C.share)
-      +'</div>';
-  }
+  const A=lsAccountSum(kind),SD=lsRefStdStat(kind);
+  const sumRate=A.sale>0?A.ref/A.sale:null;
+  const ordShare=A.ord>0?A.rqty/A.ord:null;
+  let kpis='<div class="ls-kpis">'
+    +kpi('退款率',lsPct(sumRate),lsWow(sumRate,pre?pre.rate:null,false),LS_C.rate)
+    +kpi('销售额',lsMoney(A.sale),lsWow(A.sale,pre?pre.sale:null,true),LS_C.sale)
+    +kpi('退款额',lsMoney(A.ref),lsWow(A.ref,pre?pre.amt:null,false),LS_C.ref)
+    +kpi('订单量',lsNum(A.ord),lsWow(A.ord,pre?pre.ordn:null,true),LS_C.ord)
+    +kpi('退款量',lsNum(A.rqty),lsWow(A.rqty,pre?pre.rqty:null,false),LS_C.rqty)
+    +kpi('退款量占比',lsPct(ordShare),lsWow(ordShare,pre?pre.share:null,false),LS_C.share)
+    +kpi('账号退款达标率',lsPct(SD.rate),
+      '<span class="ls-wow '+(SD.bad?'bad':'good')+'" title="AMZ达标表：当前维度退款率不达标的账号数">不达标 '+SD.bad+' 个</span>','#2f9e6f')
+    +'</div>';
   /* 图一：规模 + 单量 */
   const labels=P.map(function(x){return x.lab;});
   let chart1='';
