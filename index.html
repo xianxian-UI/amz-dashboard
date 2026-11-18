@@ -620,6 +620,16 @@
   .pct2 .pcav{width:58px;text-align:right;color:#7b8a94;font-variant-numeric:tabular-nums}
   /* 问题明细三块看板的 KPI 卡：底部一行「▲差值 · 均值」 */
   .is-kf{display:flex;align-items:center;gap:6px;margin-top:5px;flex-wrap:wrap}
+.is-k{position:relative}
+.kpi-pop{display:none;position:absolute;left:0;top:100%;margin-top:5px;z-index:80;width:344px;max-width:82vw;background:#fff;border:1px solid #d7e8df;border-radius:10px;box-shadow:0 10px 30px rgba(20,50,40,.18);padding:10px 12px;white-space:normal;line-height:1.5}
+.is-k:hover .kpi-pop{display:block}
+.kpi-pop-h{font-size:11.5px;font-weight:800;color:#2f6f5b;margin-bottom:6px}
+.kpi-pop-t{font-size:10.5px;color:#5a6b64;margin-top:6px;padding-top:6px;border-top:1px dashed #e0ece5;line-height:1.6}
+.kpi-chart{display:block;max-width:100%}
+.kpi-lgs{display:flex;flex-wrap:wrap;gap:3px 10px;margin-top:4px}
+.kpi-lg{font-size:10px;color:#5a6b64;display:inline-flex;align-items:center;gap:3px}
+.kpi-lg i{width:8px;height:8px;border-radius:2px;display:inline-block}
+.kpi-pop-empty{padding:12px 4px;color:#96a9a0;font-size:11px}
   .is-ka{font-size:11px;color:#8b98a2;font-weight:600;font-variant-numeric:tabular-nums;white-space:nowrap}
   .meta .pcb-w{margin-left:4px}
   .meta-avg{font-size:11.5px;color:#8b98a2;margin-left:5px;font-variant-numeric:tabular-nums}
@@ -16198,9 +16208,52 @@ function refKpiSiteTrend(key,fmt,H){
     let delta='';
     if(pv!=null){const d=v-pv;delta=d>0?' ▲'+fmt(d):(d<0?' ▼'+fmt(-d):' —0');}
     else delta=' （新增站点）';
-    return st+' '+series+delta;
+    return esc(st)+' '+series+delta;
   });
   return '&#10;站点趋势（近5期·本次环比）：'+lines.join(' · ');
+}
+/* KPI 悬浮曲线图：整体趋势 + 各站点趋势（最近 REF_HIST_MAX 次更新）。
+   口径：整体 = refBaseRows 全量（与 KPI 大数同源）；站点 = refSiteOf 分组；日期维度不参与。
+   折线在缺值处断开；历史超量已在 refAnaRoll / refApply 裁到 REF_HIST_MAX 份。 */
+function refKpiChartSvg(key,fmt,H){
+  H=(H||[]).slice(-REF_HIST_MAX);
+  if(H.length<2)return '<div class="kpi-pop-empty">至少 2 次更新后显示曲线</div>';
+  const W=316,HG=130,PAD={l:34,r:10,t:10,b:16};
+  const last=H[H.length-1],lastSites=(last&&last.sites)||{};
+  let sts=Object.keys(lastSites).filter(function(st){return lastSites[st]&&typeof lastSites[st][key]==='number';});
+  sts.sort(function(a,b){return (lastSites[b][key]||0)-(lastSites[a][key]||0);});
+  sts=sts.slice(0,5);
+  const pal=['#e0724d','#3f8ae0','#c95f9b','#7d75ea','#ef8f3d'];
+  const series=[{name:'整体',color:'#2f6f5b',w:2.4,vals:H.map(function(h){return typeof h[key]==='number'?h[key]:null;})}];
+  sts.forEach(function(st,i){series.push({name:st,color:pal[i%pal.length],w:1.5,
+    vals:H.map(function(h){const ss=h.sites&&h.sites[st];return ss&&typeof ss[key]==='number'?ss[key]:null;})});});
+  let mn=Infinity,mx=-Infinity;
+  series.forEach(function(sn){sn.vals.forEach(function(v){if(v!=null){if(v<mn)mn=v;if(v>mx)mx=v;}});});
+  if(mn===Infinity)return '<div class="kpi-pop-empty">暂无趋势数值</div>';
+  if(mn===mx){mn-=Math.abs(mn)*0.1+1;mx+=Math.abs(mx)*0.1+1;}
+  const span=mx-mn||1,iw=W-PAD.l-PAD.r,ih=HG-PAD.t-PAD.b;
+  const X=function(i){return PAD.l+(H.length<=1?iw/2:i/(H.length-1)*iw);};
+  const Y=function(v){return PAD.t+ih-(v-mn)/span*ih;};
+  let g='';
+  [0,0.5,1].forEach(function(t){
+    const yy=PAD.t+ih*t,vv=mx-span*t;
+    g+='<line x1="'+PAD.l+'" y1="'+yy.toFixed(1)+'" x2="'+(W-PAD.r)+'" y2="'+yy.toFixed(1)+'" stroke="#e8f0eb" stroke-width="1"/>';
+    g+='<text x="'+(PAD.l-3)+'" y="'+(yy+3).toFixed(1)+'" font-size="8.5" fill="#96a9a0" text-anchor="end">'+esc(fmt(vv))+'</text>';
+  });
+  series.forEach(function(sn){
+    let d='',pen=false,lastPt=null;
+    sn.vals.forEach(function(v,i){
+      if(v==null){pen=false;return;}
+      d+=(pen?'L':'M')+X(i).toFixed(1)+' '+Y(v).toFixed(1)+' ';
+      pen=true;lastPt=[X(i),Y(v)];
+    });
+    if(d)g+='<path d="'+d+'" fill="none" stroke="'+sn.color+'" stroke-width="'+sn.w+'" stroke-linejoin="round" stroke-linecap="round"/>';
+    if(lastPt)g+='<circle cx="'+lastPt[0].toFixed(1)+'" cy="'+lastPt[1].toFixed(1)+'" r="2.4" fill="'+sn.color+'"/>';
+  });
+  g+='<text x="'+PAD.l+'" y="'+(HG-3)+'" font-size="8.5" fill="#96a9a0">'+esc(String(H[0].at||'').slice(5))+'</text>';
+  g+='<text x="'+(W-PAD.r)+'" y="'+(HG-3)+'" font-size="8.5" fill="#96a9a0" text-anchor="end">'+esc(String(last.at||'').slice(5))+'</text>';
+  const legend=series.map(function(sn){return '<span class="kpi-lg"><i style="background:'+sn.color+'"></i>'+esc(sn.name)+'</span>';}).join('');
+  return '<svg class="kpi-chart" viewBox="0 0 '+W+' '+HG+'" width="'+W+'" height="'+HG+'">'+g+'</svg><div class="kpi-lgs">'+legend+'</div>';
 }
 function refKpiWow(key,fmt,unit){
   var H=REF.hist||[];
@@ -16235,10 +16288,15 @@ function refKpiHtml(rows){
   return '<div class="is-kpi">'+cards.map(function(x){
     var w=refKpiWow(x.k,x.f,x.unit||'');
     var tip=(x.tip||'')+(w.tip?('&#10;'+w.tip):'');
-    return '<div class="is-k" style="--kc:#2f6f5b" title="'+tip+'">'
+    return '<div class="is-k" style="--kc:#2f6f5b">'
       +'<div class="is-kl">'+esc(x.label)+'</div>'
       +'<div class="is-kv">'+x.val+(x.unit||'')+'</div>'
-      +(w.html?'<div class="is-kf">'+w.html+'</div>':'')+'</div>';
+      +(w.html?'<div class="is-kf">'+w.html+'</div>':'')
+      +'<div class="kpi-pop">'
+        +'<div class="kpi-pop-h">'+esc(x.label)+' · 整体 / 站点趋势（最近 '+Math.min((REF.hist||[]).length,REF_HIST_MAX)+' 次更新）</div>'
+        +refKpiChartSvg(x.k,x.f,REF.hist||[])
+        +'<div class="kpi-pop-t">'+tip.replace(/&#10;/g,'<br>')+'</div>'
+      +'</div></div>';
   }).join('')+'</div>';
 }
 function refStats(rows){
