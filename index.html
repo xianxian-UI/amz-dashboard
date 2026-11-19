@@ -132,10 +132,21 @@
   /* AMZ 汇总表：表头与整体主题色一致（紫）+ 网格线 + 排序箭头 */
   table.xl{table-layout:auto}
   table.xl th,table.xl td{border:1px solid #e9e7f6;padding:6px 9px;text-align:center;white-space:nowrap}
+#sumTableWrap table.xl th,#sumTableWrap table.xl td,#stdTableWrap table.xl th,#stdTableWrap table.xl td{padding:4px 6px}
+#sumTableWrap table.xl thead tr.grow th,#stdTableWrap table.xl thead tr.grow th{padding:0 6px}
   table.xl thead th{background:var(--psoft);color:#5a51cb;font-weight:700;position:sticky;top:0;z-index:3;cursor:pointer;user-select:none;box-shadow:inset 0 -1px 0 #e0dbfa}
   table.xl thead th:hover{background:var(--psoft2)}
   table.xl tbody tr:nth-child(even){background:#fbfbfe}
   table.xl tbody tr:hover{background:var(--psoft)}
+  /* 汇总表/达标表：固定「序号 + 账号」两列（对齐产品按灯固定首列），横向右拉不隐藏 */
+  table.xl.xl-freeze thead tr:first-child th:nth-child(1),table.xl.xl-freeze tbody td.num{position:sticky;left:0;width:46px;min-width:46px;max-width:46px;z-index:5;background:#fff;box-shadow:1px 0 0 #e9e7f6}
+  table.xl.xl-freeze thead tr:nth-child(2) th:nth-child(1),table.xl.xl-freeze tbody td:nth-child(2){position:sticky;left:46px;z-index:5;background:#fff;box-shadow:1px 0 0 #e9e7f6}
+  table.xl.xl-freeze thead tr:first-child th:nth-child(1),table.xl.xl-freeze thead tr:nth-child(2) th:nth-child(1){z-index:7;background:var(--psoft2)}
+  table.xl.xl-freeze tbody tr:nth-child(even) td.num,table.xl.xl-freeze tbody tr:nth-child(even) td:nth-child(2){background:#fbfbfe}
+  table.xl.xl-freeze tbody tr:hover td.num,table.xl.xl-freeze tbody tr:hover td:nth-child(2){background:var(--psoft)}
+  table.xl.xl-freeze tbody td:nth-child(2){font-weight:700;color:#5a51cb}
+  .logi-sel{flex:0 0 auto;border:1px solid var(--line);border-radius:9px;padding:7px 10px;font-size:13px;font-family:inherit;background:#fff;color:#3a3550;cursor:pointer;max-width:170px}
+.logi-sel:focus{outline:none;border-color:#cfc9fa;box-shadow:0 0 0 3px rgba(157,150,245,.16)}
   .xlf{display:inline-flex;width:13px;height:13px;margin-left:6px;background:#fff;border:1px solid #cdc7f7;border-radius:2px;align-items:center;justify-content:center;vertical-align:-2px}
   .xlf i{font-style:normal;font-size:8px;line-height:1;color:var(--primary)}
   .xlf.on{background:var(--primary);border-color:var(--primary)}
@@ -2807,7 +2818,7 @@ function matchKB(reason){for(const k of RISK_KB){if(k.re.test(reason))return k;}
 function kbByType(type){return RISK_KB.find(k=>k.type===type)||null;}
 
 let DATA={accounts:[],riskCases:[],closeCases:[],compliance:[],manualPolicies:[],manualCases:[],sumWeekMeta:{},healthTarget:{},targetCfg:{cs:{},leader:{},cat:{}},accSrc:{},accSrcMeta:{file:'',at:''}};
-let view='health',tab='全部账号',policyTab='政策知识',polCat=POLICY_CATS[0],accSearch='',caseSearch='',kbQuery='',curPage=1,pageSize=100,formAcc=null,policyCase=null,chat=[],quickOpen=false,quickText='',reasonAcc=null,accScope='all',accExact=false,stopAcc=null,accSel={},stopBatch=null,uploadOpen=false,uploadKind='',pcSearch='',pcCat='all',pcFollowOnly=false,pcEdit=null,pcShow=null,pcFollowId=null,pcbTab='',pcDim={},pcbOpen={},pcSortK='',pcSortDir=1,pcFocusFor=null,isUpOpen=false,isUpTab='',isUpClear=false,amzUpOpen=false,amzUpKind='',amzUpMode='',riskCat='all',riskNoteFor=null,sumSearch='',sumSortK='',sumSortDir=0,sumFilterOpen='',sumFilter={site:[],bigGroup:[],group:[],mgr:[],supervisor:[],sales:[],cs:[],region:[],fdate:'',fspan:''},stdSearch='',stdSortK='',stdSortDir=0,stdFilterOpen='',stdFilter={site:[],bigGroup:[],group:[],mgr:[],supervisor:[],sales:[],cs:[],region:[],stdHealthy:[],stdMain:[],stdEU3:[],stdCsLeader:[],stdCoField:[],stdFail:'',fdate:'',fspan:''},kbAddOpen=false,kbAddImg='',kbAddModule='订单缺陷率',kbLightbox='',kbAddForm={},kbAddDoc='',kbAddFile='',sumGrpOpen='',stdGrpOpen='',sumMetricCond=[],stdMetricCond=[],stdCellTip=null,healthDim='main',sumColsSel=null,stdColsSel=null,sumColsKeep=false,stdColsKeep=false,colPanel='',hkDet='',hkNote=false,csNote=false,hkRegWeek='',cfgTab='cfg',hkTab='overview',hkFilter={},csCoreFlt={cs:'',leader:'',cat:''},odrScope='main',odrNote=false,shopNote=false,netNote=false,isTab='fbm',isSearch='',isExact=false,isColSel='',isSite=[],isCs=[],isState=[],isOnlyAffect=false,isPage=1,isPageSize=100,fbmNote=false,ctrOnlyInvalid=false,ctrReasonShow={carrier:1,trackno:1,earlyship:1,scanmiss:1},ctrReasonOpen={},ctrRankFilter={dim:'',val:''},ctrRankOpen={reason:false,carrier:false,method:false,region:false,site:false},ctrSearch='',ctrColSel='',ctrExact=false,fbmInfo={total:0,dropped:0,week:''},fbmDim={},fbmAnaOpen=false,fbmCardOpen={},isIntentVal='',kbPage=1,kbSel={},kbKwFilter='',kbKwEdit={},kbBatchIntent='',kbSmart=null,
+let view='health',tab='全部账号',policyTab='政策知识',polCat=POLICY_CATS[0],accSearch='',caseSearch='',kbQuery='',curPage=1,pageSize=100,formAcc=null,policyCase=null,chat=[],quickOpen=false,quickText='',reasonAcc=null,accScope='all',accExact=false,stopAcc=null,accSel={},stopBatch=null,uploadOpen=false,uploadKind='',pcSearch='',pcCat='all',pcFollowOnly=false,pcEdit=null,pcShow=null,pcFollowId=null,pcbTab='',pcDim={},pcbOpen={},pcSortK='',pcSortDir=1,pcFocusFor=null,isUpOpen=false,isUpTab='',isUpClear=false,amzUpOpen=false,amzUpKind='',amzUpMode='',riskCat='all',riskNoteFor=null,sumSearch='',sumSortK='',sumSortDir=0,sumFilterOpen='',sumFilter={site:[],bigGroup:[],group:[],mgr:[],supervisor:[],sales:[],cs:[],region:[],fdate:'',fspan:''},stdSearch='',stdLogiSearch='',stdSortK='',stdSortDir=0,stdFilterOpen='',stdFilter={site:[],bigGroup:[],group:[],mgr:[],supervisor:[],sales:[],cs:[],region:[],stdHealthy:[],stdMain:[],stdEU3:[],stdCsLeader:[],stdCoField:[],stdFail:'',fdate:'',fspan:''},kbAddOpen=false,kbAddImg='',kbAddModule='订单缺陷率',kbLightbox='',kbAddForm={},kbAddDoc='',kbAddFile='',sumGrpOpen='',stdGrpOpen='',sumMetricCond=[],stdMetricCond=[],stdCellTip=null,healthDim='main',sumColsSel=null,stdColsSel=null,sumColsKeep=false,stdColsKeep=false,colPanel='',hkDet='',hkNote=false,csNote=false,hkRegWeek='',cfgTab='cfg',hkTab='overview',hkFilter={},csCoreFlt={cs:'',leader:'',cat:''},odrScope='main',odrNote=false,shopNote=false,netNote=false,isTab='fbm',isSearch='',isExact=false,isColSel='',isSite=[],isCs=[],isState=[],isOnlyAffect=false,isPage=1,isPageSize=100,fbmNote=false,ctrOnlyInvalid=false,ctrReasonShow={carrier:1,trackno:1,earlyship:1,scanmiss:1},ctrReasonOpen={},ctrRankFilter={dim:'',val:''},ctrRankOpen={reason:false,carrier:false,method:false,region:false,site:false},ctrSearch='',ctrColSel='',ctrExact=false,fbmInfo={total:0,dropped:0,week:''},fbmDim={},fbmAnaOpen=false,fbmCardOpen={},isIntentVal='',kbPage=1,kbSel={},kbKwFilter='',kbKwEdit={},kbBatchIntent='',kbSmart=null,
 otdSearch='',otdSite='',otdCarrier='',otdOnlyLate=false,otdPage=1,otdNote=false,otdInfo={total:0,done:0,late:0},otdRankOpen={carrier:false,method:false,site:false},
 /* 从 AMZ汇总表 点指标数值跳到「问题明细」时带过来的上下文：{kind,acc,metric,label,val} */
 goCtx=null
@@ -6778,7 +6789,7 @@ function sumBodyInner(){
   const acctCnt=Object.keys((DATA.sumMetrics&&curWeek()&&DATA.sumMetrics[curWeek()])||{}).length;
   const mTxt=wkCnt?('已载入 <b>'+wkCnt+'</b> 周指标 · 当前周 <b>'+esc(cur)+'</b>（周'+curWi.week+'·'+esc(curWi.span)+'）覆盖 <b>'+acctCnt+'</b> 个账号'):'<span class="dim">未载入指标（点右上「上传指标数据源」）</span>';
   return `<div class="meta">共 <b>${total}</b> 条（账号管理「启用且纳入考核」）${shown!==total?(' · 筛选后 <b>'+shown+'</b> 条'):''}${lab}${slang} · 基础信息实时同步账号管理（账号/站点/核算分组/小组/管理经理/管理主管/销售/客服/区域） · ${mTxt}<span class="dim"> · 缺陷订单数 / 问题数量 / 有效追踪率 / 准时送达率的<b>异常值可点</b>，直接跳该账号的问题明细 · 「账号报损」的日/周/月三张退款表在「⬆ 上传指标数据源」里分别上传（也可一次多选）</span></div>
-    <div class="scroll"><table class="xl">
+    <div class="scroll"><table class="xl xl-freeze">
       <thead>${head1}${head2}</thead>
       <tbody>${rows||`<tr><td colspan="${vcSum.length+1}" class="empty">没有匹配的记录</td></tr>`}</tbody>
     </table></div>
@@ -9948,6 +9959,7 @@ function applySearchFilter(id,val){
   }
   if(id==='sumSearch'){sumSearch=val;curPage=1;const w=document.getElementById('sumTableWrap');if(w)w.innerHTML=sumBodyInner();return true;}
   if(id==='stdSearch'){stdSearch=val;curPage=1;stdRefreshTable();return true;}
+  if(id==='stdLogiSearch'){stdLogiSearch=val;curPage=1;stdRefreshTable();return true;}
   if(id==='quickInput'){quickText=val;renderQuickPreview();return true;}
   return false;
 }
@@ -9972,6 +9984,7 @@ document.getElementById('app').addEventListener('compositionend',onAppCompositio
 document.getElementById('app').addEventListener('keydown',e=>{
 });
 document.getElementById('app').addEventListener('change',e=>{
+  if(e.target.id==='stdLogiSearch'){applySearchFilter('stdLogiSearch',e.target.value);return;}
   if(e.target.id==='pageSize'){pageSize=parseInt(e.target.value,10);curPage=1;render();}
   /* 目标设置：单元格输入 */
   if(e.target.hasAttribute&&e.target.hasAttribute('data-tgt')){
@@ -11294,7 +11307,7 @@ document.getElementById('app').addEventListener('click',e=>{
     return;
   }
   if(t.id==='sumResetF'){SUM_FILTER_FIELDS.forEach(f=>{sumFilter[f[0]]=[];});sumFilter.fdate='';sumFilter.fspan='';sumMetricCond=[];sumGrpOpen='';curPage=1;sumRefreshBarTable();return;}
-  if(t.id==='stdResetF'){STD_FILTER_FIELDS.forEach(f=>{stdFilter[f[0]]=[];});stdFilter.fdate='';stdFilter.fspan='';stdFilter.stdFail='';stdMetricCond=[];stdGrpOpen='';curPage=1;stdRefreshBarTable();return;}
+  if(t.id==='stdResetF'){STD_FILTER_FIELDS.forEach(f=>{stdFilter[f[0]]=[];});stdFilter.fdate='';stdFilter.fspan='';stdFilter.stdFail='';stdMetricCond=[];stdLogiSearch='';const li=document.getElementById('stdLogiSearch');if(li)li.value='';stdGrpOpen='';curPage=1;stdRefreshBarTable();return;}
   if(t.id==='stdExportBtn'){exportStd();return;}
   if(t.id==='stdSrcBtn'){const si=document.getElementById('stdSrcFile');if(si)si.click();return;}
   if(t.id==='stdCfgJump'||t.id==='stdCfgJump2'){view='stdcfg';curPage=1;render();return;}
@@ -11535,13 +11548,16 @@ const STD_METRIC_GROUPS=[
 const STD_M_COLS=STD_METRIC_GROUPS.reduce((a,g)=>a.concat(g[1]),[]);
 const STD_M_KEYS=STD_M_COLS.map(c=>c[0]);
 const STD_EXTRA_COLS=[['stdFail','不达标数量'],['stdHealthy','健康账号'],['stdMain','是否主站'],['stdEU3','是否UK/DE/FR'],['stdCsLeader','客服组长'],['stdCoField','合作客服']];
-const STD_COLS=SUM_BASE_COLS.concat(STD_M_COLS).concat(STD_EXTRA_COLS);
-const STD_HEAD_GROUPS=[['基础信息',SUM_BASE_COLS.length]].concat(STD_METRIC_GROUPS.map(g=>[g[0],g[1].length])).concat([['达标概览',STD_EXTRA_COLS.length]]);
+/* 物流达标：派生展示列，紧跟「准时交货率」。口径 = 有效追踪率 trackRate 与准时送达率 ontimeRate 均达标(ok) → 是，否则 → 否。
+   刻意不进 STD_M_KEYS：不参与不达标数量 / 健康账号判定，改的是展示与筛选，不动统计口径。 */
+const STD_LOGI_COL=['stdLogi','物流达标'];
+const STD_COLS=(function(){const a=SUM_BASE_COLS.concat(STD_M_COLS),i=a.findIndex(c=>c[0]==='ontimeRate');a.splice(i+1,0,STD_LOGI_COL);return a.concat(STD_EXTRA_COLS);})();
+const STD_HEAD_GROUPS=[['基础信息',SUM_BASE_COLS.length]].concat(STD_METRIC_GROUPS.map(g=>[g[0],g[1].length+(g[0]==='物流考核&发货问题'?1:0)])).concat([['达标概览',STD_EXTRA_COLS.length]]);
 
 /* ================= 显示字段（列选择器）：账号必选、默认全选、可选是否保留 ================= */
 const COL_KEEP_KEY='amz_cols_v1';
 const COL_GROUPS_SUM=[['基础信息',SUM_BASE_COLS]].concat(SUM_METRIC_GROUPS.map(g=>[g[0],g[1]]));
-const COL_GROUPS_STD=[['基础信息',SUM_BASE_COLS]].concat(STD_METRIC_GROUPS.map(g=>[g[0],g[1]])).concat([['达标概览',STD_EXTRA_COLS]]);
+const COL_GROUPS_STD=[['基础信息',SUM_BASE_COLS]].concat(STD_METRIC_GROUPS.map(g=>[g[0],g[0]==='物流考核&发货问题'?g[1].concat([STD_LOGI_COL]):g[1]])).concat([['达标概览',STD_EXTRA_COLS]]);
 function colDefs(which){return which==='sum'?SUM_COLS:STD_COLS;}
 function colGroupDefs(which){return which==='sum'?COL_GROUPS_SUM:COL_GROUPS_STD;}
 function colAllKeys(which){return colDefs(which).map(c=>c[0]);}
@@ -11827,13 +11843,17 @@ function stdFields(a, ds){
   let m=stdMetricRec(a, ds);
   m=Object.assign({},m,{shopScore:shopScoreEff(key, m.shopScore)},sumBaoFields(key));
   const ev=stdEvalRow(a, ds);
+  /* 物流达标：复用 stdLevel 的达标口径（与单元格「达标/临界/不达标」同源），两项都达标=是，否则=否。
+     只写派生字段，不进 passMap / 不达标数量 / 健康账号，避免改变既有统计。 */
+  const logiT=stdLevel('trackRate',m.trackRate,m),logiO=stdLevel('ontimeRate',m.ontimeRate,m);
+  const logiOk=(logiT==='ok'&&logiO==='ok')?'是':'否';
   const cfg=DATA.stdCfg||{};
   const site=String(a.site==null?'':a.site).trim().toUpperCase();
   const mains=(cfg.mainSites||[]).map(x=>String(x).toUpperCase());
   const csL=String(a.csLeader==null?'':a.csLeader).trim()||String((cfg.csMap||{})[String(a.cs==null?'':a.cs).trim()]||'').trim();
   return Object.assign({},a,m,{
     formDate:ds,formMonth:wi.month,formWeek:wi.week,formWeekSpan:wi.span,
-    stdFail:ev.fail,stdWarn:ev.warn,stdNoData:ev.noData,stdHealthN:ev.healthN,
+    stdFail:ev.fail,stdWarn:ev.warn,stdNoData:ev.noData,stdHealthN:ev.healthN,stdLogi:logiOk,
     stdHealthy:ev.healthNoData?'':(ev.healthy?'是':'否'),
     stdMissing:ev.missing,stdJudgeN:ev.judgeN,stdPassMap:ev.passMap,
     stdMain:mains.indexOf(site)>=0?'是':'否',
@@ -11844,10 +11864,22 @@ function stdFields(a, ds){
   });
 }
 function stdFilterArr(k){if(!stdFilter[k]||!Array.isArray(stdFilter[k]))stdFilter[k]=[];return stdFilter[k];}
+/* 物流达标专属搜索：是/否（兼容 合格/不合格、ok/fail），空格/逗号分隔多词任一命中 */
+function stdLogiPass(x){
+  const q=String(stdLogiSearch||'').trim().toLowerCase();
+  if(!q)return true;
+  const v=String(x.stdLogi||'');
+  return q.split(/[\s,，、;；]+/).filter(Boolean).some(function(t){
+    if(t.indexOf('不合格')>=0||t==='否'||t==='no'||t==='fail'||t==='false')return v==='否';
+    if(t.indexOf('合格')>=0||t==='是'||t==='yes'||t==='ok'||t==='true')return v==='是';
+    return v.indexOf(t)>=0;
+  });
+}
 function stdFiltered(){
   let a=sumData().map(a=>stdFields(a));
   STD_FILTER_FIELDS.forEach(function(f){const sel=stdFilterArr(f[0]);if(sel.length)a=a.filter(x=>sel.indexOf(String(x[f[0]]==null?'':x[f[0]]).trim())>=0);});
   a=a.filter(stdMetricPass);                                /* 指标维度：达标状态条件 */
+  a=a.filter(stdLogiPass);                                  /* 物流达标专属搜索：只按 是/否 筛 */
   const fm=String(stdFilter.stdFail||'');
   if(fm==='>0')a=a.filter(x=>!x.stdNoData&&x.stdFail>0);
   else if(fm==='=0')a=a.filter(x=>x.stdNoData||!(x.stdFail>0));
@@ -11876,6 +11908,7 @@ function stdCellTipHTML(){
 function refreshStdTip(){const w=document.getElementById('stdTipWrap');if(w)w.innerHTML=stdCellTipHTML();}
 function stdToolbarInner(){
   const ds=stdCurWeek(),wi=ds?sumWeekInfo(ds):{week:'',span:''};
+  const _lv=String(stdLogiSearch||''), logiSel=(_lv==='否'||_lv.indexOf('不合格')>=0||_lv==='no'||_lv==='fail'||_lv==='false')?'否':((_lv==='是'||_lv.indexOf('合格')>=0||_lv==='yes'||_lv==='ok'||_lv==='true')?'是':'');
   return `<div class="toolbar" id="stdToolbar">
       <input id="stdSearch" class="search" placeholder="🔍 搜索 账号 / 站点 / 小组 / 客服组长 / 合作客服…（空格/逗号分隔可批量）" value="${esc(stdSearch)}">
       <span class="src-date">${weekMetaLine(ds,'与 AMZ汇总表 共用同一指标数据源；周次可直接编辑')}</span>
@@ -11884,6 +11917,11 @@ function stdToolbarInner(){
       <button class="btn ghost" id="stdCfgJump" title="打开「达标设置」定义每个指标达到什么算达标">⚙ 达标设置</button>
       <button class="btn ghost" id="stdColBtn" title="选择要显示的列（账号必选；默认全部显示）">🧩 显示字段</button>
       <button class="btn ghost" id="stdExportBtn" title="把当前筛选结果（当前周）导出为 xlsx（无 Excel 环境时导出 csv）">⬇ 导出</button>
+      <select id="stdLogiSearch" class="logi-sel" title="专属筛选「物流达标」：是=有效追踪率与准时送达率都达标；否=任一项不达标；可与左侧通用搜索叠加">
+        <option value=""${logiSel===''?' selected':''}>物流达标：全部</option>
+        <option value="是"${logiSel==='是'?' selected':''}>物流达标：是</option>
+        <option value="否"${logiSel==='否'?' selected':''}>物流达标：否</option>
+      </select>
       <input type="file" id="stdSrcFile" accept=".xlsx,.xls,.csv,.txt" style="display:none">
     </div>`;
 }
@@ -12829,7 +12867,7 @@ function csGoStd(kind,name,week,gs){
   else if(kind==='leader'&&name)f.stdCsLeader=[name];
   else if(kind==='cat'&&name)f.cs=csCatMembers(name);
   f.fdate=String(week||(healthWeeks()[0]||''));f.fspan='';f.stdFail='';
-  stdSearch='';stdSortK='';stdSortDir=0;stdCellTip=null;
+  stdSearch='';stdLogiSearch='';stdSortK='';stdSortDir=0;stdCellTip=null;
   stdFilterOpen='';stdGrpOpen='';stdColsSel=null;
   curPage=1;view='standard';render();
   /* 带状态条件时展开「指标」面板（能看到条件），否则展开人员面板；延后一拍避开「点外部收起」 */
@@ -12864,7 +12902,7 @@ function hkGoStd(region,week,metric,status,scope){
     stdMetricCond=[{k:metric,st:st}];
   }
   f.fdate=week||(healthWeeks()[0]||'');f.fspan='';f.stdFail='';
-  stdSearch='';stdSortK='';stdSortDir=0;stdCellTip=null;stdFilterOpen='';stdGrpOpen='';stdColsSel=null;
+  stdSearch='';stdLogiSearch='';stdSortK='';stdSortDir=0;stdCellTip=null;stdFilterOpen='';stdGrpOpen='';stdColsSel=null;
   curPage=1;view='standard';render();
   setTimeout(function(){
     if(view!=='standard')return;
@@ -12885,7 +12923,7 @@ function opsGoStd(dim,val,week){
   if(sc==='small')f.stdMain=['否'];
   else if(sc==='main')f.stdMain=['是'];
   f.fdate=week||(healthWeeks()[0]||'');f.fspan='';f.stdFail='';
-  stdSearch='';stdSortK='';stdSortDir=0;stdCellTip=null;stdFilterOpen='';stdGrpOpen='';stdColsSel=null;
+  stdSearch='';stdLogiSearch='';stdSortK='';stdSortDir=0;stdCellTip=null;stdFilterOpen='';stdGrpOpen='';stdColsSel=null;
   curPage=1;view='standard';render();
   setTimeout(function(){
     if(view!=='standard')return;
@@ -14255,7 +14293,7 @@ function baoGo(kind,name,to,dim,st){
     else if(kind==='ld'&&name)f.stdCsLeader=[name];
     if(dim&&BAO_DIM_KEY[dim])stdMetricCond=[{k:BAO_DIM_KEY[dim],st:(st==='ok'?'ok':'fail')}];
     f.fdate=healthWeeks()[0]||latestWeek();f.fspan='';f.stdFail='';
-    stdSearch='';stdSortK='';stdSortDir=0;stdCellTip=null;stdFilterOpen='';stdGrpOpen='';stdColsSel=null;
+    stdSearch='';stdLogiSearch='';stdSortK='';stdSortDir=0;stdCellTip=null;stdFilterOpen='';stdGrpOpen='';stdColsSel=null;
     curPage=1;view='standard';render();
     setTimeout(function(){
       if(view!=='standard')return;
@@ -20769,6 +20807,7 @@ function stdBodyInner(){
   const rows=pageList.map(function(a,idx){
     const tds=vcStd.map(function(c){
       const k=c[0];
+      if(k==='stdLogi'){const v=a.stdLogi||'';return '<td'+(v==='是'?' class="sok"':(v==='否'?' class="sbad"':' class="dim"'))+'>'+esc(v||'—')+'</td>';}
       if(k==='stdFail'){if(a.stdNoData)return '<td class="dim">'+blank+'</td>';return '<td>'+(a.stdFail>0?('<b>'+a.stdFail+'</b>'):a.stdFail)+'</td>';}
       if(k==='stdHealthy'){if(a.stdNoData)return '<td class="dim">'+blank+'</td>';return '<td'+(a.stdHealthy==='否'?' class="dim"':'')+'>'+esc(a.stdHealthy)+'</td>';}
       if(k==='stdMain'||k==='stdEU3'){return '<td'+(a[k]==='否'?' class="dim"':'')+'>'+(a[k]==='是'?'是':'否')+'</td>';}
@@ -20800,7 +20839,7 @@ function stdBodyInner(){
   const cur=stdCurWeek(),curWi=cur?sumWeekInfo(cur):{week:'',span:''};
   const mTxt=wkCnt?('指标源 <b>'+wkCnt+'</b> 周 · 当前周 <b>'+esc(cur)+'</b>（周'+curWi.week+'·'+esc(curWi.span)+'）'):'<span class="dim">未载入指标（点右上「上传指标数据源」）</span>';
   return `<div class="meta">共 <b>${total}</b> 条（账号管理「启用且纳入考核」）${shown!==total?(' · 筛选后 <b>'+shown+'</b> 条'):''}${lab}${slang} · 达标规则见 <a id="stdCfgJump2">达标设置</a> · 当前列表 <b class="sok">健康 ${healthyN}</b> / <b class="sbad">不达标 ${failN}</b> / <b class="swarn">临界 ${warnN}</b> · ${mTxt}</div>
-    <div class="scroll"><table class="xl">
+    <div class="scroll"><table class="xl xl-freeze">
       <thead>${head1}${head2}</thead>
       <tbody>${rows||`<tr><td colspan="${vcStd.length+1}" class="empty">没有匹配的记录</td></tr>`}</tbody>
     </table></div>
