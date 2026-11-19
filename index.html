@@ -15898,7 +15898,7 @@ function ctrExport(){
             + Storage 云端快照 amz2026/refund.json.gz（与整包同桶同前缀，可跨设备共享）
    ── 口径：自动数据清洗（无开关）——账号管理里「启用 且 纳入考核」之外的账号，
             其明细在导入时物理删除、在视图里再兜一层过滤，KPI / 分析卡 / 明细 / 导出同口径；
-            账号管理里查不到的账号（未映射）不动，避免账号表没同步时把整张表清空
+            账号管理里查不到的账号（未映射）整条剔除（与 FBM 同口径）；仅当账号表为空（未同步）时不剔除，避免清空全部
    ══════════════════════════════════════════════════════════════════════════ */
 const REF_COLS=[
   {k:'acc',label:'账号简称',w:132,a:['账号简称','账号','店铺名称','店铺']},
@@ -16111,7 +16111,7 @@ function refPrune(rows){
 }
 /* ── 自动数据清洗：账号管理里「启用 且 纳入考核」之外的行自动剔除（无开关）
      ① 账号管理里查得到、但状态不是启用或没纳入考核 → 剔除
-     ② 账号管理里查不到（未映射）→ 不动：账号表没同步时不能把整张表清空 ── */
+     ② 账号管理里查不到（未映射）→ 整条剔除；仅账号表为空（hasAny=false）时不剔除，防未同步误清空 ── */
 let _refAccSet=null,_refAccSetRef=null;
 function refAccSet(){
   const src=DATA.accounts||[];
@@ -16129,32 +16129,37 @@ function refAccSet(){
     if(a.status==='启用'&&String(a.assess==null?'':a.assess).trim()==='纳入考核')nQ++;
     else drop[k]=1;
   });
-  _refAccSet={drop:drop,n:Object.keys(drop).length,qual:nQ,
+  const known={};Object.keys(pick).forEach(function(k){known[k]=1;});
+  /* known = 账号表里所有账号（含不合格）；hasAny = 账号表非空。保护：账号表未传时不做未映射剔除，避免清空全部明细。 */
+  _refAccSet={drop:drop,known:known,hasAny:(src.length>0),n:Object.keys(drop).length,qual:nQ,
     stamp:[src.length,nQ,Object.keys(drop).length].join('/')};
   _refAccSetRef=src;
   return _refAccSet;
 }
 function refIsDropped(r){
   const s=refAccSet();
-  if(!s.n)return false;
-  return !!s.drop[refVal(r,'acc').toUpperCase()];
+  if(!s.hasAny)return false;   /* 账号表未传（未同步）→ 不剔除任何行，防误清空 */
+  const acc=refVal(r,'acc').toUpperCase();
+  if(s.drop[acc])return true;  /* 账号存在于账号表但非启用 / 未纳入考核 → 剔除 */
+  if(!s.known[acc])return true;/* 账号在账号管理里查不到（未映射）→ 整条剔除，与 FBM 同口径 */
+  return false;
 }
 /* 被自动清洗掉的行数（按当前账号表现算，用于底部说明） */
 function refBaseRows(){
   const s=refAccSet();
-  if(!s.n)return REF.rows||[];
+  if(!s.hasAny)return REF.rows||[];
   return (REF.rows||[]).filter(function(r){return !refIsDropped(r);});
 }
 function refCleanCount(){
   const s=refAccSet();
-  if(!s.n)return 0;
+  if(!s.hasAny)return 0;
   let n=0;(REF.rows||[]).forEach(function(r){if(refIsDropped(r))n++;});
   return n;
 }
 /* 导入时物理删除：返回删掉的行数 */
 function refPhysClean(){
   const s=refAccSet();
-  if(!s.n||!(REF.rows||[]).length)return 0;
+  if(!s.hasAny||!(REF.rows||[]).length)return 0;
   const before=REF.rows.length;
   REF.rows=REF.rows.filter(function(r){return !refIsDropped(r);});
   return before-REF.rows.length;
@@ -16176,7 +16181,7 @@ function refList(except,noSort){
   let rows=REF.rows||[];
   /* 自动数据清洗：非「启用 且 纳入考核」账号的明细不参与任何统计（无开关） */
   const _as=refAccSet();
-  if(_as.n)rows=rows.filter(function(r){return !refIsDropped(r);});
+  if(_as.hasAny)rows=rows.filter(function(r){return !refIsDropped(r);});
   const F=refF;
   Object.keys(F).forEach(function(k){
     if(k===except)return;
@@ -16817,7 +16822,7 @@ function refSection(){
   const cleaned=refCleanCount();
   const note='<div class="fbm-note">数据来源：'+(mt.file?esc(mt.file)+' · '+esc(mt.at||''):'本机缓存')
     +' · 共 '+rows.length+' 条 · 字段识别 '+Math.min(mt.hit||REF_N,REF_N)+'/'+REF_N+(miss?('（未识别 '+miss+' 个，已留空）'):'')
-    +(cleaned?(' · 已自动清洗 '+refFmtNum(cleaned)+' 条（非启用 / 未纳入考核账号）'):'')
+    +(cleaned?(' · 已自动清洗 '+refFmtNum(cleaned)+' 条（未在账号管理映射 / 非启用 / 未纳入考核账号）'):'')
     +(REF.migrated?' · 云端快照为旧版结构（含「标题」列），已自动兼容':'')
     +' · 只保留退款时间最新 '+REF_KEEP_DAYS+' 天'+(win.cut?('（≥ '+win.cut+'）'):'')+(win.dropped?('，已自动删除更早的 '+win.dropped+' 条'):'')
     +' · <span id="refSyncTip">'+(REF.sync==='cloud'?'云端已同步':(REF.sync==='local'?'仅本机（云端未同步）':(REF.src==='cloud'?'来自云端快照':(REF.src==='idb'?'来自本机缓存':''))))+'</span></div>';
@@ -16959,7 +16964,7 @@ function refImportRows(rows,fname,mode){
   const pr=refPrune(REF.rows);
   REF.rows=pr.rows;
   REF.win={cut:pr.cut,dropped:pr.dropped};
-  /* ⑥ 自动数据清洗：账号管理里「启用 且 纳入考核」之外的账号，明细入库前就删掉 */
+  /* ⑥ 自动数据清洗：未在账号管理映射 / 非启用 / 未纳入考核的账号，明细入库前整条删掉 */
   const cleaned=refPhysClean();
   REF.clean={n:cleaned,at:todayStr()};
   REF.meta={file:String(fname||''),at:todayStr(),hit:hitN,miss:missLabels.slice(0,20)};
