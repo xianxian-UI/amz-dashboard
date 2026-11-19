@@ -17283,8 +17283,8 @@ function refEnsure(){
     if(o&&o.rows&&o.rows.length){
       refApply(o,'idb');
       REF.etag=(rec&&rec.etag)||'';
-      /* 本机已有缓存：只发一个 HEAD，看云端是否被别人更新过；变了再整份重拉 */
-      if(REF.etag)refCloudEtag().then(function(e){
+      /* 本机已有缓存：发一个 HEAD 校验云端是否被更新；本地缓存无 etag（历史上传失败遗留）也要校验，变了就整份重拉 */
+      refCloudEtag().then(function(e){
         if(e&&e!==REF.etag){
           refReloadCloud().then(function(ok){if(ok)refRenderIfVisible();});
         }
