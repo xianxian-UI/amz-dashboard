@@ -16120,7 +16120,8 @@ function refPrune(rows){
 }
 /* ── 自动数据清洗：账号管理里「启用 且 纳入考核」之外的行自动剔除（无开关）
      ① 账号管理里查得到、但状态不是启用或没纳入考核 → 剔除
-     ② 账号管理里查不到（未映射）→ 整条剔除；仅账号表为空（hasAny=false）时不剔除，防未同步误清空 ── */
+     ② 账号管理里查不到（未映射）→ 整条剔除；仅账号表为空（hasAny=false）时不剔除，防未同步误清空
+     ③ 账号表整份都没有 status 字段（如达标表导入的纯账号清单）→ 不按状态剔除，只按账号是否存在判断 ── */
 let _refAccSet=null,_refAccSetRef=null;
 function refAccSet(){
   const src=DATA.accounts||[];
@@ -16132,16 +16133,21 @@ function refAccSet(){
     const cur=pick[k];
     if(!cur||(cur.status!=='启用'&&a.status==='启用'))pick[k]=a;
   });
+  /* 账号表是否携带「启用状态」字段：达标表导出的账号清单往往只有「账号」列、没有 status/assess。
+     若整份表一条非空 status 都没有，说明这份表只是账号名单、不含状态信息——此时绝不能把
+     「缺状态」当成「非启用/未纳入考核」，否则账号明明匹配得上也会被整条删光（2026-11-19 实修：
+     2771 条达标表账号无状态字段，导致 3879 条退款被全删）。规则本身不变，只在无状态字段时降级为「按账号存在性」判断。 */
+  const hasStatus=src.some(function(a){return String(a&&a.status==null?'':a.status).trim()!=='';});
   const drop={};let nQ=0;
   Object.keys(pick).forEach(function(k){
     const a=pick[k];
-    if(a.status==='启用'&&String(a.assess==null?'':a.assess).trim()==='纳入考核')nQ++;
+    if(!hasStatus || (a.status==='启用'&&String(a.assess==null?'':a.assess).trim()==='纳入考核'))nQ++;
     else drop[k]=1;
   });
   const known={};Object.keys(pick).forEach(function(k){known[k]=1;});
   /* known = 账号表里所有账号（含不合格）；hasAny = 账号表非空。保护：账号表未传时不做未映射剔除，避免清空全部明细。 */
-  _refAccSet={drop:drop,known:known,hasAny:(src.length>0),n:Object.keys(drop).length,qual:nQ,
-    stamp:[src.length,nQ,Object.keys(drop).length].join('/')};
+  _refAccSet={drop:drop,known:known,hasAny:(src.length>0),n:Object.keys(drop).length,qual:nQ,hasStatus:hasStatus,
+    stamp:[src.length,nQ,Object.keys(drop).length,hasStatus?'S':'-'].join('/')};
   _refAccSetRef=src;
   return _refAccSet;
 }
@@ -17039,7 +17045,7 @@ function refImportRows(rows,fname,mode){
     +'；新增 '+ins+' 条，更新 '+upd+' 条'+(skipped?('，跳过空行 '+skipped):'')
     +(replaced?('；按退款时间 '+winTxt+' 整体替换，清掉旧行 '+replaced+' 条'):'')
     +(pr.dropped?('；按「退款时间最新 '+REF_KEEP_DAYS+' 天」自动删除 '+pr.dropped+' 条更早的明细'):'')
-    +(cleaned?('；自动清洗 '+cleaned+' 条（非启用 / 未纳入考核账号）'):'')
+    +(cleaned?('；自动清洗 '+cleaned+' 条（未在账号管理映射的账号'+(refAccSet().hasStatus?' / 非启用 / 未纳入考核账号':'（本账号表无状态字段，仅按账号存在性判断）')+'）'):'')
     +'，现共 '+REF.rows.length+' 条';
 }
 function refExport(){
