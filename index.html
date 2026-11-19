@@ -17285,7 +17285,8 @@ function refEnsure(){
       REF.etag=(rec&&rec.etag)||'';
       /* 本机已有缓存：发一个 HEAD 校验云端是否被更新；本地缓存无 etag（历史上传失败遗留）也要校验，变了就整份重拉 */
       refCloudEtag().then(function(e){
-        if(e&&e!==REF.etag){
+        /* HEAD 被 CORS 拦截会返回空串：拿不到也要强制重拉，避免旧缓存永远挡住云端更新 */
+        if(!e||e!==REF.etag){
           refReloadCloud().then(function(ok){if(ok)refRenderIfVisible();});
         }
       });
