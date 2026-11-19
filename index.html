@@ -6222,6 +6222,13 @@ function fillCompliance(rows,clear){
 function decodeText(buf){
   if(buf==null)return '';
   if(typeof buf==='string')return buf;
+  /* 先按 BOM 判 UTF-16：亚马逊销售/退款明细导出常见 UTF-16 LE + Tab 分隔，
+     若当 GBK 读会整片乱码（表头认不出）。fffe=LE，feff=BE。 */
+  try{
+    const _b=(buf instanceof Uint8Array)?buf:new Uint8Array(buf);
+    if(_b.length>=2&&_b[0]===0xff&&_b[1]===0xfe)return new TextDecoder('utf-16le').decode(_b);
+    if(_b.length>=2&&_b[0]===0xfe&&_b[1]===0xff)return new TextDecoder('utf-16be').decode(_b);
+  }catch(e){}
   try{return new TextDecoder('utf-8',{fatal:true}).decode(buf);}catch(e){}
   var encs=['gb18030','gbk','big5'];
   for(var i=0;i<encs.length;i++){try{var t=new TextDecoder(encs[i]).decode(buf);if(t)return t;}catch(e){}}
@@ -9659,7 +9666,8 @@ function goPage(p){
   else curPage=1;
   render();
 }
-function cutCSV(l){const out=[];let cur='',q=false;for(const ch of l){if(ch==='"'){q=!q;continue;}if(ch===','&&!q){out.push(cur.trim());cur='';continue;}cur+=ch;}out.push(cur.trim());return out;}
+function cutCSV(l){const _t=(l.split('\t').length-1),_c=(l.split(',').length-1);const sep=(_t>0&&_t>_c)?'\t':',';
+  const out=[];let cur='',q=false;for(const ch of l){if(ch==='"'){q=!q;continue;}if(ch===sep&&!q){out.push(cur.trim());cur='';continue;}cur+=ch;}out.push(cur.trim());return out;}
 function parseCSV(text){
   const lines=text.replace(/^\uFEFF/,'').trim().split(/\r?\n/);if(lines.length<2)return [];
   const head=cutCSV(lines[0]);
@@ -15925,8 +15933,8 @@ const REF_COLS=[
   {k:'wh',label:'仓库',w:84,a:['仓库','发货仓','发货仓库']},
   {k:'logi',label:'物流渠道',w:200,a:['物流渠道','物流方式','渠道']},
   {k:'markNo',label:'标记单号',w:150,a:['标记单号','跟踪号','运单号','物流单号']},
-  {k:'orderAmt',label:'订单总金额（RMB）',w:122,right:1,a:['订单总金额(RMB)','订单总金额','订单金额','订单总额']},
-  {k:'refAmt',label:'退款金额（RMB）',w:118,right:1,a:['退款金额(RMB)','退款金额(原币)','退款金额','退款额']},
+  {k:'orderAmt',label:'订单总金额（RMB）',w:122,right:1,a:['订单总金额(RMB)','订单总金额','订单金额','订单总额','销售收入合计(RMB)','销售收入合计(USD)','销售收入合计(RMB)(原币)','销售收入合计','销售收入-GMV(RMB)','销售收入-GMV(USD)','销售收入-GMV']},
+  {k:'refAmt',label:'退款金额（RMB）',w:118,right:1,a:['退款金额(RMB)','退款金额(原币)','退款金额','退款额','退款(RMB)','退款(USD)','退款(原币)','退款(RMB)退款']},
   {k:'refTime',label:'退款时间',w:108,d:1,a:['退款时间','退款日期']},
   {k:'region',label:'区域',w:72,a:['区域','收件区域']},
   {k:'issueCat',label:'问题归类',w:96,a:['问题归类','问题分类','归类']},
@@ -17542,7 +17550,7 @@ var LIGHT_SALE_COLS=[
   {k:'sku',label:'SKU',a:['SKU','SKU编码','商品SKU','商品编码','商品编号','SKU码']},
   {k:'sale',label:'销售额',a:['销售额','毛销售额','销售金额','销售总额','GMV','成交额','支付金额','销售金额RMB']},
   {k:'profit',label:'利润',a:['利润','毛利','毛利润','净利润','利润额']},
-  {k:'qty',label:'卖出销量',a:['卖出销量','销量','销售数量','销售件数','出库量','销售个数']},
+  {k:'qty',label:'卖出销量',a:['卖出销量','销量','销售数量','销售件数','出库量','销售个数','数量','件数']},
   /* 可选日期列：有就按文件里的日期落日值，没有就记到「导入当天」 */
   {k:'date',label:'日期',a:['日期','统计日期','数据日期','订单日期','date','Date']}
 ];
@@ -18893,7 +18901,11 @@ function otdSection(){
 }
 /* RFC4180 行切分：支持 "" 转义。原表 SKU / 追踪编码是 Excel 防爆公式写法
    （形如 """=""""UUU0463229001@#1401"""""""），朴素按引号开关切分会整行错位 */
-function otdCutCSV(l){
+function otdCutCSV(l,forceSep){
+  /* 分隔符自适应：Tab 数多于逗号数即按 Tab 切（.csv 实为 TSV 的亚马逊导出表）。
+     forceSep 供表头扫描等需统一分隔的场景覆盖；默认自动。 */
+  let sep=forceSep;
+  if(!sep){const _t=(l.split('\t').length-1),_c=(l.split(',').length-1);sep=(_t>0&&_t>_c)?'\t':',';}
   const out=[];let cur='',q=false;
   for(let i=0;i<l.length;i++){
     const ch=l.charAt(i);
@@ -18904,7 +18916,7 @@ function otdCutCSV(l){
       }else cur+=ch;
     }else{
       if(ch==='"')q=true;
-      else if(ch===','){out.push(cur.trim());cur='';}
+      else if(ch===sep){out.push(cur.trim());cur='';}
       else cur+=ch;
     }
   }
