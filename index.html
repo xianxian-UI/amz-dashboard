@@ -16350,7 +16350,9 @@ function refKpiChartSvg(key,fmt,H,opt){
   const step=Math.max(1,Math.ceil(H.length/(compact?3:6)));
   H.forEach(function(h,i){
     if(i%step!==0&&i!==H.length-1)return;
-    g+='<text x="'+X(i).toFixed(1)+'" y="'+(HG-3)+'" font-size="9" fill="#96a9a0" text-anchor="middle">'+esc(String(h.at||'').slice(5))+'</text>';
+    /* 首尾日期标签朝内对齐：最右的标签(最新日期)用 middle 会被 viewBox 右边缘裁掉半截，改 end 完整显示 */
+    var _anc=(i===H.length-1?'end':(i===0?'start':'middle'));
+    g+='<text x="'+X(i).toFixed(1)+'" y="'+(HG-3)+'" font-size="9" fill="#96a9a0" text-anchor="'+_anc+'">'+esc(String(h.at||'').slice(5))+'</text>';
   });
   const svg='<svg class="kpi-chart" viewBox="0 0 '+W+' '+HG+'" width="'+W+'" height="'+HG+'">'+g+'</svg>';
   if(compact)return svg;
