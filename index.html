@@ -624,7 +624,6 @@
 .kpi-pop{display:none;position:absolute;left:0;top:100%;margin-top:5px;z-index:80;width:344px;max-width:82vw;background:#fff;border:1px solid #d7e8df;border-radius:10px;box-shadow:0 10px 30px rgba(20,50,40,.18);padding:10px 12px;white-space:normal;line-height:1.5}
 .is-k:hover .kpi-pop{display:block}
 .kpi-pop-h{font-size:11.5px;font-weight:800;color:#2f6f5b;margin-bottom:6px}
-.kpi-pop-t{font-size:10.5px;color:#5a6b64;margin-top:6px;padding-top:6px;border-top:1px dashed #e0ece5;line-height:1.6}
 .kpi-chart{display:block;max-width:100%}
 .kpi-lgs{display:flex;flex-wrap:wrap;gap:3px 10px;margin-top:4px}
 .kpi-lg{font-size:10px;color:#5a6b64;display:inline-flex;align-items:center;gap:3px}
@@ -16337,7 +16336,6 @@ function refKpiHtml(rows){
   ];
   return '<div class="is-kpi">'+cards.map(function(x){
     var w=refKpiWow(x.k,x.f,x.unit||'');
-    var tip=(x.tip||'')+(w.tip?('&#10;'+w.tip):'');
     return '<div class="is-k" style="--kc:#2f6f5b">'
       +'<div class="is-kl">'+esc(x.label)+'</div>'
       +'<div class="is-kv">'+x.val+(x.unit||'')+'</div>'
@@ -16345,7 +16343,6 @@ function refKpiHtml(rows){
       +'<div class="kpi-pop">'
         +'<div class="kpi-pop-h">'+esc(x.label)+' · 整体 / 站点趋势（最近 '+Math.min((REF.hist||[]).length,REF_HIST_MAX)+' 次更新）</div>'
         +refKpiChartSvg(x.k,x.f,REF.hist||[])
-        +'<div class="kpi-pop-t">'+tip.replace(/&#10;/g,'<br>')+'</div>'
       +'</div></div>';
   }).join('')+'</div>';
 }
