@@ -134,8 +134,12 @@
   table.xl th,table.xl td{border:1px solid #e9e7f6;padding:6px 9px;text-align:center;white-space:nowrap}
 #sumTableWrap table.xl th,#sumTableWrap table.xl td,#stdTableWrap table.xl th,#stdTableWrap table.xl td{padding:4px 6px}
 #sumTableWrap table.xl thead tr.grow th,#stdTableWrap table.xl thead tr.grow th{padding:0 6px}
+#sumTableWrap table.xl thead tr.grow th,#stdTableWrap table.xl thead tr.grow th{height:26px}
+#sumTableWrap table.xl thead tr:nth-child(2) th,#stdTableWrap table.xl thead tr:nth-child(2) th{top:26px}
+/* 计算口径/说明条默认隐藏（口径文案保留在 DOM 与源码中便于追溯，仅视觉收起腾出表格空间） */
+#sumTableWrap>.meta,#stdTableWrap>.meta{display:none}
 /* 表头长列名折成2行：限宽 inline-block，账号列(short)不包故不受影响 */
-#sumTableWrap table.xl thead th .th-lbl,#stdTableWrap table.xl thead th .th-lbl{display:inline-block;max-width:58px;white-space:normal;word-break:break-all;line-height:1.18;vertical-align:middle;font-size:10.5px;font-weight:700}
+#sumTableWrap table.xl thead th .th-lbl,#stdTableWrap table.xl thead th .th-lbl{display:inline-block;width:44px;max-width:44px;white-space:normal;word-break:break-all;line-height:1.1;vertical-align:middle;font-size:10.5px;font-weight:700}
 #sumTableWrap table.xl thead th .xlf,#stdTableWrap table.xl thead th .xlf{margin-left:2px;vertical-align:1px}
 /* 数据缩小1个字号(13.5→12)，行高略收 */
 #sumTableWrap table.xl tbody td,#stdTableWrap table.xl tbody td{font-size:12px;padding-top:3px;padding-bottom:3px}
