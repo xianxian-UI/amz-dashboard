@@ -13949,7 +13949,10 @@ function baoPushHist(kind,recs,p,stamp){
     if(g)add(hld,g,rec,ok,bad);
   });
   const d=baoDayKey(stamp,p);
-  const ent={d:d,at:stamp||'',dm:String((p&&p.dateMax)||''),all:all,ld:hld,cs:hcs};
+  const pb=(qm&&qm.part&&qm.part[wf])||{};
+  let partP=0,partN=0;
+  Object.keys(pb).forEach(function(k){const v=pb[k]||[];partP+=Number(v[0])||0;partN+=Number(v[1])||0;});
+  const ent={d:d,at:stamp||'',dm:String((p&&p.dateMax)||''),all:all,ld:hld,cs:hcs,partP:partP,partN:partN};
   const i=hist.findIndex(function(x){return x&&String(x.d||'').slice(0,10)===d;});
   if(i>=0)hist[i]=ent;else hist.push(ent);
   mt.hist=baoHistTrim(kind,hist);
@@ -20263,26 +20266,63 @@ function lsWowK(cur,prev,goodUp){
   const good=goodUp?(ch>0):(ch<0);
   return '<span class="ls-kwow '+(good?'good':'bad')+'">'+(ch>0?'▲':'▼')+Math.abs(ch).toFixed(1)+'%</span>';
 }
-/* KPI 卡：本期 − 上一次导入批次的「绝对差值」（不是百分比变化率）。
-   口径（界面不写，只留源码注释 + 测试断言）：
-     · 金额(销售额/退款额) = 本期合计 − 上一批次合计，用 lsMoney 显示（如 +38.0万 / −2.1万）；
-     · 数量(订单量/退款量) = 本期合计 − 上一批次合计，用 lsNum 显示（如 +2,104）；
-     · 率(退款率/退款量占比/达标率) = 百分点差 (本期−上期)*100，显示 +1.23pp；
-     · 上一批次缺失 / 本期或上期非数 → 显示「—」；差值绝对值 < 阈值 → 显示「持平」；
-     · goodUp=true 表示涨为好（销售额/订单量/达标率），false 表示涨为差（退款额/退款量/两个占比/退款率）；
-       颜色按「变好绿 / 变差红」，不按涨跌符号 —— 与原 lsWow 口径一致，避免退款涨了却显示绿色。 */
-function lsKpiDiff(cur,prev,kind,goodUp){
-  if(cur==null||prev==null||!isFinite(cur)||!isFinite(prev))return '<span class="dv flat">—</span>';
-  const d=cur-prev;
-  const eps=(kind==='pp')?0.00005:0.005;                 /* pp 阈值 0.005 个百分点；金额/数量 0.005 */
-  if(Math.abs(d)<eps)return '<span class="dv flat">持平</span>';
+/* KPI 环比统一返回 {t:文案, good:true/false/null}；good 由「指标变好/变差」决定，不按涨跌符号。
+   ⚠ 口径只写源码注释，不上界面：
+     · 金额/数量/部分退款占比 → 涨幅或降幅比例（(本期−上期)/|上期|×100）；
+     · 退款率/退款量占比/账号退款达标率 → 百分点差 (本期−上期)×100；
+     · 上期缺失或非数 → 「—」；变化小于阈值 → 「持平」（good=null，色块走中性灰）。 */
+function lsKpiPct(cur,prev,goodUp){
+  if(cur==null||prev==null||!isFinite(cur)||!isFinite(prev)||!(Math.abs(prev)>0))return {t:'—',good:null};
+  const ch=(cur-prev)/Math.abs(prev)*100;
+  if(Math.abs(ch)<0.05)return {t:'持平',good:null};
+  const good=goodUp?(ch>0):(ch<0);
+  return {t:(ch>0?'▲':'▼')+Math.abs(ch).toFixed(1)+'%',good:good};
+}
+function lsKpiPp(cur,prev,goodUp){
+  if(cur==null||prev==null||!isFinite(cur)||!isFinite(prev))return {t:'—',good:null};
+  const d=(cur-prev)*100;
+  if(Math.abs(d)<0.005)return {t:'持平',good:null};
   const good=goodUp?(d>0):(d<0);
-  const sign=d>0?'+':'−';
-  let txt;
-  if(kind==='pp')txt=sign+(Math.abs(d)*100).toFixed(2)+'pp';
-  else if(kind==='money')txt=sign+lsMoney(Math.abs(d));
-  else txt=sign+lsNum(Math.abs(d));
-  return '<span class="dv '+(good?'good':'bad')+'" title="本期较上一次导入批次">'+(d>0?'↑':'↓')+' 较上次 '+txt+'</span>';
+  return {t:(d>0?'▲':'▼')+Math.abs(d).toFixed(2)+'pp',good:good};
+}
+/* KPI「上期值」取数（只写源码注释，不上界面）：
+   ⚠ 原实现把「本期=AMZ汇总表整表合计」与「上期=退款明细单个期间点」直接相减，
+     口径/粒度都不一致，才会算出 −84.65pp、−96.32pp 这种假差值。
+   ① 有 ≥2 次报损表上传 → 直接取历次快照的倒数第二期（与本期同为 AMZ汇总表口径，最准）；
+   ② 不足 2 期 → 用退款明细相邻两期的「变化比例」 proportionally 折算回本期 AMZ 合计：
+      上期 = 本期 ÷ (明细本期/明细上期)。主数值仍是 AMZ汇总表，环比粒度与趋势图一致；
+      明细该期为 0 或缺失 → 返回 null（显示「—」，绝不跨口径硬减）。 */
+function lsPrevKpi(kind,A,SD,sumRate,ordShare,part){
+  const out={sale:null,ref:null,ord:null,rqty:null,rate:null,share:null,std:null,part:null};
+  const sn=lsSnapPoints(kind);
+  if(sn.length>=2){
+    const p=sn[sn.length-2];
+    out.sale=p.sale;out.ref=p.amt;out.ord=p.ordn;out.rqty=p.rqty;
+    out.rate=p.rate;out.share=p.share;
+    out.std=((p.ok||0)+(p.bad||0))>0?p.ok/(p.ok+p.bad):null;
+    out.part=p.part==null?null:p.part;
+    if(out.part==null){                       /* 老快照没存 part → 回落到明细 */
+      const pts0=lsDetailPoints(kind);
+      if(pts0.length>=2)out.part=pts0[pts0.length-2].part;
+    }
+    return out;
+  }
+  const pts=lsDetailPoints(kind);
+  if(pts.length<2)return out;
+  const c=pts[pts.length-1],p=pts[pts.length-2];
+  const back=function(cur,cv,pv){
+    if(cur==null||!isFinite(cur)||!(cv>0)||!(pv>0))return null;
+    return cur*pv/cv;
+  };
+  out.sale=back(A.sale,c.sale,p.sale);
+  out.ref =back(A.ref ,c.amt ,p.amt );
+  out.ord =back(A.ord ,c.ordn,p.ordn);
+  out.rqty=back(A.rqty,c.rqty,p.rqty);
+  out.rate=back(sumRate,c.rate,p.rate);
+  out.share=back(ordShare,c.share,p.share);
+  out.std =back(SD.rate,c.okRate,p.okRate);
+  out.part=back(part,c.part,p.part);
+  return out;
 }
 /* 整体部分退款占比（≤80% 口径）：退款明细当前维度窗口内 部分退款单量 ÷ 有订单金额单量，跨账号合计。
    口径与「客服报损 · 部分退款占比」一致，只在源码注释，不上界面。 */
@@ -20315,7 +20355,7 @@ function lsDetailPoints(kind){
   const bucket=lsBucketOf(kind);
   const keys=[],pt={};
   const get=function(k){
-    if(!pt[k]){pt[k]={k:k,lab:lsLab(kind,k),sale:0,amt:0,rqty:0,ordSet:{},ok:0,bad:0};keys.push(k);}
+    if(!pt[k]){pt[k]={k:k,lab:lsLab(kind,k),sale:0,amt:0,rqty:0,ordSet:{},ok:0,bad:0,partP:0,partN:0};keys.push(k);}
     return pt[k];
   };
   if(kind==='d'){
@@ -20344,6 +20384,8 @@ function lsDetailPoints(kind){
     const bk=bucket(r.day);if(!bk||!pt[bk])return;
     pt[bk].amt+=r.amt;pt[bk].rqty++;
     if(r.ok)pt[bk].ordSet[r.ok]=1;
+    /* 部分退款占比（≤80%）按同一口径逐期累计，给 KPI 卡的「部分退款占比」环比用 */
+    if(r.sale>0){pt[bk].partN++;if(r.amt/r.sale*100<=REF_PARTIAL_MAX*100+REF_PARTIAL_EPS_PCT)pt[bk].partP++;}
   });
   /* 账号达标：同一账号在该期的退款额 ÷ 销售额（销售额从订单金额反推） */
   const accSale={},accAmt={};
@@ -20375,6 +20417,8 @@ function lsDetailPoints(kind){
     p.ordn=Object.keys(p.ordSet).length;
     p.rate=p.sale>0?p.amt/p.sale:null;
     p.share=p.ordn>0?p.rqty/p.ordn:null;
+    p.part=p.partN>0?p.partP/p.partN:null;
+    p.okRate=(p.ok+p.bad)>0?p.ok/(p.ok+p.bad):null;
     return p;
   });
 }
@@ -20388,7 +20432,8 @@ function lsSnapPoints(kind){
     const a=e.all;
     const sale=Number(a.sale)||0,amt=Number(a.ref)||0,ordn=Number(a.ord)||0,rqty=Number(a.rqty)||0;
     out.push({k:e.d,lab:lsLab(kind,e.d),sale:sale,amt:amt,ordn:ordn,rqty:rqty,
-      ok:Number(a.ok)||0,bad:Number(a.bad)||0,rate:sale>0?amt/sale:null,share:ordn>0?rqty/ordn:null});
+      ok:Number(a.ok)||0,bad:Number(a.bad)||0,rate:sale>0?amt/sale:null,share:ordn>0?rqty/ordn:null,
+      part:(Number(e.partN)||0)>0?(Number(e.partP)||0)/Number(e.partN):null});
   });
   out.sort(function(a,b){return String(a.k)<String(b.k)?-1:1;});
   return out;
@@ -20605,13 +20650,15 @@ function lsInner(){
   const seg='<span class="ls-seg">'+LS_KINDS.map(function(kp){
     return '<button data-lsdim="'+kp[0]+'" class="'+(lsDim===kp[0]?'on':'')+'" title="'+esc(kp[2]+'趋势')+'">'+kp[1]+'</button>';
   }).join('')+'</span>';
-  /* KPI：销售额/退款额/订单量/退款量 = AMZ汇总表账号列分别求和；退款率 = 退款额÷销售额（放在销售额之前）；
-     账号退款达标率 = AMZ达标表口径。卡片右侧改为「本期 − 上一次导入批次」的绝对差值（pp/万/个），
-     主数值放大靠右与标签同行、差值独占下一行。口径只写源码注释，不进界面。 */
-  const kpi=function(lab,val,diff,c,sub){
-    return '<div class="ls-kpi" style="--ac:'+c+'"><div class="kh"><span class="k">'+esc(lab)+'</span>'
+  /* KPI：主数值一律取 AMZ汇总表（账号列求和 / 达标表口径），上期值走 lsPrevKpi 同口径取数。
+     销售额/退款额/订单量/退款量/部分退款占比 = 涨幅或降幅比例；三个率 = 与上期的百分点差。
+     左侧色块按「数据表现」上色：变好绿 / 变差红 / 持平或无数据灰（不再按指标固定色）。口径只写源码注释。 */
+  const kpi=function(lab,val,info,sub){
+    const ac=info.good===true?'#1f9e6f':(info.good===false?'#d93b2b':'#b9bfca');
+    const cls=info.good===true?'good':(info.good===false?'bad':'flat');
+    return '<div class="ls-kpi" style="--ac:'+ac+'"><div class="kh"><span class="k">'+esc(lab)+'</span>'
       +'<span class="v">'+val+'</span></div>'
-      +'<div>'+diff+'</div>'
+      +'<div><span class="dv '+cls+'">较上次 '+info.t+'</span></div>'
       +(sub?'<div class="s">'+sub+'</div>':'')+'</div>';
   };
   const A=lsAccountSum(kind),SD=lsRefStdStat(kind);
@@ -20619,17 +20666,24 @@ function lsInner(){
   const ordShare=A.ord>0?A.rqty/A.ord:null;
   const badRate=SD.tot?SD.bad/SD.tot:null;
   const part=lsPartShare(kind);
-  /* 达标率环比：用历次快照的 达标/不达标 账号数按同一口径（ok ÷ (ok+bad)）算上一期 */
-  const sdPrev=(pre&&((pre.ok||0)+(pre.bad||0))>0)?pre.ok/((pre.ok||0)+(pre.bad||0)):null;
+  const PV=lsPrevKpi(kind,A,SD,sumRate,ordShare,part);
+  const dRate=lsKpiPp(sumRate,PV.rate,false);
+  const dSale=lsKpiPct(A.sale,PV.sale,true);
+  const dRef =lsKpiPct(A.ref ,PV.ref ,false);
+  const dOrd =lsKpiPct(A.ord ,PV.ord ,true);
+  const dRqty=lsKpiPct(A.rqty,PV.rqty,false);
+  const dShare=lsKpiPp(ordShare,PV.share,false);
+  const dStd =lsKpiPp(SD.rate,PV.std,true);
+  const dPart=lsKpiPct(part,PV.part,false);
   let kpis='<div class="ls-kpis">'
-    +kpi('退款率',lsPct(sumRate),lsKpiDiff(sumRate,pre?pre.rate:null,'pp',false),LS_C.rate,
-      '<span title="整体部分退款占比：退款金额÷订单总金额 ≤80% 的单量 ÷ 有订单金额单量">部分退款占比(≤80%) <b style="color:'+LS_C.share+'">'+lsPct(part)+'</b></span>')
-    +kpi('销售额',lsMoney(A.sale),lsKpiDiff(A.sale,pre?pre.sale:null,'money',true),LS_C.sale)
-    +kpi('退款额',lsMoney(A.ref),lsKpiDiff(A.ref,pre?pre.amt:null,'money',false),LS_C.ref)
-    +kpi('订单量',lsNum(A.ord),lsKpiDiff(A.ord,pre?pre.ordn:null,'num',true),LS_C.ord)
-    +kpi('退款量',lsNum(A.rqty),lsKpiDiff(A.rqty,pre?pre.rqty:null,'num',false),LS_C.rqty)
-    +kpi('退款量占比',lsPct(ordShare),lsKpiDiff(ordShare,pre?pre.share:null,'pp',false),LS_C.share)
-    +kpi('账号退款达标率',lsPct(SD.rate),lsKpiDiff(SD.rate,sdPrev,'pp',true),'#2f9e6f',
+    +kpi('退款率',lsPct(sumRate),dRate,
+      '<span title="整体部分退款占比：退款金额÷订单总金额 ≤80% 的单量 ÷ 有订单金额单量">部分退款占比(≤80%) <b style="color:'+LS_C.share+'">'+lsPct(part)+'</b> · 较上次 '+dPart.t+'</span>')
+    +kpi('销售额',lsMoney(A.sale),dSale)
+    +kpi('退款额',lsMoney(A.ref),dRef)
+    +kpi('订单量',lsNum(A.ord),dOrd)
+    +kpi('退款量',lsNum(A.rqty),dRqty)
+    +kpi('退款量占比',lsPct(ordShare),dShare)
+    +kpi('账号退款达标率',lsPct(SD.rate),dStd,
       '<span title="AMZ达标表：当前维度退款率达标 / 不达标的账号占比">不达标率 <b style="color:#c0392b">'+lsPct(badRate)+'</b> · 不达标 '+SD.bad+' 个</span>')
     +'</div>';
   /* 图一：规模 + 单量 */
