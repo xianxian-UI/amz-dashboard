@@ -2010,10 +2010,17 @@
   .lg-tbl td.lg-total{color:#c0392b;font-variant-numeric:tabular-nums}
   .lg-tbl td.lg-phi{background:#fff9db;text-align:center;font-variant-numeric:tabular-nums}
   .lg-tbl td.lg-sku{font-weight:700;color:#2f4a3e}
-  .lg-tbl td.lg-rtip{white-space:normal;text-align:left;line-height:1.55;font-size:11px;color:#55636f;vertical-align:top;max-width:300px}
+  .lg-tbl td.lg-rtip{white-space:nowrap;text-align:left;font-size:11px;color:#55636f;vertical-align:middle;max-width:210px;cursor:pointer}
+  .lg-tbl td.lg-rtip .rt-sum{display:inline-block;max-width:186px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;vertical-align:middle}
+  .lg-tbl td.lg-rtip .rt-arrow{color:#9aa4ad;margin-left:6px;font-size:10px}
+  .lg-tbl td.lg-rtip .rt-detail{display:none}
   .lg-tbl td.lg-rtip .rt-seg{display:block}
   .lg-tbl td.lg-rtip .rt-k{color:#8a6d00}
   .lg-tbl td.lg-rtip .rt-nil{color:#aab3bc}
+  .lg-tbl td.lg-rtip.open{white-space:normal;vertical-align:top}
+  .lg-tbl td.lg-rtip.open .rt-sum{display:none}
+  .lg-tbl td.lg-rtip.open .rt-detail{display:block;line-height:1.6;min-width:220px}
+  .lg-tbl td.lg-rtip.open .rt-arrow{display:none}
   .sku-jump{color:#2f8a63;cursor:pointer;text-decoration:underline;text-underline-offset:2px;font-weight:700}
   .sku-jump:hover{color:#1f6e4a;background:#eef8f1;border-radius:4px}
   .lg-toolbar{position:sticky;top:58px;z-index:8;background:#fff;padding:8px 0;border-bottom:1px solid #e6ede9;box-shadow:0 2px 6px rgba(0,0,0,.04)}
@@ -10912,6 +10919,9 @@ document.getElementById('app').addEventListener('click',e=>{
   if(_gls){const _sk=_gls.getAttribute('data-golightsku')||'';refF={site:'',acc:'',issueCat:'',refReason:'',region:'',cs:'',cat1:'',d1:'',d2:''};refColSel='sku';refSearch=_sk;refExact=true;refPage=1;goCtx=null;isTab='ref';render();return;}
   const _lgg=e.target.closest&&e.target.closest('[data-lggrade]');
   if(_lgg){const _g=_lgg.getAttribute('data-lggrade')||'';lightF=lightF||{};lightF.grade=(lightF.grade===_g?'':_g);lightPage=1;render();return;}
+  /* 产品按灯 · 最高退款原因：点击单元格展开 / 收起详情（只切 class，不重绘整表） */
+  const _lgrt=e.target.closest&&e.target.closest('[data-lgrtip]');
+  if(_lgrt){_lgrt.classList.toggle('open');return;}
   const _ist=e.target.closest&&e.target.closest('[data-istab]');
   if(_ist){const _nt=_ist.getAttribute('data-istab');
     /* 手工切换 tab：清掉「从汇总表跳转」带来的账号筛选，避免下一个 tab 里筛着看不见的账号 */
@@ -17855,7 +17865,10 @@ function lightTableHtml(){
       }else _cmp+='首次记录（无上次整体原因）';
       _rtipLines.push(_cmp);
     }
-    var _rtipHtml=_rtipLines.length?_rtipLines.map(function(x){return '<span class="rt-seg">'+esc(x)+'</span>';}).join(''):'<span class="rt-nil">—</span>';
+    /* 摘要只显示该 SKU 最高原因（原因名+金额），详情三段默认收起、点击展开 */
+    var _rtSum=(r.topReason?r.topReason+'（'+refFmtNum(r.topReasonAmt,2)+' 元）':(REF.topReason&&REF.topReason.reason?REF.topReason.reason+'（'+refFmtNum(REF.topReason.amt,2)+' 元）':'—'));
+    var _rtipHtml='<span class="rt-sum">'+esc(_rtSum)+'<span class="rt-arrow">▾</span></span>'
+      +'<span class="rt-detail">'+(_rtipLines.length?_rtipLines.map(function(x){return '<span class="rt-seg">'+esc(x)+'</span>';}).join(''):'<span class="rt-nil">—</span>')+'</span>';
     s+=td(lightFmt(r.refAmt,2))+td(lightPct(r.lossRate))+td(String(r.sLoss),lightLvClass(r.lightLoss))+td('<b>'+r.tLoss.toFixed(1)+'</b>','lg-total');
     s+=td(lightFmt(r.qty))+td(lightFmt(r.refCnt))+td(lightPct(r.orderRate),lightLvClass(r.lightRate),'退款单量 '+r.refCnt+' ÷ 卖出销量 '+r.qty)
       +td(String(r.sOrder),lightLvClass(r.lightOrder))+td('<b>'+r.tOrder.toFixed(1)+'</b>','lg-total');
@@ -17863,7 +17876,7 @@ function lightTableHtml(){
     /* 按灯类型始终给出等级值（不考核不再占着这一栏，改到「是否考核」列显示） */
     s+=r.grade?('<td class="lg-type lg-g-'+esc(r.grade.charAt(0))+'">'+esc(r.grade)+' '+esc(r.status)+'</td>'):'<td class="lg-type">—</td>';
     s+=r.notAssess?('<td class="lg-assess lg-na">'+esc(r.notAssess)+'</td>'):'<td class="lg-assess">纳入考核</td>';
-    s+='<td class="lg-rtip">'+_rtipHtml+'</td>';
+    s+='<td class="lg-rtip" data-lgrtip="1" title="点击展开 / 收起">'+_rtipHtml+'</td>';
     s+=td(esc(r.devTime||''))+td(r.devWithin3m?'是':'否');
     s+=td(r.full3m?'是':'否',r.full3m?'lg-yes':'lg-no');
     return s+'</tr>';
