@@ -16269,9 +16269,29 @@ function refKpiSiteTrend(key,fmt,H){
 /* KPI 悬浮曲线图：整体趋势 + 各站点趋势（最近 REF_HIST_MAX 次更新）。
    口径：整体 = refBaseRows 全量（与 KPI 大数同源）；站点 = refSiteOf 分组；日期维度不参与。
    折线在缺值处断开；历史超量已在 refAnaRoll / refApply 裁到 REF_HIST_MAX 份。 */
+/* 按退款日期聚合当前明细 → 最近 30 天整体/站点趋势序列（与 hist 快照同结构）。
+   一次上传即可出图，不再依赖「上传次数快照 REF.hist」。日期缺失的行跳过；
+   无退款日期时返回空数组（KPI 浮层给出"暂无趋势数据"提示）。 */
+function refKpiDaySeries(){
+  const rows=refBaseRows();
+  const byDay={},order=[];
+  (rows||[]).forEach(function(r){
+    const d=refDayKey(refVal(r,'refTime'));
+    if(!d)return;
+    if(!byDay[d]){byDay[d]=[];order.push(d);}
+    byDay[d].push(r);
+  });
+  order.sort();
+  const days=order.slice(-REF_HIST_MAX);
+  return days.map(function(d){
+    const rs=byDay[d],st=refStats(rs);
+    return {at:d,n:st.n,accs:st.accs,skus:st.skus,amtO:st.amtO,amtR:st.amtR,
+      nP:st.nP,nV:st.nV,partP:st.nV?(st.nP/st.nV*100):null,sites:refSiteStatsOf(rs)};
+  });
+}
 function refKpiChartSvg(key,fmt,H){
   H=(H||[]).slice(-REF_HIST_MAX);
-  if(H.length<2)return '<div class="kpi-pop-empty">至少 2 次更新后显示曲线</div>';
+  if(!H.length)return '<div class="kpi-pop-empty">暂无趋势数据</div>';
   const W=316,HG=130,PAD={l:34,r:10,t:10,b:16};
   const last=H[H.length-1],lastSites=(last&&last.sites)||{};
   let sts=Object.keys(lastSites).filter(function(st){return lastSites[st]&&typeof lastSites[st][key]==='number';});
@@ -16346,8 +16366,8 @@ function refKpiHtml(rows){
       +'<div class="is-kv">'+x.val+(x.unit||'')+'</div>'
       +(w.html?'<div class="is-kf">'+w.html+'</div>':'')
       +'<div class="kpi-pop">'
-        +'<div class="kpi-pop-h">'+esc(x.label)+' · 整体 / 站点趋势（最近 '+Math.min((REF.hist||[]).length,REF_HIST_MAX)+' 次更新）</div>'
-        +refKpiChartSvg(x.k,x.f,REF.hist||[])
+        +'<div class="kpi-pop-h">'+esc(x.label)+' · 整体 / 站点趋势（最近 30 天）</div>'
+        +refKpiChartSvg(x.k,x.f,refKpiDaySeries())
       +'</div></div>';
   }).join('')+'</div>';
 }
