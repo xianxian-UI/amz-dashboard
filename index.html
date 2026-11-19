@@ -2003,12 +2003,17 @@
   .lg-tbl th.lg-phi{background:#fff6cc;color:#8a6d00;text-align:center}
   .lg-tbl th.lg-type{background:#d9ecff;color:#1c5fa8;text-align:center}
   .lg-tbl th.lg-assess{background:#f2f0ff;color:#5b4ea8;text-align:center}
+  .lg-tbl th.lg-rtip{background:#f4f7fa;color:#4a5c6b;text-align:center;min-width:236px}
   .lg-tbl th.lg-full3m{background:#e8f6f2;color:#20735c;text-align:center}
   .lg-tbl td.lg-yes{background:#eaf7ee;color:#1e824c;font-weight:700;text-align:center}
   .lg-tbl td.lg-no{background:#f4f6f8;color:#8a93a0;text-align:center}
   .lg-tbl td.lg-total{color:#c0392b;font-variant-numeric:tabular-nums}
   .lg-tbl td.lg-phi{background:#fff9db;text-align:center;font-variant-numeric:tabular-nums}
   .lg-tbl td.lg-sku{font-weight:700;color:#2f4a3e}
+  .lg-tbl td.lg-rtip{white-space:normal;text-align:left;line-height:1.55;font-size:11px;color:#55636f;vertical-align:top;max-width:300px}
+  .lg-tbl td.lg-rtip .rt-seg{display:block}
+  .lg-tbl td.lg-rtip .rt-k{color:#8a6d00}
+  .lg-tbl td.lg-rtip .rt-nil{color:#aab3bc}
   .sku-jump{color:#2f8a63;cursor:pointer;text-decoration:underline;text-underline-offset:2px;font-weight:700}
   .sku-jump:hover{color:#1f6e4a;background:#eef8f1;border-radius:4px}
   .lg-toolbar{position:sticky;top:58px;z-index:8;background:#fff;padding:8px 0;border-bottom:1px solid #e6ede9;box-shadow:0 2px 6px rgba(0,0,0,.04)}
@@ -17820,6 +17825,7 @@ function lightTableHtml(){
     +'<th rowspan="2" class="lg-phi">PHI总得分</th>'
     +'<th rowspan="2" class="lg-type">按灯类型</th>'
     +'<th rowspan="2" class="lg-assess">是否考核</th>'
+    +'<th rowspan="2" class="lg-rtip">最高退款原因</th>'
     +'<th rowspan="2" style="min-width:92px">开发时间</th>'
     +'<th rowspan="2" style="min-width:112px">是否开发时间3个月内</th>'
     +'<th rowspan="2" class="lg-full3m" style="min-width:118px">是否是3个月数据</th>'
@@ -17837,28 +17843,31 @@ function lightTableHtml(){
     s+=td(esc(r.state));s+=td(esc(r.cat1));s+=td(esc(r.cat2));
     s+=td(lightFmt(r.sale,2))+td(String(r.sSale),lightLvClass(r.lightSale))+td('<b>'+r.tSale.toFixed(1)+'</b>','lg-total');
     s+=td(lightFmt(r.profit,2))+td(lightPct(r.profitRate))+td(String(r.sMargin),lightLvClass(r.lightMargin))+td('<b>'+r.tMargin.toFixed(1)+'</b>','lg-total');
-    var _rtip='';
-    if(r.topReason)_rtip='该 SKU 退款金额最高的原因：'+r.topReason+'（'+refFmtNum(r.topReasonAmt,2)+' 元）';
-    /* 整体最高退款原因与上一次整体的变化（每次更新对比） */
+    /* 最高退款原因：由悬浮 title 改为「是否考核」后的常驻列（原三段内容原样搬入） */
+    var _rtipLines=[];
+    if(r.topReason)_rtipLines.push('该 SKU 退款金额最高的原因：'+r.topReason+'（'+refFmtNum(r.topReasonAmt,2)+' 元）');
     if(REF.topReason&&REF.topReason.reason){
-      _rtip+=(_rtip?'\n':'')+'整体最高退款原因：'+REF.topReason.reason+'（'+refFmtNum(REF.topReason.amt,2)+' 元）';
-      _rtip+='\n相比上次：';
+      _rtipLines.push('整体最高退款原因：'+REF.topReason.reason+'（'+refFmtNum(REF.topReason.amt,2)+' 元）');
+      var _cmp='相比上次：';
       if(REF.topPrev&&REF.topPrev.reason){
-        if(REF.topPrev.reason===REF.topReason.reason)_rtip+='无变化（仍为 '+REF.topReason.reason+'）';
-        else _rtip+='由「'+REF.topPrev.reason+'」变为「'+REF.topReason.reason+'」';
-      }else _rtip+='首次记录（无上次整体原因）';
+        if(REF.topPrev.reason===REF.topReason.reason)_cmp+='无变化（仍为 '+REF.topReason.reason+'）';
+        else _cmp+='由「'+REF.topPrev.reason+'」变为「'+REF.topReason.reason+'」';
+      }else _cmp+='首次记录（无上次整体原因）';
+      _rtipLines.push(_cmp);
     }
-    s+=td(lightFmt(r.refAmt,2),'',_rtip)+td(lightPct(r.lossRate))+td(String(r.sLoss),lightLvClass(r.lightLoss))+td('<b>'+r.tLoss.toFixed(1)+'</b>','lg-total');
+    var _rtipHtml=_rtipLines.length?_rtipLines.map(function(x){return '<span class="rt-seg">'+esc(x)+'</span>';}).join(''):'<span class="rt-nil">—</span>';
+    s+=td(lightFmt(r.refAmt,2))+td(lightPct(r.lossRate))+td(String(r.sLoss),lightLvClass(r.lightLoss))+td('<b>'+r.tLoss.toFixed(1)+'</b>','lg-total');
     s+=td(lightFmt(r.qty))+td(lightFmt(r.refCnt))+td(lightPct(r.orderRate),lightLvClass(r.lightRate),'退款单量 '+r.refCnt+' ÷ 卖出销量 '+r.qty)
       +td(String(r.sOrder),lightLvClass(r.lightOrder))+td('<b>'+r.tOrder.toFixed(1)+'</b>','lg-total');
     s+='<td class="lg-phi"><b>'+(Math.round(r.phi*10)/10)+'</b></td>';
     /* 按灯类型始终给出等级值（不考核不再占着这一栏，改到「是否考核」列显示） */
     s+=r.grade?('<td class="lg-type lg-g-'+esc(r.grade.charAt(0))+'">'+esc(r.grade)+' '+esc(r.status)+'</td>'):'<td class="lg-type">—</td>';
     s+=r.notAssess?('<td class="lg-assess lg-na">'+esc(r.notAssess)+'</td>'):'<td class="lg-assess">纳入考核</td>';
+    s+='<td class="lg-rtip">'+_rtipHtml+'</td>';
     s+=td(esc(r.devTime||''))+td(r.devWithin3m?'是':'否');
     s+=td(r.full3m?'是':'否',r.full3m?'lg-yes':'lg-no');
     return s+'</tr>';
-  }).join('')||('<tr><td colspan="26" style="text-align:center;padding:30px" class="fbm-nil">没有匹配的 SKU</td></tr>');
+  }).join('')||('<tr><td colspan="27" style="text-align:center;padding:30px" class="fbm-nil">没有匹配的 SKU</td></tr>');
   return '<table class="fbm-tbl lg-tbl"><thead>'+g1+g2+'</thead><tbody>'+body+'</tbody></table>';
 }
 function lightPagerHtml(){
@@ -17875,16 +17884,30 @@ function lightRefresh(){
   var p=document.getElementById('lightPager');if(p)p.innerHTML=lightPagerHtml();
   var o=document.getElementById('lightOverview');if(o)o.innerHTML=lightOverviewHtml();
 }
+function lightExportRtip(r){
+  var a=[];
+  if(r.topReason)a.push('该 SKU 退款金额最高的原因：'+r.topReason+'（'+refFmtNum(r.topReasonAmt,2)+' 元）');
+  if(REF.topReason&&REF.topReason.reason){
+    a.push('整体最高退款原因：'+REF.topReason.reason+'（'+refFmtNum(REF.topReason.amt,2)+' 元）');
+    var c='相比上次：';
+    if(REF.topPrev&&REF.topPrev.reason){
+      if(REF.topPrev.reason===REF.topReason.reason)c+='无变化（仍为 '+REF.topReason.reason+'）';
+      else c+='由「'+REF.topPrev.reason+'」变为「'+REF.topReason.reason+'」';
+    }else c+='首次记录（无上次整体原因）';
+    a.push(c);
+  }
+  return a.join(' ');
+}
 function lightExport(){
   var rows=lightList(),cfg=lightCfg();
   var head=['SKU','商品状态','星耀一级分类','星耀二级分类','销售额','销售额得分','销售额总分','利润','利润率','利润得分','利润总分',
-    '退款金额','报损率','报损得分','报损总分','卖出销量','退款单量','退款单率','退款单得分','退款单总分','PHI总得分','按灯类型','是否考核','开发时间','是否开发时间3个月内','是否是3个月数据'];
+    '退款金额','报损率','报损得分','报损总分','卖出销量','退款单量','退款单率','退款单得分','退款单总分','PHI总得分','按灯类型','是否考核','最高退款原因','开发时间','是否开发时间3个月内','是否是3个月数据'];
   var q=function(v){var s=String(v==null?'':v);return /[",\r\n]/.test(s)?'"'+s.replace(/"/g,'""')+'"':s;};
   var lines=[head.map(q).join(',')];
   rows.forEach(function(r){
     lines.push([r.sku,r.state,r.cat1,r.cat2,r.sale,r.sSale,r.tSale.toFixed(1),r.profit,lightPct(r.profitRate),r.sMargin,r.tMargin.toFixed(1),
       r.refAmt,lightPct(r.lossRate),r.sLoss,r.tLoss.toFixed(1),r.qty,r.refCnt,lightPct(r.orderRate),r.sOrder,r.tOrder.toFixed(1),
-      (Math.round(r.phi*10)/10),(r.grade+' '+r.status).trim(),(r.notAssess||'纳入考核'),r.devTime,(r.devWithin3m?'是':'否'),(r.full3m?'是':'否')].map(q).join(','));
+      (Math.round(r.phi*10)/10),(r.grade+' '+r.status).trim(),(r.notAssess||'纳入考核'),lightExportRtip(r),r.devTime,(r.devWithin3m?'是':'否'),(r.full3m?'是':'否')].map(q).join(','));
   });
   downloadBlob(new Blob(['\uFEFF'+lines.join('\r\n')],{type:'text/csv;charset=utf-8'}),'产品按灯_'+rows.length+'个SKU_'+todayStr()+'.csv');
 }
