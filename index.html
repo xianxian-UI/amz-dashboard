@@ -19003,7 +19003,7 @@ function otdSection(){
 function otdCutCSV(l,forceSep){
   /* 分隔符自适应：Tab 数多于逗号数即按 Tab 切（.csv 实为 TSV 的亚马逊导出表）。
      forceSep 供表头扫描等需统一分隔的场景覆盖；默认自动。 */
-  let sep=forceSep;
+  let sep=(typeof forceSep==='string')?forceSep:''; /* 修复: Array.map 传入的数字索引不能当分隔符 */
   if(!sep){const _t=(l.split('\t').length-1),_c=(l.split(',').length-1);sep=(_t>0&&_t>_c)?'\t':',';}
   const out=[];let cur='',q=false;
   for(let i=0;i<l.length;i++){
