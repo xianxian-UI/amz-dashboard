@@ -134,6 +134,11 @@
   table.xl th,table.xl td{border:1px solid #e9e7f6;padding:6px 9px;text-align:center;white-space:nowrap}
 #sumTableWrap table.xl th,#sumTableWrap table.xl td,#stdTableWrap table.xl th,#stdTableWrap table.xl td{padding:4px 6px}
 #sumTableWrap table.xl thead tr.grow th,#stdTableWrap table.xl thead tr.grow th{padding:0 6px}
+/* 表头长列名折成2行：限宽 inline-block，账号列(short)不包故不受影响 */
+#sumTableWrap table.xl thead th .th-lbl,#stdTableWrap table.xl thead th .th-lbl{display:inline-block;max-width:58px;white-space:normal;word-break:break-all;line-height:1.18;vertical-align:middle;font-size:10.5px;font-weight:700}
+#sumTableWrap table.xl thead th .xlf,#stdTableWrap table.xl thead th .xlf{margin-left:2px;vertical-align:1px}
+/* 数据缩小1个字号(13.5→12)，行高略收 */
+#sumTableWrap table.xl tbody td,#stdTableWrap table.xl tbody td{font-size:12px;padding-top:3px;padding-bottom:3px}
   table.xl thead th{background:var(--psoft);color:#5a51cb;font-weight:700;position:sticky;top:0;z-index:3;cursor:pointer;user-select:none;box-shadow:inset 0 -1px 0 #e0dbfa}
   table.xl thead th:hover{background:var(--psoft2)}
   table.xl tbody tr:nth-child(even){background:#fbfbfe}
@@ -147,6 +152,9 @@
   table.xl.xl-freeze tbody td:nth-child(2){font-weight:700;color:#5a51cb}
   .logi-sel{flex:0 0 auto;border:1px solid var(--line);border-radius:9px;padding:7px 10px;font-size:13px;font-family:inherit;background:#fff;color:#3a3550;cursor:pointer;max-width:170px}
 .logi-sel:focus{outline:none;border-color:#cfc9fa;box-shadow:0 0 0 3px rgba(157,150,245,.16)}
+.filterbar .logi-fl{background:#f1eefe;border-color:#ddd2fb}
+.filterbar .logi-fl label{color:#5b4bd6;font-weight:600}
+.filterbar .logi-sel{border:1px solid #ddd2fb;padding:2px 6px;font-size:12px;max-width:none}
   .xlf{display:inline-flex;width:13px;height:13px;margin-left:6px;background:#fff;border:1px solid #cdc7f7;border-radius:2px;align-items:center;justify-content:center;vertical-align:-2px}
   .xlf i{font-style:normal;font-size:8px;line-height:1;color:var(--primary)}
   .xlf.on{background:var(--primary);border-color:var(--primary)}
@@ -6751,7 +6759,8 @@ function sumBodyInner(){
   const head1=`<tr class="grow"><th class="grp" rowspan="2">#</th>${gcSum.map(g=>`<th class="grp${g.name==='账号报损'?' bao':''}" colspan="${g.cols.length}">${esc(g.name)}</th>`).join('')}</tr>`;
   const head2=`<tr>${vcSum.map(([k,l])=>{
     const act=sumSortK===k?(sumSortDir===2?2:1):0;
-    return `<th data-sumsort="${k}" class="${baoCls(k)}" title="点击切换排序：升序 → 降序 → 取消">${esc(l)}<span class="xlf${act?' on':''}"><i>${act===2?'▼':'▲'}</i></span></th>`;
+    const lb=(k==='short')?esc(l):('<span class="th-lbl">'+esc(l)+'</span>');
+    return `<th data-sumsort="${k}" class="${baoCls(k)}" title="点击切换排序：升序 → 降序 → 取消">${lb}<span class="xlf${act?' on':''}"><i>${act===2?'▼':'▲'}</i></span></th>`;
   }).join('')}</tr>`;
   const rows=pageList.map((a,idx)=>{
     const mSet={};STD_M_KEYS.forEach(k=>mSet[k]=1);
@@ -11908,7 +11917,6 @@ function stdCellTipHTML(){
 function refreshStdTip(){const w=document.getElementById('stdTipWrap');if(w)w.innerHTML=stdCellTipHTML();}
 function stdToolbarInner(){
   const ds=stdCurWeek(),wi=ds?sumWeekInfo(ds):{week:'',span:''};
-  const _lv=String(stdLogiSearch||''), logiSel=(_lv==='否'||_lv.indexOf('不合格')>=0||_lv==='no'||_lv==='fail'||_lv==='false')?'否':((_lv==='是'||_lv.indexOf('合格')>=0||_lv==='yes'||_lv==='ok'||_lv==='true')?'是':'');
   return `<div class="toolbar" id="stdToolbar">
       <input id="stdSearch" class="search" placeholder="🔍 搜索 账号 / 站点 / 小组 / 客服组长 / 合作客服…（空格/逗号分隔可批量）" value="${esc(stdSearch)}">
       <span class="src-date">${weekMetaLine(ds,'与 AMZ汇总表 共用同一指标数据源；周次可直接编辑')}</span>
@@ -11917,11 +11925,6 @@ function stdToolbarInner(){
       <button class="btn ghost" id="stdCfgJump" title="打开「达标设置」定义每个指标达到什么算达标">⚙ 达标设置</button>
       <button class="btn ghost" id="stdColBtn" title="选择要显示的列（账号必选；默认全部显示）">🧩 显示字段</button>
       <button class="btn ghost" id="stdExportBtn" title="把当前筛选结果（当前周）导出为 xlsx（无 Excel 环境时导出 csv）">⬇ 导出</button>
-      <select id="stdLogiSearch" class="logi-sel" title="专属筛选「物流达标」：是=有效追踪率与准时送达率都达标；否=任一项不达标；可与左侧通用搜索叠加">
-        <option value=""${logiSel===''?' selected':''}>物流达标：全部</option>
-        <option value="是"${logiSel==='是'?' selected':''}>物流达标：是</option>
-        <option value="否"${logiSel==='否'?' selected':''}>物流达标：否</option>
-      </select>
       <input type="file" id="stdSrcFile" accept=".xlsx,.xls,.csv,.txt" style="display:none">
     </div>`;
 }
@@ -11970,7 +11973,9 @@ function stdFilterBarInner(){
   const panels={time:wSel+sSel,org:msGroupHTML(gOrg,aug,stdFilterArr,stdFilterOpen),ppl:msGroupHTML(gPpl,aug,stdFilterArr,stdFilterOpen),ovw:msGroupHTML(gOvw,aug,stdFilterArr,stdFilterOpen),metric:stdMetricPanel()};
   const panel=panels[grp]||'';
   const nAct=STD_FILTER_GROUPS.reduce((n,g)=>n+stdGrpCount(g[0]),0);
-  return fbChips(STD_FILTER_GROUPS,grp,stdGrpCount)+`<button class="btn xs ghost" id="stdResetF"${nAct?'':' disabled'}>重置筛选${nAct?'('+nAct+')':''}</button>`+(grp&&panel?`<div class="fbg-panel">${panel}</div>`:'')+(colPanel==='std'?colPanelHTML('std'):'');
+  const _lv=String(stdLogiSearch||''), logiSel=(_lv==='否'||_lv.indexOf('不合格')>=0||_lv==='no'||_lv==='fail'||_lv==='false')?'否':((_lv==='是'||_lv.indexOf('合格')>=0||_lv==='yes'||_lv==='ok'||_lv==='true')?'是':'');
+  const logiSelHTML=`<span class="fl logi-fl"><label>物流达标</label><select id="stdLogiSearch" class="logi-sel" title="专属筛选「物流达标」：是=有效追踪率与准时送达率都达标；否=任一项不达标"><option value=""${logiSel===''?' selected':''}>全部</option><option value="是"${logiSel==='是'?' selected':''}>是</option><option value="否"${logiSel==='否'?' selected':''}>否</option></select></span>`;
+  return fbChips(STD_FILTER_GROUPS,grp,stdGrpCount)+`<button class="btn xs ghost" id="stdResetF"${nAct?'':' disabled'}>重置筛选${nAct?'('+nAct+')':''}</button>`+logiSelHTML+(grp&&panel?`<div class="fbg-panel">${panel}</div>`:'')+(colPanel==='std'?colPanelHTML('std'):'');
 }
 function stdRefreshTable(){const w=document.getElementById('stdTableWrap');if(w)w.innerHTML=stdBodyInner();}
 function stdRefreshFilterUI(){
@@ -20854,7 +20859,8 @@ function stdBodyInner(){
   const head2=`<tr>${vcStd.map(([k,l])=>{
     const act=stdSortK===k?(stdSortDir===2?2:1):0;
     const hl=(k==='stdFail'||k==='stdHealthy')?'hl':baoCls(k);
-    return `<th${hl?' class="'+hl+'"':''} data-stdsort="${k}" title="点击切换排序：升序 → 降序 → 取消">${esc(l)}<span class="xlf${act?' on':''}"><i>${act===2?'▼':'▲'}</i></span></th>`;
+    const lb=(k==='short')?esc(l):('<span class="th-lbl">'+esc(l)+'</span>');
+    return `<th${hl?' class="'+hl+'"':''} data-stdsort="${k}" title="点击切换排序：升序 → 降序 → 取消">${lb}<span class="xlf${act?' on':''}"><i>${act===2?'▼':'▲'}</i></span></th>`;
   }).join('')}</tr>`;
   const et=stdEmptyText();
   const blank=et;
