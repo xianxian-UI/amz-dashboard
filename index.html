@@ -11026,6 +11026,7 @@ document.getElementById('app').addEventListener('click',e=>{
   if(e.target.id==='refUploadBtn'){openAmzUp('ref');return;}
   if(e.target.id==='refExportBtn'){refExport();return;}
   if(e.target.id==='refClearBtn'){refClearAll();return;}
+  if(e.target.id==='refForceBtn'){refForceReload();return;}
   if(e.target.id==='refRetryBtn'){REF.state='idle';REF.err='';refEnsure();render();return;}
   if(e.target.id==='refExactBtn'){refExact=!refExact;refPage=1;refRefresh();const _b=document.getElementById('refExactBtn');if(_b)_b.innerHTML='匹配：'+(refExact?'精确':'包含');return;}
   if(e.target.id==='refFilterClear'){
@@ -16556,6 +16557,7 @@ function refBarHtml(){
     +'<button class="btn ghost" id="refExportBtn">⬇ 导出</button>'
     +'<button class="btn ghost" id="refUploadBtn">⬆ 上传退款明细</button>'
     +'<button class="btn ghost" id="refClearBtn">🗑 清空</button>'
+    +'<button class="btn ghost" id="refForceBtn" title="删除本机旧缓存，从云端重新拉取最新退款明细">⟳ 刷新云端</button>'
     +'</div>'
     +'<div class="toolbar is-bar">'
     +sortSel+siteSel+catSel+reaSel+dateRange
@@ -17283,13 +17285,17 @@ function refEnsure(){
     if(o&&o.rows&&o.rows.length){
       refApply(o,'idb');
       REF.etag=(rec&&rec.etag)||'';
-      /* 本机已有缓存：发一个 HEAD 校验云端是否被更新；本地缓存无 etag（历史上传失败遗留）也要校验，变了就整份重拉 */
-      refCloudEtag().then(function(e){
-        /* HEAD 被 CORS 拦截会返回空串：拿不到也要强制重拉，避免旧缓存永远挡住云端更新 */
-        if(!e||e!==REF.etag){
+      /* 无条件在后台重拉一次云端：HEAD/etag 在跨源场景不可靠，旧缓存 etag 可能恰好等于云端导致永不更新。
+         每次打开页面都以云端为准，缓存仅用于首屏快速占位。每个页面会话只自动重拉一次。 */
+      var _autoKey='refAutoPull_'+(window.performance&&performance.timeOrigin||Date.now());
+      try{
+        if(!sessionStorage.getItem(_autoKey)){
+          sessionStorage.setItem(_autoKey,'1');
           refReloadCloud().then(function(ok){if(ok)refRenderIfVisible();});
         }
-      });
+      }catch(e){
+        refReloadCloud().then(function(ok){if(ok)refRenderIfVisible();});
+      }
       return true;
     }
     return refReloadCloud();
@@ -17313,6 +17319,17 @@ function refReloadCloud(){
     }
     return false;
   }).catch(function(){return false;});
+}
+/* 手动强制刷新：删掉本机旧缓存，无条件从云端重拉（解决旧缓存 etag 与云端相同导致永不更新的问题） */
+function refForceReload(){
+  if(!confirm('删除本机缓存并从云端重新拉取最新退款明细？'))return;
+  REF.state='idle';REF.err='';REF.rows=[];REF.prog={got:0,total:0};
+  refRenderIfVisible();
+  try{refIdbSet(null);}catch(e){}
+  refReloadCloud().then(function(ok){
+    if(ok){render();}
+    else{alert('云端拉取失败，请检查网络后重试，或直接用「上传退款明细」重新上传。');refRenderIfVisible();}
+  });
 }
 
 
