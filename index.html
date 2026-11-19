@@ -621,11 +621,20 @@
   /* 问题明细三块看板的 KPI 卡：底部一行「▲差值 · 均值」 */
   .is-kf{display:flex;align-items:center;gap:6px;margin-top:5px;flex-wrap:wrap}
 .is-k{position:relative}
-.kpi-pop{display:none;position:absolute;left:0;top:100%;margin-top:5px;z-index:80;width:344px;max-width:82vw;background:#fff;border:1px solid #d7e8df;border-radius:10px;box-shadow:0 10px 30px rgba(20,50,40,.18);padding:10px 12px;white-space:normal;line-height:1.5}
+.kpi-pop{display:none;position:absolute;left:0;top:100%;margin-top:5px;z-index:80;width:420px;max-width:82vw;background:#fff;border:1px solid #d7e8df;border-radius:10px;box-shadow:0 10px 30px rgba(20,50,40,.18);padding:10px 12px;white-space:normal;line-height:1.5}
 .is-k:hover .kpi-pop{display:block}
 .kpi-pop-h{font-size:11.5px;font-weight:800;color:#2f6f5b;margin-bottom:6px}
 .kpi-chart{display:block;max-width:100%}
 .kpi-lgs{display:flex;flex-wrap:wrap;gap:3px 10px;margin-top:4px}
+.kpi-site{display:flex;align-items:center;gap:6px;padding:2px 0;border-top:1px solid #f0f5f2}
+.kpi-site:first-child{border-top:0}
+.kpi-site-n{width:52px;flex:none;font-size:10px;color:#5a6b64;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.kpi-site-c{flex:1;min-width:0}
+.kpi-site-v{width:60px;flex:none;text-align:right;font-size:10px;color:#2f6f5b;font-variant-numeric:tabular-nums}
+.rk-tip{display:none;position:absolute;left:0;top:100%;margin-top:3px;z-index:90;width:270px;max-width:80vw;background:#fff;border:1px solid #d7e8df;border-radius:8px;box-shadow:0 8px 22px rgba(20,50,40,.16);padding:8px 10px;white-space:normal;line-height:1.5}
+.otd-rrow:hover .rk-tip{display:block}
+.fb-row:hover .rk-tip{display:block}
+.rk-tip-h{font-size:11px;font-weight:700;color:#2f6f5b;margin-bottom:4px}
 .kpi-lg{font-size:10px;color:#5a6b64;display:inline-flex;align-items:center;gap:3px}
 .kpi-lg i{width:8px;height:8px;border-radius:2px;display:inline-block}
 .kpi-pop-empty{padding:12px 4px;color:#96a9a0;font-size:11px}
@@ -1944,7 +1953,7 @@
     border-radius:9px;padding:1px 7px;white-space:nowrap}
   .fb-note{font-size:11px;color:#8a93a0;margin:-2px 0 6px;padding-left:13px}
   .fb-body{display:flex;flex-direction:column;gap:2px;flex:1}
-  .fb-row{display:flex;align-items:center;gap:7px;font-size:12px;padding:2px 4px;border-radius:7px;cursor:pointer}
+  .fb-row{display:flex;align-items:center;gap:7px;font-size:12px;padding:2px 4px;border-radius:7px;cursor:pointer;position:relative}
   .fb-row:hover{background:#f6f7fb}
   .fb-row.on{background:var(--fbcbg)}
   .fb-rk{display:inline-flex;align-items:center;justify-content:center;min-width:17px;height:17px;border-radius:5px;
@@ -16289,45 +16298,54 @@ function refKpiDaySeries(){
       nP:st.nP,nV:st.nV,partP:st.nV?(st.nP/st.nV*100):null,sites:refSiteStatsOf(rs)};
   });
 }
-function refKpiChartSvg(key,fmt,H){
+function refKpiChartSvg(key,fmt,H,opt){
+  opt=opt||{};
   H=(H||[]).slice(-REF_HIST_MAX);
   if(!H.length)return '<div class="kpi-pop-empty">暂无趋势数据</div>';
-  const W=316,HG=130,PAD={l:34,r:10,t:10,b:16};
-  const last=H[H.length-1],lastSites=(last&&last.sites)||{};
-  let sts=Object.keys(lastSites).filter(function(st){return lastSites[st]&&typeof lastSites[st][key]==='number';});
-  sts.sort(function(a,b){return (lastSites[b][key]||0)-(lastSites[a][key]||0);});
-  sts=sts.slice(0,5);
-  const pal=['#e0724d','#3f8ae0','#c95f9b','#7d75ea','#ef8f3d'];
-  const series=[{name:'整体',color:'#2f6f5b',w:2.4,vals:H.map(function(h){return typeof h[key]==='number'?h[key]:null;})}];
-  sts.forEach(function(st,i){series.push({name:st,color:pal[i%pal.length],w:1.5,
-    vals:H.map(function(h){const ss=h.sites&&h.sites[st];return ss&&typeof ss[key]==='number'?ss[key]:null;})});});
-  let mn=Infinity,mx=-Infinity;
-  series.forEach(function(sn){sn.vals.forEach(function(v){if(v!=null){if(v<mn)mn=v;if(v>mx)mx=v;}});});
-  if(mn===Infinity)return '<div class="kpi-pop-empty">暂无趋势数值</div>';
-  if(mn===mx){mn-=Math.abs(mn)*0.1+1;mx+=Math.abs(mx)*0.1+1;}
+  const compact=!!opt.compact;
+  const W=opt.w||(compact?230:396),HG=compact?84:150,PAD=compact?{l:34,r:8,t:8,b:14}:{l:42,r:10,t:10,b:20};
+  const ov=H.map(function(h){return typeof h[key]==='number'?h[key]:null;});
+  const vv=ov.filter(function(v){return v!=null&&isFinite(v);});
+  if(!vv.length)return '<div class="kpi-pop-empty">暂无趋势数值</div>';
+  let mn=Math.min.apply(null,vv),mx=Math.max.apply(null,vv);
+  if(mn===mx){mn-=Math.abs(mn)*0.15+1;mx+=Math.abs(mx)*0.15+1;}
   const span=mx-mn||1,iw=W-PAD.l-PAD.r,ih=HG-PAD.t-PAD.b;
   const X=function(i){return PAD.l+(H.length<=1?iw/2:i/(H.length-1)*iw);};
   const Y=function(v){return PAD.t+ih-(v-mn)/span*ih;};
   let g='';
   [0,0.5,1].forEach(function(t){
-    const yy=PAD.t+ih*t,vv=mx-span*t;
+    const yy=PAD.t+ih*t,v2=mx-span*t;
     g+='<line x1="'+PAD.l+'" y1="'+yy.toFixed(1)+'" x2="'+(W-PAD.r)+'" y2="'+yy.toFixed(1)+'" stroke="#e8f0eb" stroke-width="1"/>';
-    g+='<text x="'+(PAD.l-3)+'" y="'+(yy+3).toFixed(1)+'" font-size="8.5" fill="#96a9a0" text-anchor="end">'+esc(fmt(vv))+'</text>';
+    g+='<text x="'+(PAD.l-4)+'" y="'+(yy+3).toFixed(1)+'" font-size="9" fill="#96a9a0" text-anchor="end">'+esc(fmt(v2))+'</text>';
   });
-  series.forEach(function(sn){
-    let d='',pen=false,lastPt=null;
-    sn.vals.forEach(function(v,i){
-      if(v==null){pen=false;return;}
-      d+=(pen?'L':'M')+X(i).toFixed(1)+' '+Y(v).toFixed(1)+' ';
-      pen=true;lastPt=[X(i),Y(v)];
-    });
-    if(d)g+='<path d="'+d+'" fill="none" stroke="'+sn.color+'" stroke-width="'+sn.w+'" stroke-linejoin="round" stroke-linecap="round"/>';
-    if(lastPt)g+='<circle cx="'+lastPt[0].toFixed(1)+'" cy="'+lastPt[1].toFixed(1)+'" r="2.4" fill="'+sn.color+'"/>';
+  let d='',pen=false,lastPt=null;
+  ov.forEach(function(v,i){
+    if(v==null||!isFinite(v)){pen=false;return;}
+    d+=(pen?'L':'M')+X(i).toFixed(1)+' '+Y(v).toFixed(1)+' ';pen=true;lastPt=[X(i),Y(v)];
   });
-  g+='<text x="'+PAD.l+'" y="'+(HG-3)+'" font-size="8.5" fill="#96a9a0">'+esc(String(H[0].at||'').slice(5))+'</text>';
-  g+='<text x="'+(W-PAD.r)+'" y="'+(HG-3)+'" font-size="8.5" fill="#96a9a0" text-anchor="end">'+esc(String(last.at||'').slice(5))+'</text>';
-  const legend=series.map(function(sn){return '<span class="kpi-lg"><i style="background:'+sn.color+'"></i>'+esc(sn.name)+'</span>';}).join('');
-  return '<svg class="kpi-chart" viewBox="0 0 '+W+' '+HG+'" width="'+W+'" height="'+HG+'">'+g+'</svg><div class="kpi-lgs">'+legend+'</div>';
+  if(d)g+='<path d="'+d+'" fill="none" stroke="#2f6f5b" stroke-width="'+(compact?1.8:2.4)+'" stroke-linejoin="round" stroke-linecap="round"/>';
+  if(lastPt)g+='<circle cx="'+lastPt[0].toFixed(1)+'" cy="'+lastPt[1].toFixed(1)+'" r="'+(compact?2:3)+'" fill="#2f6f5b"/>';
+  const step=Math.max(1,Math.ceil(H.length/(compact?3:6)));
+  H.forEach(function(h,i){
+    if(i%step!==0&&i!==H.length-1)return;
+    g+='<text x="'+X(i).toFixed(1)+'" y="'+(HG-3)+'" font-size="9" fill="#96a9a0" text-anchor="middle">'+esc(String(h.at||'').slice(5))+'</text>';
+  });
+  const svg='<svg class="kpi-chart" viewBox="0 0 '+W+' '+HG+'" width="'+W+'" height="'+HG+'">'+g+'</svg>';
+  if(compact)return svg;
+  const lastSites=(H[H.length-1]&&H[H.length-1].sites)||{};
+  let sts=Object.keys(lastSites).filter(function(st){return lastSites[st]&&typeof lastSites[st][key]==='number';});
+  sts.sort(function(a,b){return (lastSites[b][key]||0)-(lastSites[a][key]||0);});
+  sts=sts.slice(0,5);
+  const pal=['#e0724d','#3f8ae0','#c95f9b','#7d75ea','#ef8f3d'];
+  let rowsHtml='';
+  sts.forEach(function(st,i){
+    const sv=H.map(function(h){const ss=h.sites&&h.sites[st];return ss&&typeof ss[key]==='number'?ss[key]:null;});
+    const sub=refKpiChartSvg(key,fmt,sv.map(function(v,ix){var o={};o[key]=v;o.at=H[ix]&&H[ix].at;return o;}),{w:230,compact:true});
+    rowsHtml+='<div class="kpi-site"><span class="kpi-site-n" title="'+esc(st)+'">'+esc(st)+'</span>'
+      +'<span class="kpi-site-c">'+sub+'</span>'
+      +'<span class="kpi-site-v">'+esc(fmt(lastSites[st][key]))+'</span></div>';
+  });
+  return svg+(rowsHtml?'<div class="kpi-sites">'+rowsHtml+'</div>':'');
 }
 function refKpiWow(key,fmt,unit){
   var H=REF.hist||[];
@@ -16796,13 +16814,30 @@ function refAnaCard(rows,d){
         +' · 上次 '+String(prevAll.at||'').slice(5)+' '+_f(dl.pv)+'）');
     }
     if(d.slow)bits.push('超 48h '+refFmtNum(o.slow)+(o.n?('（'+Math.round(o.slow/o.n*100)+'%）'):''));
-    const tip=(String(o.lbl)+'：'+bits.join(' · '))+(attr?' · 点一下按这个筛明细（再点取消）':'');
-    return '<div class="fb-row'+(on?' on':'')+'"'+attr+' title="'+esc(tip)+'">'
+    /* hover tip: 该取值按退款日期的笔数趋势图（原生 title 文字已移除） */
+    let tipHtml='';
+    const vKey=String(o.k);
+    if(vKey&&vKey!=='（未填）'){
+      const byDay={},order=[];
+      rows.forEach(function(rr){
+        if(String(refAnaDimVal(rr,d))!==vKey)return;
+        const dd=refDayKey(refVal(rr,'refTime'));
+        if(!dd)return;
+        if(!(dd in byDay)){byDay[dd]=0;order.push(dd);}
+        byDay[dd]++;
+      });
+      order.sort();
+      const HH=order.slice(-REF_HIST_MAX).map(function(dd){return {at:dd,n:byDay[dd]};});
+      tipHtml='<div class="rk-tip"><div class="rk-tip-h">'+esc(d.label)+' = '+esc(o.lbl)+' · 笔数趋势（按退款日期）</div>'
+        +refKpiChartSvg('n',refFmtNum,HH,{w:240,compact:true})+'</div>';
+    }
+    return '<div class="fb-row'+(on?' on':'')+'"'+attr+'>'
       +'<span class="fb-rk">'+(i+1)+'</span>'
-      +'<span class="fb-lab" title="'+esc(String(o.lbl))+'">'+esc(String(o.lbl))+'</span>'
+      +'<span class="fb-lab">'+esc(String(o.lbl))+'</span>'
       +'<span class="fb-bar'+(w<22?' tiny':'')+'"><i style="width:'+w.toFixed(1)+'%">'
       +'<b class="fb-pin">'+o.share+'%</b></i></span>'
-      +'<span class="fb-n">'+refFmtNum(o.n)+'</span>'+refAnaWowHtml(dl)+'</div>';
+      +'<span class="fb-n">'+refFmtNum(o.n)+'</span>'+refAnaWowHtml(dl)+tipHtml+'</div>';
+
   }).join('')||'<div class="dim" style="font-size:11.5px;padding:6px 2px">没有数据</div>';
   const more=(arr.length>LIMIT)
     ?'<button class="fb-more" data-refanamore="'+esc(d.k)+'">'+(open?'收起 ▴':'查看全部 '+arr.length+' 项 ▾')+'</button>':'';
