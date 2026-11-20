@@ -346,6 +346,9 @@
   .ls-legend .dim{color:#a3a8b4}
   .ls-chart{width:100%;overflow:hidden}
   .ls-chart svg{display:block;width:100%}
+  .ls-scale-row{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(300px,1fr);gap:18px;align-items:start}
+  .ls-donut{background:#fff;border:1px solid #f1f1f4;border-radius:8px;padding:9px 11px}
+  @media(max-width:1100px){.ls-scale-row{grid-template-columns:1fr}}
   .ls-row2{display:grid;grid-template-columns:1fr 1fr;gap:26px;margin-top:12px;padding-top:11px;border-top:1px dashed #f0e5e2}
   @media(max-width:1100px){.ls-row2{grid-template-columns:1fr}}
   .ls-sub{font-size:12px;font-weight:700;color:#8d6f68;margin:0 0 2px;letter-spacing:.2px}
@@ -20594,6 +20597,54 @@ function lsUpdateSeries(kind){
       rate:sale>0?ref/sale:null,ok:Number(a.ok)||0,bad:Number(a.bad)||0};
   });
 }
+/* 各区域退款额圆环：与报损规模同一 AMZ汇总表口径，按账号 region 汇总；
+   悬浮切片 / 图例显示该区域下各核算小组（账号 group）的退款额明细。口径只写注释，不上界面。 */
+function lsRegionDonut(kind){
+  const rf={d:'baoDRef',w:'baoWRef',m:'baoMRef'}[kind]||'baoMRef';
+  const reg={};let total=0;
+  (DATA.accounts||[]).forEach(function(a){
+    if(!a||a.status!=='启用'||a.assess!=='纳入考核')return;
+    if(!lsAccPass(a))return;
+    const k=String(a.short==null?'':a.short).trim().toUpperCase();if(!k)return;
+    const amt=Number(sumBaoFields(k)[rf])||0;if(!amt)return;
+    const r=String(a.region==null?'':a.region).trim()||'未分区';
+    const g=String(a.group==null?'':a.group).trim()||'未分组';
+    const t=reg[r]||(reg[r]={amt:0,gs:{}});
+    t.amt+=amt;t.gs[g]=(t.gs[g]||0)+amt;total+=amt;
+  });
+  const list=Object.keys(reg).map(function(r){return {r:r,amt:reg[r].amt,gs:reg[r].gs};})
+    .sort(function(a,b){return b.amt-a.amt;});
+  if(!list.length||total<=0)return '<div class="ls-empty">当前筛选下暂无区域退款数据</div>';
+  const C=['#4f7df3','#38bdf8','#818cf8','#2dd4bf','#f0a35e','#a78bfa','#60a5fa','#94a3b8'];
+  const tipOf=function(x){
+    const gs=Object.keys(x.gs).sort(function(a,b){return x.gs[b]-x.gs[a];})
+      .map(function(g){return g+' '+lsMoney(x.gs[g])+'（'+lsPct(x.gs[g]/x.amt)+'）';}).join('、');
+    return x.r+' · 退款额 '+lsMoney(x.amt)+' · 占比 '+lsPct(x.amt/total)+'\n核算小组：'+gs;
+  };
+  const R=68,SW=24,CIR=2*Math.PI*R;let off=0;
+  const slices=list.map(function(x,i){
+    const len=CIR*x.amt/total;
+    const s='<circle cx="88" cy="88" r="'+R+'" fill="none" stroke="'+C[i%C.length]+'" stroke-width="'+SW+'"'
+      +' stroke-dasharray="'+len.toFixed(2)+' '+(CIR-len).toFixed(2)+'" stroke-dashoffset="'+(-off).toFixed(2)+'"'
+      +' transform="rotate(-90 88 88)"><title>'+esc(tipOf(x))+'</title></circle>';
+    off+=len;return s;
+  }).join('');
+  const leg=list.map(function(x,i){
+    return '<div title="'+esc(tipOf(x))+'" style="display:flex;align-items:center;gap:7px;font-size:11.5px;color:#5b6270;cursor:default">'
+      +'<i style="width:9px;height:9px;border-radius:2px;background:'+C[i%C.length]+';flex:none"></i>'
+      +'<span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(x.r)+'</span>'
+      +'<b style="font-variant-numeric:tabular-nums;color:#333b47">'+lsMoney(x.amt)+'</b>'
+      +'<em style="font-style:normal;color:#9aa1ad;width:46px;text-align:right;font-variant-numeric:tabular-nums">'+lsPct(x.amt/total)+'</em></div>';
+  }).join('');
+  return '<div class="ls-donut">'
+    +'<div style="font-size:12px;font-weight:700;color:#8d6f68;margin:0 0 4px">各区域退款额 / 占比</div>'
+    +'<div style="display:flex;align-items:center;gap:14px">'
+    +'<svg viewBox="0 0 176 176" style="width:176px;height:176px;flex:none">'+slices
+    +'<text x="88" y="82" text-anchor="middle" font-size="10" fill="#9aa1ad">退款额合计</text>'
+    +'<text x="88" y="101" text-anchor="middle" font-size="15" font-weight="700" fill="#333b47">'+esc(lsMoney(total))+'</text></svg>'
+    +'<div style="flex:1;min-width:0;max-height:176px;overflow:auto;display:flex;flex-direction:column;gap:6px">'+leg+'</div>'
+    +'</div></div>';
+}
 /* 当前视图的序列 + 数据来源标记 */
 function lsSeries(kind){
   let pts=[],src='明细';
@@ -20658,6 +20709,9 @@ function lsPlot(cfg){
         if(!(v>0))return;
         const h=(ih*v/(lmax||1)),x0=cx(i)-bw*bc/2+bw*si;
         g+='<rect x="'+x0.toFixed(1)+'" y="'+(PT+ih-h).toFixed(1)+'" width="'+(bw-1.2).toFixed(1)+'" height="'+h.toFixed(1)+'" rx="1.6" fill="'+s.color+'" opacity="'+(s.op==null?0.92:s.op)+'"><title>'+esc(labels[i]+' · '+s.name+' '+(cfg.fmtTip?cfg.fmtTip(s.name,v,i):(cfg.fmtL?cfg.fmtL(v):lsMoney(v))))+'</title></rect>';
+        if(cfg.labelFmt&&(n<=8||i===n-1)){
+          g+='<text x="'+cx(i).toFixed(1)+'" y="'+(PT+ih-h-5).toFixed(1)+'" text-anchor="middle" font-size="10" font-weight="600" fill="#4b5563">'+esc(cfg.labelFmt(s.name,v,i))+'</text>';
+        }
       });
     });
   }
@@ -20675,6 +20729,9 @@ function lsPlot(cfg){
     pts.forEach(function(p,i){
       if(!p)return;
       g+='<circle cx="'+p[0].toFixed(1)+'" cy="'+p[1].toFixed(1)+'" r="2.4" fill="#fff" stroke="'+s.color+'" stroke-width="1.5"><title>'+esc(labels[i]+' · '+s.name+' '+(s.fmt?s.fmt(s.vals[i]):lsPct(s.vals[i])))+'</title></circle>';
+      if(cfg.labelLine&&(n<=8||i===n-1)){
+        g+='<text x="'+(p[0]+6).toFixed(1)+'" y="'+(p[1]-6).toFixed(1)+'" text-anchor="start" font-size="10" font-weight="700" fill="'+s.color+'">'+esc(s.fmt?s.fmt(s.vals[i]):lsPct(s.vals[i]))+'</text>';
+      }
     });
   });
   /* 目标虚线 */
@@ -20872,10 +20929,12 @@ function lsInner(){
           if(nm==='销售额')return lsMoney(v)+' · 订单量 '+lsNum((U[i]||{}).ordn||0);
           if(nm==='退款额')return lsMoney(v)+' · 退款量 '+lsNum((U[i]||{}).rqty||0);
           return lsPct(v/100);
-        }});
+        },labelFmt:function(nm,v){return lsMoney(v);},labelLine:true});
   }else{
     chart1='<div class="ls-empty">还没有可用的报损数据 —— 到「AMZ汇总表 · ⬆ 上传指标数据源」上传账号报损后这里会自动出现</div>';
   }
+  /* 区域退款额圆环（与报损规模同一汇总表口径） */
+  const donut=lsRegionDonut(kind);
   /* 品类透视 */
   const ag=lsCatAgg();
   const lv='<span class="ls-lv">'+[['1','星耀1级'],['2','星耀2级']].map(function(x){
@@ -20930,7 +20989,7 @@ function lsInner(){
     +opsFilterBar(lsAll)
     +kpis
     +'<section class="ls-sec"><h3>一、报损规模与趋势</h3>'
-    +'<div class="ls-chart">'+chart1+'</div>'
+    +'<div class="ls-scale-row"><div class="ls-chart">'+chart1+'</div>'+donut+'</div>'
     +'</section>'
     +'<section class="ls-sec"><h3>二、品类报损透视 · 按灯</h3>'+tbl+'</section>'
     +'</div>';
