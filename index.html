@@ -349,9 +349,9 @@
   .ls-scale-row{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(300px,1fr);gap:18px;align-items:start}
   .ls-cmp-row{display:grid;grid-template-columns:minmax(0,1.35fr) minmax(0,1fr);gap:16px;align-items:start}
   @media(max-width:1200px){.ls-cmp-row{grid-template-columns:1fr}}
-  .ls-trend-key{display:grid;grid-template-columns:repeat(auto-fill,minmax(94px,1fr));gap:5px 8px;font-size:11px;color:#5b6270;margin-top:9px}
-  .ls-trend-key span{display:flex;align-items:center;gap:5px;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-  .ls-trend-key i{width:15px;height:15px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;color:#fff;font-style:normal;font-size:10px;font-weight:700;flex:none}
+  .ls-trend-key{display:flex;flex-wrap:wrap;gap:6px 14px;font-size:11px;color:#5b6270;margin-top:9px}
+  .ls-trend-key span{display:flex;align-items:center;gap:5px;white-space:nowrap}
+  .ls-trend-key i{width:12px;height:12px;border-radius:50%;background:#fff;border:2px solid currentColor;display:inline-block;flex:none}
   .ls-donut{background:#fff;border:1px solid #f1f1f4;border-radius:8px;padding:9px 11px}
   @media(max-width:1100px){.ls-scale-row{grid-template-columns:1fr}}
   .ls-row2{display:grid;grid-template-columns:1fr 1fr;gap:26px;margin-top:12px;padding-top:11px;border-top:1px dashed #f0e5e2}
@@ -20792,7 +20792,7 @@ function lsPlot(cfg){
         const h=(ih*v/(lmax||1)),x0=cx(i)-bw*bc/2+bw*si;
         g+='<rect x="'+x0.toFixed(1)+'" y="'+(PT+ih-h).toFixed(1)+'" width="'+(bw-1.2).toFixed(1)+'" height="'+h.toFixed(1)+'" rx="1.6" fill="'+s.color+'" opacity="'+(s.op==null?0.92:s.op)+'"><title>'+esc(labels[i]+' · '+s.name+' '+(cfg.fmtTip?cfg.fmtTip(s.name,v,i):(cfg.fmtL?cfg.fmtL(v):lsMoney(v))))+'</title></rect>';
         if(cfg.labelFmt&&(n<=8||i===n-1)){
-          g+='<text x="'+cx(i).toFixed(1)+'" y="'+(PT+ih-h-5).toFixed(1)+'" text-anchor="middle" font-size="10" font-weight="600" fill="#4b5563">'+esc(cfg.labelFmt(s.name,v,i))+'</text>';
+          g+='<text x="'+cx(i).toFixed(1)+'" y="'+Math.min(PT+ih-h-5,PT+ih-17).toFixed(1)+'" text-anchor="middle" font-size="10" font-weight="600" fill="#4b5563">'+esc(cfg.labelFmt(s.name,v,i))+'</text>';
         }
       });
     });
@@ -20839,7 +20839,7 @@ function lsPlot(cfg){
       ? '<text x="'+lx+'" y="'+ly+'" text-anchor="end" font-size="8.5" fill="#8a8fa3" transform="rotate(-42 '+lx+' '+ly+')">'+esc(lb)+'</text>'
       : '<text x="'+lx+'" y="'+ly+'" text-anchor="middle" font-size="9.5" fill="#8a8fa3">'+esc(lb)+'</text>';
   });
-  return '<svg viewBox="0 0 '+W+' '+H+'" preserveAspectRatio="none" style="width:100%;height:'+H+'px">'+g+'</svg>';
+  return '<svg viewBox="0 0 '+W+' '+H+'" preserveAspectRatio="xMidYMid meet" style="display:block;width:100%;height:auto">'+g+'</svg>';
 }
 function lsLegend(items){
   return '<div class="ls-legend">'+items.map(function(x){
@@ -21077,7 +21077,7 @@ function lsInner(){
             fmt:function(v,i){return tipOf('退款率',v,i);},labelFmt:function(v){return lsPct(v/100);}}],
           fmtL:lsMoney,fmtR:function(v){return (v>=10?Math.round(v):Math.round(v*10)/10)+'%';},
           fmtTip:tipOf,
-          labelFmt:dimList.length<=12?lsMoney:null,labelLine:dimList.length<=12,labelLineDy:-14});
+          labelFmt:dimList.length<=20?function(nm,v){return lsMoney(v);}:null,labelLine:dimList.length<=20,labelLineDy:-14});
       /* 历史趋势线：按上传批次，每个维度项一条折线 */
       const trend=lsDimTrend(kind,lsDonutMode,dimList.map(function(x){return x.k;}));
       let trendHtml='<div class="ls-sub" style="margin:0 0 4px">各'+dimLabel+'退款率趋势 · 按上传批次</div>';
@@ -21085,7 +21085,7 @@ function lsInner(){
         trendHtml+=lsPlot({labels:trend.labels,w:470,h:226,right:true,noLeft:true,lineBadge:true,lines:trend.lines,
             fmtR:function(v){return (Math.round(v*10)/10)+'%';}})
           +'<div class="ls-trend-key">'+trend.lines.map(function(l){
-              return '<span title="'+esc(l.name+' 最新 '+(l.fmt&&l.vals.length?l.fmt(l.vals[l.vals.length-1]):''))+'"><i style="background:'+l.color+'">'+esc(l.badge)+'</i>'+esc(l.name)+'</span>';
+              return '<span style="color:'+l.color+'" title="'+esc(l.name+' 最新 '+(l.fmt&&l.vals.length?l.fmt(l.vals[l.vals.length-1]):''))+'"><i></i><b style="color:#5b6270;font-weight:400">'+esc(l.name)+'</b></span>';
             }).join('')+'</div>';
       }else{
         trendHtml+='<div class="ls-empty">历史批次不足（当前 '+trend.pts+' 期）—— 每次上传汇总表累积一期，满 2 期后自动显示折线</div>';
