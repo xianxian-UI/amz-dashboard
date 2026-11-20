@@ -21221,8 +21221,7 @@ function lsInner(){
   /* 筛选栏选项源：启用且纳入考核的账号；补 stdCsLeader 兼容运营关注区同名字段 */
   const lsAll=(DATA.accounts||[]).filter(function(a){return a&&a.status==='启用'&&a.assess==='纳入考核';})
     .map(function(a){var o={};for(var kk in a)o[kk]=a[kk];o.stdCsLeader=a.stdCsLeader||a.csLeader||'';return o;});
-  /* 二、站点报损规模与趋势：横截面与历史趋势同取 AMZ汇总表快照（站点维度，与 KPI/报损规模同源）；
-     30 天退款率趋势取退款明细的日序列（快照没有自然日维度，只有这一处用明细），口径只写注释不上界面。 */
+  /* 二、站点报损规模与趋势：横截面与历史趋势同取 AMZ汇总表快照（站点维度，与 KPI/报损规模同源）。 */
   const siteList=lsSiteDimList(kind);
   let siteSec='';
   if(!siteList.length){
@@ -21236,18 +21235,21 @@ function lsInner(){
         .slice(0,6).map(function(g){return g+' '+lsMoney(x.sub[g]);}).join('、');
       return lsMoney(v)+(nm==='销售额'?' · 订单量 ':' · 退款量 ')+'｜核算小组：'+(subs||'—');
     };
+    /* 站点多时每个站点固定 66px 画到宽画布里、外套横向滚动 → 标签全平排不叠、数值清楚（同核算小组对比页）。 */
+    const sWide=siteList.length>10, sW=Math.max(660,siteList.length*66);
     const siteChart=lsLegend([['销售额',LS_C.sale],['退款额',LS_C.ref],['退款率（右轴）',LS_C.rate]])
-      +lsPlot({labels:siteKeys,w:660,h:228,right:true,tgtAxis:'r',allLabels:true,
+      +'<div class="ls-hscroll">'+lsPlot({labels:siteKeys,w:sW,h:190,right:true,tgtAxis:'r',
+          allLabels:true,hLabels:sWide,pxW:sW,
           bars:[{name:'销售额',color:LS_C.sale,vals:siteList.map(function(x){return x.sale;})},
                 {name:'退款额',color:LS_C.ref,vals:siteList.map(function(x){return x.amt;})}],
           lines:[{name:'退款率',color:LS_C.rate,vals:siteList.map(function(x){return x.rate==null?null:x.rate*100;}),axis:'r',w:2,
             fmt:function(v){return lsPct(v/100);}}],
           fmtL:lsMoney,fmtR:function(v){return (v>=10?Math.round(v):Math.round(v*10)/10)+'%';},
-          fmtTip:siteTip,labelFmt:function(nm,v){return lsMoney(v);},labelLine:siteList.length<=10,labelLineDy:-14});
+          fmtTip:siteTip,labelFmt:function(nm,v){return lsMoney(v);},labelLine:true,labelLineDy:sWide?17:-14})+'</div>';
     const siteTrend=lsDimTrend(kind,'site',siteKeys.slice(0,10));
     let siteTrendHtml='<div class="ls-sub" style="margin:0 0 4px">各站点退款率趋势 · 按上传批次</div>';
     if(siteTrend.pts>=2){
-      siteTrendHtml+=lsPlot({labels:siteTrend.labels,w:470,h:226,right:true,noLeft:true,lineBadge:true,lines:siteTrend.lines,
+      siteTrendHtml+=lsPlot({labels:siteTrend.labels,w:470,h:190,right:true,noLeft:true,lineBadge:true,lines:siteTrend.lines,
           fmtR:function(v){return (Math.round(v*10)/10)+'%';}})
         +'<div class="ls-trend-key">'+siteTrend.lines.map(function(l){
             return '<span style="color:'+l.color+'" title="'+esc(l.name+' 最新 '+(l.fmt&&l.vals.length?l.fmt(l.vals[l.vals.length-1]):''))+'"><i></i><b style="color:#5b6270;font-weight:400">'+esc(l.name)+'</b></span>';
@@ -21255,18 +21257,7 @@ function lsInner(){
     }else{
       siteTrendHtml+='<div class="ls-empty">历史批次不足（当前 '+siteTrend.pts+' 期）—— 每次上传汇总表累积一期，满 2 期后自动显示折线</div>';
     }
-    const dayPts=lsSeries('d').pts||[];
-    let dayHtml='<div class="ls-sub" style="margin:0 0 4px">最近 30 天退款率趋势</div>';
-    if(dayPts.length>=2){
-      dayHtml+=lsPlot({labels:dayPts.map(function(x){return x.lab;}),h:150,right:true,tgtAxis:'r',
-          lines:[{name:'退款率',color:LS_C.rate,vals:dayPts.map(function(x){return x.rate==null?null:x.rate*100;}),axis:'r',w:2,
-            fmt:function(v){return lsPct(v/100);}}],
-          fmtR:function(v){return (v>=10?Math.round(v):Math.round(v*10)/10)+'%';}});
-    }else{
-      dayHtml+='<div class="ls-empty">还没有可用的日退款数据 —— 上传退款明细后自动出现</div>';
-    }
-    siteSec='<div class="ls-cmp-row"><div class="ls-cmp-main">'+siteChart+'</div><div class="ls-cmp-side">'+siteTrendHtml+'</div></div>'
-      +'<div style="margin-top:12px">'+dayHtml+'</div>';
+    siteSec='<div class="ls-cmp-row"><div class="ls-cmp-main">'+siteChart+'</div><div class="ls-cmp-side">'+siteTrendHtml+'</div></div>';
   }
   return '<div class="ls-wrap">'
     +'<div class="ls-mhead"><span class="ls-bar-red"></span>'+seg
