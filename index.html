@@ -336,7 +336,7 @@
   .ls-wow.good{background:#eaf7f0;color:#1f8a5b}
   .ls-wow.bad{background:#fdecea;color:#c0392b}
   .ls-wow.flat{background:#f4f5f8;color:#9aa1ad}
-  .ls-sec{margin:12px 0;background:#fff;border:1px solid #f0e5e2;border-radius:12px;padding:12px 15px 13px;
+  .ls-sec{margin:16px 0;background:#fff;border:1px solid #f0e5e2;border-radius:14px;padding:18px 20px 20px;
     box-shadow:0 2px 9px rgba(120,50,40,.05)}
   .ls-sec h3{margin:0 0 9px;font-size:15px;font-weight:700;color:#2b2740;border-left:5px solid #d93b2b;
     padding-left:9px;display:flex;align-items:center;justify-content:space-between;gap:10px}
@@ -1856,6 +1856,7 @@
   .ro-band{display:flex;align-items:center;gap:8px;background:#fbfaff;border:1px solid #ece9fb;border-radius:10px;
     padding:8px 12px;font-size:12.5px;color:#6b7080;margin:0 0 12px;line-height:1.6}
   .ro-band b{color:#5a51cb}
+  .ro-band-side{display:block;font-size:11px;line-height:1.55;padding:9px 10px;margin:6px 10px 10px;background:#faf9ff;border-color:#eeebfb}
   .navscope{margin:14px 10px 4px;padding:10px 11px;border-radius:10px;background:#faf9ff;border:1px solid #efeCFB;
     font-size:11.5px;color:#8a8fa3;line-height:1.7}
   .navscope b{color:#5a51cb;font-weight:700}
@@ -9643,7 +9644,7 @@ function navBar(){
   return `<aside class="sidebar">
     <div class="navtitle">模块导航</div>
     ${items.map(i=>`<button class="nav-item ${view===i.k?'active':''}" data-nav="${i.k}"><span class="ni">${i.icon}</span>${i.label}${i.cnt!=null?`<span class="cnt">${i.cnt}</span>`:''}</button>`).join('')}
-    ${sc}
+    ${sc}${scopeBand()}
   </aside>`;
 }
 function toggleAccount(id){
@@ -9714,7 +9715,7 @@ function scopeBand(){
     ? `你是 <b>管理员</b>，可见全部 ${total} 个账号，改动会实时写回服务端、其他人刷新即见。`
     : `当前登录 <b>${esc(nm)}</b>（${esc(wbRoleName(r))}），只显示你负责范围内的 <b>${vis}</b> 个账号（共 ${total} 个）。
        可看模块：<b>${esc(viewMods.join('、')||'无')}</b>；可改模块：<b>${esc(editMods.join('、')||'无（只读）')}</b>。`;
-  return `<div class="ro-band">🔒 ${txt}</div>`;
+  return `<div class="ro-band ro-band-side">🔒 ${txt}</div>`;
 }
 function render(){
   try{sbLogUsage();}catch(e){}
@@ -9725,7 +9726,7 @@ function render(){
   if(_vw&&WB.user&&_vw!==WB._lastUsageView){WB._lastUsageView=_vw;wbLogUsage(_vw);}
   if(view==='stdcfg'&&cfgTab==='usage'&&!(UM.usage&&UM.usage.since))umUsageLoad();
   const content=(view==='summary')?sumView():(view==='standard')?stdView():(view==='stdcfg')?stdCfgView():(view==='issue')?issueView():(view==='compliance')?pcView():(view==='account')?accountView():(view==='policy')?policyView():(view==='health')?healthView():healthView();
-  document.getElementById('app').innerHTML=`<div class="layout${navFold?' navfold':''}">${navFold?'<div class="navpeek" title="鼠标移到左边缘展开模块导航"><i>›</i></div>':''}${navBar()}<section class="content">${scopeBand()}${content}</section></div>${formModal()}${policyModal()}${amzUploadModal()}${quickModal()}${reasonModal()}${uploadModal()}${pcFormModal()}${pcDetailModal()}${pcFollowModal()}${pcFocusModal()}${isUploadModal()}${riskNoteModal()}${kbAddModal()}${sumSrcModal()}${lightbox()}${umAddModal()}${umPwModal()}${umScopeModal()}${umBulkModal()}${umReqApModal()}${stopModal()}`;
+  document.getElementById('app').innerHTML=`<div class="layout${navFold?' navfold':''}">${navFold?'<div class="navpeek" title="鼠标移到左边缘展开模块导航"><i>›</i></div>':''}${navBar()}<section class="content">${content}</section></div>${formModal()}${policyModal()}${amzUploadModal()}${quickModal()}${reasonModal()}${uploadModal()}${pcFormModal()}${pcDetailModal()}${pcFollowModal()}${pcFocusModal()}${isUploadModal()}${riskNoteModal()}${kbAddModal()}${sumSrcModal()}${lightbox()}${umAddModal()}${umPwModal()}${umScopeModal()}${umBulkModal()}${umReqApModal()}${stopModal()}`;
 }
 function goPage(p){
   const list=filtered();const pages=Math.max(1,Math.ceil(list.length/pageSize));
@@ -20741,8 +20742,8 @@ function lsDimTrend(kind,mode,dimKeys){
     const s=String(e.d||e.at||'');return s.length>=10?s.slice(5):(s||'—');
   });
   const lines=dimKeys.map(function(k,i){
-    const badge=(i+1)<=20?String.fromCharCode(0x2460+i):String(i+1);
-    return {name:k,badge:badge,color:LS_TREND_C[i%LS_TREND_C.length],axis:'r',w:1.6,
+    const badge=(i+1)<=20?String.fromCharCode(0x2460+i):((i+1)<=50?String.fromCharCode(0x323C+(i+1)):String(i+1));
+    return {name:k,badge:badge,color:(i<LS_TREND_C.length?LS_TREND_C[i]:'hsl('+((i*47+20)%360)+',55%,42%)'),axis:'r',w:1.6,
       vals:hs.map(function(e){const a=e[f][k];if(!a)return null;const s=Number(a.sale)||0,r=Number(a.ref)||0;return s>0?r/s*100:null;}),
       fmt:function(v){return v==null?'—':(Math.round(v*100)/100)+'%';}};
   });
@@ -20860,6 +20861,8 @@ function lsPlot(cfg){
   const W=cfg.w||900,H=cfg.h||205,PL=(cfg.noLeft?8:46),PR=(cfg.right?44:8),PT=12,PB=rotAll?48:(cfg.pb||22);
   const iw=Math.max(60,W-PL-PR),ih=Math.max(40,H-PT-PB);
   const bars=cfg.bars||[],lines=cfg.lines||[];
+  /* 首期单点且维度多于12个：数值标签分两行错开；口径只写注释不上界面。 */
+  const manySolo=!!(cfg.singleSpread&&n===1&&lines.length>12);
   let lmax=0;
   bars.forEach(function(s){s.vals.forEach(function(v){if(v>lmax)lmax=v;});});
   lines.forEach(function(s){if(s.axis!=='r')s.vals.forEach(function(v){if(v>lmax)lmax=v;});});
@@ -20893,6 +20896,7 @@ function lsPlot(cfg){
   }
   /* 柱 */
   let gLabels='',gLineLabels='';
+  const placedLbl=[]; /* 首期单点标签避让：相撞才下移，口径只写注释不上界面。 */
   const bc=bars.length;
   if(bc){
     const gw=iw/n,bw=Math.max(3,Math.min(26,gw*0.62/bc));
@@ -20939,7 +20943,8 @@ function lsPlot(cfg){
         /* singleSpread 首期：数值标签移到点正下方居中，与右侧 badge 圈号上下分开，不再被圈号盖住 */
         const solo=(cfg.singleSpread&&n===1);
         const lx=solo?(p[0]+5):(p[0]+(lEnd?0:6));
-        const ly=solo?Math.min(PT+ih-4,p[1]+20):Math.max(PT+13,p[1]+(lEnd?-9:(cfg.labelLineDy==null?-6:cfg.labelLineDy)));
+        let ly=solo?Math.min(H-6,p[1]+20):Math.max(PT+13,p[1]+(lEnd?-9:(cfg.labelLineDy==null?-6:cfg.labelLineDy)));
+        if(solo){const lx0=p[0]+5;let k=0;while(k<8&&placedLbl.some(function(q){return Math.abs(q.x-lx0)<44&&Math.abs(q.y-ly)<11;})){ly=Math.min(H-6,ly+12);k++;}placedLbl.push({x:lx0,y:ly});}
         gLineLabels+='<text x="'+lx.toFixed(1)+'" y="'+ly.toFixed(1)+'" text-anchor="'+(solo?'middle':(lEnd?'middle':'start'))+'" font-size="10" font-weight="700" fill="'+s.color+'" opacity="'+dop+'" paint-order="stroke" stroke="#ffffff" stroke-width="2.4" stroke-linejoin="round">'+esc(s.labelFmt?s.labelFmt(s.vals[i]):(s.fmt?s.fmt(s.vals[i]):lsPct(s.vals[i])))+'</text>';
       }
     });
@@ -20962,7 +20967,7 @@ function lsPlot(cfg){
   g+=gLabels+gLineLabels;
   /* x 轴标签 */
   const step=Math.ceil(n/12);
-  labels.forEach(function(lb,i){
+  labels.forEach(function(lb,i){if(manySolo)return;
     if(!cfg.allLabels&&n>12&&i%step!==0&&i!==n-1)return;
     const lx=cx(i).toFixed(1),ly=(rotAll?H-5:H-6);
     if(cfg.hLabels){
@@ -21241,12 +21246,12 @@ function lsInner(){
       const cmpChart=lsLegend([['销售额',LS_C.sale],['退款额',LS_C.ref],['退款率（右轴）',LS_C.rate]])
         +'<div class="ls-hscroll">'+cplot+'</div>';
       /* 历史趋势线：按上传批次，每个维度项一条折线 */
-      const trendKeys=dimList.slice(0,(lsDonutMode==='group'?8:dimList.length)).map(function(x){return x.k;});
+      /* 趋势显示全部区域/核算小组维度，不再截前8个；口径只写注释不上界面。 */const trendKeys=dimList.map(function(x){return x.k;});
       const trend=lsDimTrend(kind,lsDonutMode,trendKeys);
       let trendHtml='<div class="ls-sub" style="margin:0 0 4px">各'+dimLabel+'退款率趋势 · 按上传批次</div>';
       if(trend.pts>=1){
-        trendHtml+=lsPlot({labels:trend.labels,w:549,h:228,fixH:228,rMin:'auto',focusIdx:lsFocus,right:true,noLeft:true,lineBadge:true,labelLine:true,singleSpread:true,lines:trend.lines,
-            fmtR:function(v){return (Math.round(v*10)/10)+'%';}})
+        const tW=Math.max(660,trend.lines.length*66);trendHtml+='<div class="ls-hscroll">'+lsPlot({labels:trend.labels,w:tW,pxW:tW,h:228,fixH:228,rMin:'auto',focusIdx:lsFocus,right:true,noLeft:true,lineBadge:true,labelLine:true,singleSpread:true,lines:trend.lines,
+            fmtR:function(v){return (Math.round(v*10)/10)+'%';}})+'</div>'
           +'<div class="ls-trend-key">'+trend.lines.map(function(l,li){
               return '<span data-lsfocus="'+li+'" class="'+(String(lsFocus)===String(li)?'on':'')+'" style="color:'+l.color+';cursor:pointer" title="'+esc(l.name+' 最新 '+(l.fmt&&l.vals.length?l.fmt(l.vals[l.vals.length-1]):''))+'"><i></i><b style="color:#5b6270;font-weight:400">'+esc(l.name)+'</b></span>';
             }).join('')+'</div>';
@@ -21328,11 +21333,11 @@ function lsInner(){
             fmt:function(v){return lsPct(v/100);}}],
           fmtL:lsMoney,fmtR:function(v){return (v>=10?Math.round(v):Math.round(v*10)/10)+'%';},
           fmtTip:siteTip,labelFmt:function(nm,v){return lsMoney(v);},barLabelSplit:true,labelLine:true,labelLineDy:sWide?-11:-18})+'</div>';
-    const siteTrend=lsDimTrend(kind,'site',siteKeys.slice(0,10));
+    /* 趋势显示全部站点，不再截前10个；口径只写注释不上界面。 */const siteTrend=lsDimTrend(kind,'site',siteKeys);
     let siteTrendHtml='<div class="ls-sub" style="margin:0 0 4px">各站点退款率趋势 · 按上传批次</div>';
     if(siteTrend.pts>=1){
-      siteTrendHtml+=lsPlot({labels:siteTrend.labels,w:549,h:228,fixH:228,rMin:'auto',focusIdx:lsFocus,right:true,noLeft:true,lineBadge:true,labelLine:true,singleSpread:true,lines:siteTrend.lines,
-          fmtR:function(v){return (Math.round(v*10)/10)+'%';}})
+      const stW=Math.max(660,siteTrend.lines.length*66);siteTrendHtml+='<div class="ls-hscroll">'+lsPlot({labels:siteTrend.labels,w:stW,pxW:stW,h:228,fixH:228,rMin:'auto',focusIdx:lsFocus,right:true,noLeft:true,lineBadge:true,labelLine:true,singleSpread:true,lines:siteTrend.lines,
+          fmtR:function(v){return (Math.round(v*10)/10)+'%';}})+'</div>'
         +'<div class="ls-trend-key">'+siteTrend.lines.map(function(l,li){
             return '<span data-lsfocus="'+li+'" class="'+(String(lsFocus)===String(li)?'on':'')+'" style="color:'+l.color+';cursor:pointer" title="'+esc(l.name+' 最新 '+(l.fmt&&l.vals.length?l.fmt(l.vals[l.vals.length-1]):''))+'"><i></i><b style="color:#5b6270;font-weight:400">'+esc(l.name)+'</b></span>';
           }).join('')+'</div>';
