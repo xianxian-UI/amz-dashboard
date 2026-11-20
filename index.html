@@ -348,7 +348,11 @@
   .ls-chart svg{display:block;width:100%}
   .ls-scale-row{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(300px,1fr);gap:18px;align-items:start}
   .ls-cmp-row{display:grid;grid-template-columns:minmax(0,1.35fr) minmax(0,1fr);gap:16px;align-items:start}
-  @media(max-width:1200px){.ls-cmp-row{grid-template-columns:1fr}}
+  @media(max-width:1200px){.ls-cmp-row{grid-template-columns:1fr}}
+  .ls-hscroll{overflow-x:auto;overflow-y:hidden;padding-bottom:4px}
+  .ls-hscroll::-webkit-scrollbar{height:8px}
+  .ls-hscroll::-webkit-scrollbar-thumb{background:#d7dce5;border-radius:4px}
+  .ls-hscroll::-webkit-scrollbar-track{background:#f4f6fa;border-radius:4px}
   .ls-trend-key{display:flex;flex-wrap:wrap;gap:6px 14px;font-size:11px;color:#5b6270;margin-top:9px}
   .ls-trend-key span{display:flex;align-items:center;gap:5px;white-space:nowrap}
   .ls-trend-key i{width:12px;height:12px;border-radius:50%;background:#fff;border:2px solid currentColor;display:inline-block;flex:none}
@@ -20753,7 +20757,7 @@ function lsNice(v){
 }
 function lsPlot(cfg){
   const labels=cfg.labels||[],n=labels.length||1;
-  const rotAll=!!(cfg.allLabels&&n>12);
+  const rotAll=!!(cfg.allLabels&&n>12&&!cfg.hLabels);
   const W=cfg.w||900,H=cfg.h||205,PL=(cfg.noLeft?8:46),PR=(cfg.right?44:8),PT=12,PB=rotAll?48:(cfg.pb||22);
   const iw=Math.max(60,W-PL-PR),ih=Math.max(40,H-PT-PB);
   const bars=cfg.bars||[],lines=cfg.lines||[];
@@ -20783,6 +20787,7 @@ function lsPlot(cfg){
     }
   }
   /* 柱 */
+  let gLabels='',gLineLabels='';
   const bc=bars.length;
   if(bc){
     const gw=iw/n,bw=Math.max(3,Math.min(26,gw*0.62/bc));
@@ -20791,8 +20796,11 @@ function lsPlot(cfg){
         if(!(v>0))return;
         const h=(ih*v/(lmax||1)),x0=cx(i)-bw*bc/2+bw*si;
         g+='<rect x="'+x0.toFixed(1)+'" y="'+(PT+ih-h).toFixed(1)+'" width="'+(bw-1.2).toFixed(1)+'" height="'+h.toFixed(1)+'" rx="1.6" fill="'+s.color+'" opacity="'+(s.op==null?0.92:s.op)+'"><title>'+esc(labels[i]+' · '+s.name+' '+(cfg.fmtTip?cfg.fmtTip(s.name,v,i):(cfg.fmtL?cfg.fmtL(v):lsMoney(v))))+'</title></rect>';
-        if(cfg.labelFmt&&(n<=8||i===n-1)){
-          g+='<text x="'+cx(i).toFixed(1)+'" y="'+Math.min(PT+ih-h-5,PT+ih-17).toFixed(1)+'" text-anchor="middle" font-size="10" font-weight="600" fill="#4b5563">'+esc(cfg.labelFmt(s.name,v,i))+'</text>';
+        if(cfg.labelFmt&&(n<=8||i===n-1||cfg.hLabels)){
+          /* 标签 x = 该柱自身中心（x0+半宽），不是整组中心，否则两根柱的数值会叠在一起；
+             y 只跟柱顶走（-5），矮柱不再被压到基线同一高度互相打架；白描边保证压在柱身上也看得清。 */
+          const lbx=(x0+(bw-1.2)/2).toFixed(1),lby=(Math.min(PT+ih-h-5,PT+ih-13)).toFixed(1);
+          gLabels+='<text x="'+lbx+'" y="'+lby+'" text-anchor="middle" font-size="'+(si===0?'10':'9.5')+'" font-weight="600" fill="#4b5563" paint-order="stroke" stroke="#ffffff" stroke-width="2.6" stroke-linejoin="round">'+esc(cfg.labelFmt(s.name,v,i))+'</text>';
         }
       });
     });
@@ -20811,8 +20819,10 @@ function lsPlot(cfg){
     pts.forEach(function(p,i){
       if(!p)return;
       g+='<circle cx="'+p[0].toFixed(1)+'" cy="'+p[1].toFixed(1)+'" r="2.4" fill="#fff" stroke="'+s.color+'" stroke-width="1.5"><title>'+esc(labels[i]+' · '+s.name+' '+(s.fmt?s.fmt(s.vals[i],i):lsPct(s.vals[i])))+'</title></circle>';
-      if(cfg.labelLine&&(n<=8||i===n-1)){
-        g+='<text x="'+(p[0]+6).toFixed(1)+'" y="'+(p[1]+(cfg.labelLineDy==null?-6:cfg.labelLineDy)).toFixed(1)+'" text-anchor="start" font-size="10" font-weight="700" fill="'+s.color+'">'+esc(s.labelFmt?s.labelFmt(s.vals[i]):(s.fmt?s.fmt(s.vals[i]):lsPct(s.vals[i])))+'</text>';
+      if(cfg.labelLine&&(n<=8||i===n-1||cfg.hLabels)){
+        /* 末点标签居中放在点上方：改成 end 会压到前一个点的数值，start 又会被 SVG 右边界裁掉 */
+        const lEnd=(i===n-1);
+        gLineLabels+='<text x="'+(p[0]+(lEnd?0:6)).toFixed(1)+'" y="'+(p[1]+(lEnd?-9:(cfg.labelLineDy==null?-6:cfg.labelLineDy))).toFixed(1)+'" text-anchor="'+(lEnd?'middle':'start')+'" font-size="10" font-weight="700" fill="'+s.color+'" paint-order="stroke" stroke="#ffffff" stroke-width="2.4" stroke-linejoin="round">'+esc(s.labelFmt?s.labelFmt(s.vals[i]):(s.fmt?s.fmt(s.vals[i]):lsPct(s.vals[i])))+'</text>';
       }
     });
     if(cfg.lineBadge&&s.badge){
@@ -20830,16 +20840,24 @@ function lsPlot(cfg){
     g+='<line x1="'+PL+'" y1="'+ty.toFixed(1)+'" x2="'+(W-PR)+'" y2="'+ty.toFixed(1)+'" stroke="#8a6d3b" stroke-width="1" stroke-dasharray="4 3"/>';
 
   }
+  /* 标签最后压上去：柱顶金额 → 折线数值，保证不被柱身/折线切断 */
+  g+=gLabels+gLineLabels;
   /* x 轴标签 */
   const step=Math.ceil(n/12);
   labels.forEach(function(lb,i){
     if(!cfg.allLabels&&n>12&&i%step!==0&&i!==n-1)return;
     const lx=cx(i).toFixed(1),ly=(rotAll?H-5:H-6);
-    g+=rotAll
-      ? '<text x="'+lx+'" y="'+ly+'" text-anchor="end" font-size="8.5" fill="#8a8fa3" transform="rotate(-42 '+lx+' '+ly+')">'+esc(lb)+'</text>'
-      : '<text x="'+lx+'" y="'+ly+'" text-anchor="middle" font-size="9.5" fill="#8a8fa3">'+esc(lb)+'</text>';
+    if(cfg.hLabels){
+      /* 项数多时改为横向平排 + 超长截断（全名进 title），配合固定每项宽度横向滚动，不再挤成一片斜字 */
+      const full=String(lb),cut=full.length>6?full.slice(0,6)+'…':full;
+      g+='<text x="'+lx+'" y="'+ly+'" text-anchor="middle" font-size="9" fill="#8a8fa3"><title>'+esc(full)+'</title>'+esc(cut)+'</text>';
+    }else if(rotAll){
+      g+='<text x="'+lx+'" y="'+ly+'" text-anchor="end" font-size="8.5" fill="#8a8fa3" transform="rotate(-42 '+lx+' '+ly+')">'+esc(lb)+'</text>';
+    }else{
+      g+='<text x="'+lx+'" y="'+ly+'" text-anchor="middle" font-size="9.5" fill="#8a8fa3">'+esc(lb)+'</text>';
+    }
   });
-  return '<svg viewBox="0 0 '+W+' '+H+'" preserveAspectRatio="xMidYMid meet" style="display:block;width:100%;height:auto">'+g+'</svg>';
+  return '<svg viewBox="0 0 '+W+' '+H+'" preserveAspectRatio="xMidYMid meet" style="display:block;width:'+(cfg.pxW?(cfg.pxW+'px'):'100%')+';height:auto">'+g+'</svg>';
 }
 function lsLegend(items){
   return '<div class="ls-legend">'+items.map(function(x){
@@ -21069,17 +21087,25 @@ function lsInner(){
         const base=(kk==='rate')?lsPct(v/100):lsMoney(v);
         return base+' · 较上次 '+(inf[kk]||'—')+' · 历史均值 '+(inf[kk+'Avg']||'—');
       };
-      const cmpChart=lsLegend([['销售额',LS_C.sale],['退款额',LS_C.ref],['退款率（右轴）',LS_C.rate]])
-        +lsPlot({labels:dimList.map(function(x){return x.k;}),w:660,h:(dimList.length>12?252:228),right:true,tgtAxis:'r',allLabels:true,
+      /* 核算小组常有五六十个：按每项 66px 画到固定宽度里，外面套横向滚动容器。
+         这样横轴标签能全部平排显示（不再斜成一片糊字），柱顶数值也都能标，滚动即可看全。 */
+      const nDim=dimList.length;
+      const wide=(lsDonutMode==='group')&&nDim>10;
+      const cw=wide?Math.max(660,nDim*66):660;
+      const cplot=lsPlot({labels:dimList.map(function(x){return x.k;}),w:cw,h:(nDim>12?252:228),right:true,tgtAxis:'r',
+          allLabels:true,hLabels:wide,pxW:wide?cw:null,
           bars:[{name:'销售额',color:LS_C.sale,vals:dimList.map(function(x){return x.sale;})},
                 {name:'退款额',color:LS_C.ref,vals:dimList.map(function(x){return x.amt;})}],
           lines:[{name:'退款率',color:LS_C.rate,vals:dimList.map(function(x){return x.rate==null?null:x.rate*100;}),axis:'r',w:2,
             fmt:function(v,i){return tipOf('退款率',v,i);},labelFmt:function(v){return lsPct(v/100);}}],
           fmtL:lsMoney,fmtR:function(v){return (v>=10?Math.round(v):Math.round(v*10)/10)+'%';},
           fmtTip:tipOf,
-          labelFmt:dimList.length<=20?function(nm,v){return lsMoney(v);}:null,labelLine:dimList.length<=20,labelLineDy:-14});
+          labelFmt:(wide||nDim<=20)?function(nm,v){return lsMoney(v);}:null,labelLine:(nDim<=20&&!wide),labelLineDy:-14});
+      const cmpChart=lsLegend([['销售额',LS_C.sale],['退款额',LS_C.ref],['退款率（右轴）',LS_C.rate]])
+        +(wide?('<div class="ls-hscroll">'+cplot+'</div>'):cplot);
       /* 历史趋势线：按上传批次，每个维度项一条折线 */
-      const trend=lsDimTrend(kind,lsDonutMode,dimList.map(function(x){return x.k;}));
+      const trendKeys=dimList.slice(0,(lsDonutMode==='group'?8:dimList.length)).map(function(x){return x.k;});
+      const trend=lsDimTrend(kind,lsDonutMode,trendKeys);
       let trendHtml='<div class="ls-sub" style="margin:0 0 4px">各'+dimLabel+'退款率趋势 · 按上传批次</div>';
       if(trend.pts>=2){
         trendHtml+=lsPlot({labels:trend.labels,w:470,h:226,right:true,noLeft:true,lineBadge:true,lines:trend.lines,
