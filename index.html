@@ -347,13 +347,16 @@
   .ls-chart{width:100%;overflow:hidden}
   .ls-chart svg{display:block;width:100%}
   .ls-scale-row{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(300px,1fr);gap:18px;align-items:start}
-  .ls-cmp-row{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(0,1fr);gap:16px;align-items:start}
+  .ls-cmp-row{display:grid;grid-template-columns:minmax(0,1.45fr) minmax(0,1fr);gap:10px;align-items:start}
   @media(max-width:1200px){.ls-cmp-row{grid-template-columns:1fr}.ls-cmp-side svg{height:auto!important;preserveAspectRatio:xMidYMid meet}}
   .ls-hscroll{overflow-x:auto;overflow-y:hidden;padding-bottom:4px}
   .ls-hscroll::-webkit-scrollbar{height:8px}
   .ls-hscroll::-webkit-scrollbar-thumb{background:#d7dce5;border-radius:4px}
   .ls-hscroll::-webkit-scrollbar-track{background:#f4f6fa;border-radius:4px}
   .ls-trend-key{display:flex;flex-wrap:wrap;gap:6px 14px;font-size:11px;color:#5b6270;margin-top:9px}
+  .ls-trend-key.fold{flex-wrap:nowrap;overflow:hidden;max-height:18px;padding-right:78px;position:relative}
+  .ls-key-more{position:absolute;right:0;top:0;display:inline-block;margin:0;padding:2px 9px;font-size:10.5px;line-height:1.4;border:1px solid #e2e5ef;border-radius:10px;background:#f7f8fc;color:#5a51cb;cursor:pointer}
+  .ls-key-more:hover{background:#eef0fb}
   .ls-trend-key span{display:flex;align-items:center;gap:5px;white-space:nowrap;transition:opacity .12s}
   .ls-trend-key:has(span.on) span:not(.on){opacity:.5}
   .ls-trend-key span.on b{font-weight:700!important;color:#333!important}
@@ -11316,6 +11319,8 @@ document.getElementById('app').addEventListener('click',e=>{
   const dsel=t.closest&&t.closest('[data-lsdonutsel]');
   if(dsel){const vv=dsel.getAttribute('data-lsdonutsel')||'';lsDonutSel=vv;render();return;}
   /* 趋势图聚焦：点击图例/圈号只显示该维度折线，再点一次恢复全部。 */
+  const lskm=t.closest&&t.closest('[data-lskeymore]');
+  if(lskm){lsKeyOpen=!lsKeyOpen;render();return;}
   const lsfoc=t.closest&&t.closest('[data-lsfocus]');
   if(lsfoc){const v=lsfoc.getAttribute('data-lsfocus');lsFocus=(String(lsFocus)===String(v)?'':v);render();return;}
   const lossScopeBtn=t.closest&&t.closest('[data-lslossscope]');
@@ -20271,7 +20276,7 @@ function opsFocusSection(){
 const LS_KINDS=[['d','日','近 30 天'],['w','周','近 4 周'],['m','月','近 12 个月']];
 const LS_N={d:30,w:4,m:12};
 const LS_C={sale:'#2f5fbf',ref:'#d93b2b',ord:'#2f9e6f',rqty:'#e08a2f',rate:'#c0392b',share:'#e2872f'};
-let lsDim='d',lsLevel='1',lsSort='ref',lsDonutMode='region',lsDonutSel='',lsChartMode='all',lsLossScope='region',lsFocus='';
+let lsDim='d',lsLevel='1',lsSort='ref',lsDonutMode='region',lsDonutSel='',lsChartMode='all',lsLossScope='region',lsFocus='';let lsKeyOpen=false;
 let lsFlt={region:'',group:'',site:''};
 let LS_CACHE={};
 
@@ -21234,8 +21239,8 @@ function lsInner(){
       const nDim=dimList.length;
       const wide=(lsDonutMode==='group')&&nDim>10;
       const cw=wide?Math.max(660,nDim*66):660;
-      const cplot=lsPlot({labels:dimList.map(function(x){return x.k;}),w:cw,h:228,right:true,tgtAxis:'r',
-          allLabels:true,hLabels:wide,pxW:cw,
+      const cplot=lsPlot({labels:dimList.map(function(x){return x.k;}),w:cw,h:(wide?253:234),right:true,tgtAxis:'r',
+          allLabels:true,hLabels:wide,pxW:(wide?cw:null),
           bars:[{name:'销售额',color:LS_C.sale,vals:dimList.map(function(x){return x.sale;})},
                 {name:'退款额',color:LS_C.ref,vals:dimList.map(function(x){return x.amt;})}],
           lines:[{name:'退款率',color:LS_C.rate,vals:dimList.map(function(x){return x.rate==null?null:x.rate*100;}),axis:'r',w:2,
@@ -21252,9 +21257,10 @@ function lsInner(){
       if(trend.pts>=1){
         const tW=Math.max(660,trend.lines.length*66);trendHtml+='<div class="ls-hscroll">'+lsPlot({labels:trend.labels,w:tW,pxW:tW,h:228,fixH:228,rMin:'auto',focusIdx:lsFocus,right:true,noLeft:true,lineBadge:true,labelLine:true,singleSpread:true,lines:trend.lines,
             fmtR:function(v){return (Math.round(v*10)/10)+'%';}})+'</div>'
-          +'<div class="ls-trend-key">'+trend.lines.map(function(l,li){
+          +'<div class="ls-trend-key'+(lsKeyOpen||trend.lines.length<=6?'':' fold')+'">'+trend.lines.map(function(l,li){
               return '<span data-lsfocus="'+li+'" class="'+(String(lsFocus)===String(li)?'on':'')+'" style="color:'+l.color+';cursor:pointer" title="'+esc(l.name+' 最新 '+(l.fmt&&l.vals.length?l.fmt(l.vals[l.vals.length-1]):''))+'"><i></i><b style="color:#5b6270;font-weight:400">'+esc(l.name)+'</b></span>';
-            }).join('')+'</div>';
+            }).join('')+(trend.lines.length>6?'<button class="ls-key-more" data-lskeymore="1">'
+            +(lsKeyOpen?'收起 ▲':'显示全部 '+trend.lines.length+' 项 ▼')+'</button>':'')+'</div>';
       }else{
         trendHtml+='<div class="ls-empty">历史批次不足（当前 '+trend.pts+' 期）—— 每次上传汇总表累积一期，满 2 期后自动显示折线</div>';
       }
@@ -21325,8 +21331,8 @@ function lsInner(){
     /* 站点多时每个站点固定 66px 画到宽画布里、外套横向滚动 → 标签全平排不叠、数值清楚（同核算小组对比页）。 */
     const sWide=siteList.length>10, sW=Math.max(660,siteList.length*66);
     const siteChart=lsLegend([['销售额',LS_C.sale],['退款额',LS_C.ref],['退款率（右轴）',LS_C.rate]])
-      +'<div class="ls-hscroll">'+lsPlot({labels:siteKeys,w:sW,h:228,right:true,tgtAxis:'r',
-          allLabels:true,hLabels:sWide,pxW:sW,
+      +'<div class="ls-hscroll">'+lsPlot({labels:siteKeys,w:sW,h:(sWide?253:234),right:true,tgtAxis:'r',
+          allLabels:true,hLabels:sWide,pxW:(sWide?sW:null),
           bars:[{name:'销售额',color:LS_C.sale,vals:siteList.map(function(x){return x.sale;})},
                 {name:'退款额',color:LS_C.ref,vals:siteList.map(function(x){return x.amt;})}],
           lines:[{name:'退款率',color:LS_C.rate,vals:siteList.map(function(x){return x.rate==null?null:x.rate*100;}),axis:'r',w:2,
@@ -21338,9 +21344,10 @@ function lsInner(){
     if(siteTrend.pts>=1){
       const stW=Math.max(660,siteTrend.lines.length*66);siteTrendHtml+='<div class="ls-hscroll">'+lsPlot({labels:siteTrend.labels,w:stW,pxW:stW,h:228,fixH:228,rMin:'auto',focusIdx:lsFocus,right:true,noLeft:true,lineBadge:true,labelLine:true,singleSpread:true,lines:siteTrend.lines,
           fmtR:function(v){return (Math.round(v*10)/10)+'%';}})+'</div>'
-        +'<div class="ls-trend-key">'+siteTrend.lines.map(function(l,li){
+        +'<div class="ls-trend-key'+(lsKeyOpen||siteTrend.lines.length<=6?'':' fold')+'">'+siteTrend.lines.map(function(l,li){
             return '<span data-lsfocus="'+li+'" class="'+(String(lsFocus)===String(li)?'on':'')+'" style="color:'+l.color+';cursor:pointer" title="'+esc(l.name+' 最新 '+(l.fmt&&l.vals.length?l.fmt(l.vals[l.vals.length-1]):''))+'"><i></i><b style="color:#5b6270;font-weight:400">'+esc(l.name)+'</b></span>';
-          }).join('')+'</div>';
+          }).join('')+(siteTrend.lines.length>6?'<button class="ls-key-more" data-lskeymore="1">'
+          +(lsKeyOpen?'收起 ▲':'显示全部 '+siteTrend.lines.length+' 项 ▼')+'</button>':'')+'</div>';
     }else{
       siteTrendHtml+='<div class="ls-empty">历史批次不足（当前 '+siteTrend.pts+' 期）—— 每次上传汇总表累积一期，满 2 期后自动显示折线</div>';
     }
