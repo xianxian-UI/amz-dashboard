@@ -347,6 +347,11 @@
   .ls-chart{width:100%;overflow:hidden}
   .ls-chart svg{display:block;width:100%}
   .ls-scale-row{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(300px,1fr);gap:18px;align-items:start}
+  .ls-cmp-row{display:grid;grid-template-columns:minmax(0,1.35fr) minmax(0,1fr);gap:16px;align-items:start}
+  @media(max-width:1200px){.ls-cmp-row{grid-template-columns:1fr}}
+  .ls-trend-key{display:grid;grid-template-columns:repeat(auto-fill,minmax(94px,1fr));gap:5px 8px;font-size:11px;color:#5b6270;margin-top:9px}
+  .ls-trend-key span{display:flex;align-items:center;gap:5px;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .ls-trend-key i{width:15px;height:15px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;color:#fff;font-style:normal;font-size:10px;font-weight:700;flex:none}
   .ls-donut{background:#fff;border:1px solid #f1f1f4;border-radius:8px;padding:9px 11px}
   @media(max-width:1100px){.ls-scale-row{grid-template-columns:1fr}}
   .ls-row2{display:grid;grid-template-columns:1fr 1fr;gap:26px;margin-top:12px;padding-top:11px;border-top:1px dashed #f0e5e2}
@@ -20663,7 +20668,8 @@ function lsDimTrend(kind,mode,dimKeys){
     const s=String(e.d||e.at||'');return s.length>=10?s.slice(5):(s||'—');
   });
   const lines=dimKeys.map(function(k,i){
-    return {name:k,color:LS_TREND_C[i%LS_TREND_C.length],axis:'r',w:1.6,
+    const badge=(i+1)<=20?String.fromCharCode(0x2460+i):String(i+1);
+    return {name:k,badge:badge,color:LS_TREND_C[i%LS_TREND_C.length],axis:'r',w:1.6,
       vals:hs.map(function(e){const a=e[f][k];if(!a)return null;const s=Number(a.sale)||0,r=Number(a.ref)||0;return s>0?r/s*100:null;}),
       fmt:function(v){return v==null?'—':(Math.round(v*100)/100)+'%';}};
   });
@@ -20809,6 +20815,14 @@ function lsPlot(cfg){
         g+='<text x="'+(p[0]+6).toFixed(1)+'" y="'+(p[1]+(cfg.labelLineDy==null?-6:cfg.labelLineDy)).toFixed(1)+'" text-anchor="start" font-size="10" font-weight="700" fill="'+s.color+'">'+esc(s.labelFmt?s.labelFmt(s.vals[i]):(s.fmt?s.fmt(s.vals[i]):lsPct(s.vals[i])))+'</text>';
       }
     });
+    if(cfg.lineBadge&&s.badge){
+      let li=-1;for(let k=pts.length-1;k>=0;k--){if(pts[k]){li=k;break;}}
+      if(li>=0){
+        const bp=pts[li],bx=bp[0]+10+(s.badge.length>1?4:0),by=bp[1];
+        g+='<circle cx="'+bx.toFixed(1)+'" cy="'+by.toFixed(1)+'" r="9" fill="'+s.color+'" stroke="#fff" stroke-width="1.6"><title>'+esc(s.name+' 最新 '+(s.fmt?s.fmt(s.vals[li]):''))+'</title></circle>';
+        g+='<text x="'+bx.toFixed(1)+'" y="'+(by+3.6).toFixed(1)+'" text-anchor="middle" font-size="10.5" font-weight="700" fill="#fff">'+esc(s.badge)+'</text>';
+      }
+    }
   });
   /* 目标虚线 */
   if(cfg.tgt!=null&&isFinite(cfg.tgt)&&cfg.tgt>0&&cfg.tgt<=rmax){
@@ -21056,7 +21070,7 @@ function lsInner(){
         return base+' · 较上次 '+(inf[kk]||'—')+' · 历史均值 '+(inf[kk+'Avg']||'—');
       };
       const cmpChart=lsLegend([['销售额',LS_C.sale],['退款额',LS_C.ref],['退款率（右轴）',LS_C.rate]])
-        +lsPlot({labels:dimList.map(function(x){return x.k;}),h:(dimList.length>12?252:220),right:true,tgtAxis:'r',allLabels:true,
+        +lsPlot({labels:dimList.map(function(x){return x.k;}),w:660,h:(dimList.length>12?252:228),right:true,tgtAxis:'r',allLabels:true,
           bars:[{name:'销售额',color:LS_C.sale,vals:dimList.map(function(x){return x.sale;})},
                 {name:'退款额',color:LS_C.ref,vals:dimList.map(function(x){return x.amt;})}],
           lines:[{name:'退款率',color:LS_C.rate,vals:dimList.map(function(x){return x.rate==null?null:x.rate*100;}),axis:'r',w:2,
@@ -21066,15 +21080,17 @@ function lsInner(){
           labelFmt:dimList.length<=12?lsMoney:null,labelLine:dimList.length<=12,labelLineDy:-14});
       /* 历史趋势线：按上传批次，每个维度项一条折线 */
       const trend=lsDimTrend(kind,lsDonutMode,dimList.map(function(x){return x.k;}));
-      let trendHtml='<div class="ls-sub" style="margin:14px 0 4px">各'+dimLabel+'退款率趋势 · 按上传批次</div>';
+      let trendHtml='<div class="ls-sub" style="margin:0 0 4px">各'+dimLabel+'退款率趋势 · 按上传批次</div>';
       if(trend.pts>=2){
-        trendHtml+=lsLegend(trend.lines.map(function(l){return [l.name,l.color];}))
-          +lsPlot({labels:trend.labels,h:196,right:true,noLeft:true,lines:trend.lines,
-            fmtR:function(v){return (Math.round(v*10)/10)+'%';}});
+        trendHtml+=lsPlot({labels:trend.labels,w:470,h:226,right:true,noLeft:true,lineBadge:true,lines:trend.lines,
+            fmtR:function(v){return (Math.round(v*10)/10)+'%';}})
+          +'<div class="ls-trend-key">'+trend.lines.map(function(l){
+              return '<span title="'+esc(l.name+' 最新 '+(l.fmt&&l.vals.length?l.fmt(l.vals[l.vals.length-1]):''))+'"><i style="background:'+l.color+'">'+esc(l.badge)+'</i>'+esc(l.name)+'</span>';
+            }).join('')+'</div>';
       }else{
         trendHtml+='<div class="ls-empty">历史批次不足（当前 '+trend.pts+' 期）—— 每次上传汇总表累积一期，满 2 期后自动显示折线</div>';
       }
-      cmpPage=cmpChart+trendHtml;
+      cmpPage='<div class="ls-cmp-row"><div class="ls-cmp-main">'+cmpChart+'</div><div class="ls-cmp-side">'+trendHtml+'</div></div>';
     }
   }
   /* 品类透视 */
