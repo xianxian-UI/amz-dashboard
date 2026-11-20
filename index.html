@@ -20854,8 +20854,12 @@ function lsPlot(cfg){
         if(cfg.labelFmt&&(n<=8||i===n-1||cfg.hLabels)){
           /* 标签 x = 该柱自身中心（x0+半宽），不是整组中心，否则两根柱的数值会叠在一起；
              y 只跟柱顶走（-5），矮柱不再被压到基线同一高度互相打架；白描边保证压在柱身上也看得清。 */
-          const lbx=(x0+(bw-1.2)/2).toFixed(1),lby=(Math.min(PT+ih-h-5,PT+ih-13)).toFixed(1);
-          gLabels+='<text x="'+lbx+'" y="'+lby+'" text-anchor="middle" font-size="'+(si===0?'10':'9.5')+'" font-weight="600" fill="#4b5563" paint-order="stroke" stroke="#ffffff" stroke-width="2.6" stroke-linejoin="round">'+esc(cfg.labelFmt(s.name,v,i))+'</text>';
+          /* barLabelSplit: site chart has tight columns; split the two bar value labels left/right around group center to avoid horizontal collision */
+          let lbx,anc;
+          if(cfg.barLabelSplit&&bc>1){lbx=(cx(i)+(si===0?-3:3)).toFixed(1);anc=si===0?'end':'start';}
+          else{lbx=(x0+(bw-1.2)/2).toFixed(1);anc='middle';}
+          const lby=(Math.min(PT+ih-h-5,PT+ih-13)).toFixed(1);
+          gLabels+='<text x="'+lbx+'" y="'+lby+'" text-anchor="'+anc+'" font-size="'+(si===0?'10':'9.5')+'" font-weight="600" fill="#4b5563" paint-order="stroke" stroke="#ffffff" stroke-width="2.6" stroke-linejoin="round">'+esc(cfg.labelFmt(s.name,v,i))+'</text>';
         }
       });
     });
@@ -21245,7 +21249,7 @@ function lsInner(){
           lines:[{name:'退款率',color:LS_C.rate,vals:siteList.map(function(x){return x.rate==null?null:x.rate*100;}),axis:'r',w:2,
             fmt:function(v){return lsPct(v/100);}}],
           fmtL:lsMoney,fmtR:function(v){return (v>=10?Math.round(v):Math.round(v*10)/10)+'%';},
-          fmtTip:siteTip,labelFmt:function(nm,v){return lsMoney(v);},labelLine:true,labelLineDy:sWide?-11:-14})+'</div>';
+          fmtTip:siteTip,labelFmt:function(nm,v){return lsMoney(v);},barLabelSplit:true,labelLine:true,labelLineDy:sWide?-11:-18})+'</div>';
     const siteTrend=lsDimTrend(kind,'site',siteKeys.slice(0,10));
     let siteTrendHtml='<div class="ls-sub" style="margin:0 0 4px">各站点退款率趋势 · 按上传批次</div>';
     if(siteTrend.pts>=2){
