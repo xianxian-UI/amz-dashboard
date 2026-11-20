@@ -20877,7 +20877,7 @@ function lsPlot(cfg){
       if(cfg.labelLine&&(n<=8||i===n-1||cfg.hLabels)){
         /* 末点标签居中放在点上方：改成 end 会压到前一个点的数值，start 又会被 SVG 右边界裁掉 */
         const lEnd=(i===n-1);
-        gLineLabels+='<text x="'+(p[0]+(lEnd?0:6)).toFixed(1)+'" y="'+(p[1]+(lEnd?-9:(cfg.labelLineDy==null?-6:cfg.labelLineDy))).toFixed(1)+'" text-anchor="'+(lEnd?'middle':'start')+'" font-size="10" font-weight="700" fill="'+s.color+'" paint-order="stroke" stroke="#ffffff" stroke-width="2.4" stroke-linejoin="round">'+esc(s.labelFmt?s.labelFmt(s.vals[i]):(s.fmt?s.fmt(s.vals[i]):lsPct(s.vals[i])))+'</text>';
+        gLineLabels+='<text x="'+(p[0]+(lEnd?0:6)).toFixed(1)+'" y="'+Math.max(PT+13,p[1]+(lEnd?-9:(cfg.labelLineDy==null?-6:cfg.labelLineDy))).toFixed(1)+'" text-anchor="'+(lEnd?'middle':'start')+'" font-size="10" font-weight="700" fill="'+s.color+'" paint-order="stroke" stroke="#ffffff" stroke-width="2.4" stroke-linejoin="round">'+esc(s.labelFmt?s.labelFmt(s.vals[i]):(s.fmt?s.fmt(s.vals[i]):lsPct(s.vals[i])))+'</text>';
       }
     });
     if(cfg.lineBadge&&s.badge){
@@ -21155,7 +21155,7 @@ function lsInner(){
             fmt:function(v,i){return tipOf('退款率',v,i);},labelFmt:function(v){return lsPct(v/100);}}],
           fmtL:lsMoney,fmtR:function(v){return (v>=10?Math.round(v):Math.round(v*10)/10)+'%';},
           fmtTip:tipOf,
-          labelFmt:(wide||nDim<=20)?function(nm,v){return lsMoney(v);}:null,labelLine:true,labelLineDy:wide?17:-16});
+          labelFmt:(wide||nDim<=20)?function(nm,v){return lsMoney(v);}:null,labelLine:true,labelLineDy:wide?-11:-16});
       const cmpChart=lsLegend([['销售额',LS_C.sale],['退款额',LS_C.ref],['退款率（右轴）',LS_C.rate]])
         +'<div class="ls-hscroll">'+cplot+'</div>';
       /* 历史趋势线：按上传批次，每个维度项一条折线 */
@@ -21245,7 +21245,7 @@ function lsInner(){
           lines:[{name:'退款率',color:LS_C.rate,vals:siteList.map(function(x){return x.rate==null?null:x.rate*100;}),axis:'r',w:2,
             fmt:function(v){return lsPct(v/100);}}],
           fmtL:lsMoney,fmtR:function(v){return (v>=10?Math.round(v):Math.round(v*10)/10)+'%';},
-          fmtTip:siteTip,labelFmt:function(nm,v){return lsMoney(v);},labelLine:true,labelLineDy:sWide?17:-14})+'</div>';
+          fmtTip:siteTip,labelFmt:function(nm,v){return lsMoney(v);},labelLine:true,labelLineDy:sWide?-11:-14})+'</div>';
     const siteTrend=lsDimTrend(kind,'site',siteKeys.slice(0,10));
     let siteTrendHtml='<div class="ls-sub" style="margin:0 0 4px">各站点退款率趋势 · 按上传批次</div>';
     if(siteTrend.pts>=2){
