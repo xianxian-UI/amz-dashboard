@@ -7219,7 +7219,8 @@ function sumBaoCommit(aoa,sheet,fileName,kind){
   DATA.sumBaoMeta=sumBaoMetaStore();
   const prevMt=sumBaoMetaStore()[kind]||{};
   DATA.sumBaoMeta[kind]={file:fileName,at:stamp,n:n,raw:raw,sheet:sheet||'',
-    hist:(Array.isArray(prevMt.hist)?prevMt.hist:[])};
+    hist:(Array.isArray(prevMt.hist)?prevMt.hist:[]),
+    ymHist:(Array.isArray(prevMt.ymHist)?prevMt.ymHist:[])};
   /* 记一条历次快照：只存 客服 / 组长 / 全体 三级的退款额与销售额（「客服关注区 · 五、客服报损情况」的环比用） */
   try{baoPushHist(kind,recs,p,stamp);}catch(e){}
   out.push('✓ '+klab+'：'+fileName+'（命中汇总表 '+n+' 个账号'+(raw!==n?(' / 文件里 '+raw+' 行'):'')+(sheet?(' · 工作表「'+sheet+'」'):'')+'）');
@@ -11306,7 +11307,7 @@ document.getElementById('app').addEventListener('click',e=>{
   if(dmode){
     const vv=dmode.getAttribute('data-lsdonutmode');
     lsChartMode=(lsChartMode===vv?'all':vv);
-    if(lsChartMode!=='all')lsDonutMode=vv;
+    if(lsChartMode!=='all'&&vv!=='year')lsDonutMode=vv;
     lsDonutSel='';render();return;
   }
   const dsel=t.closest&&t.closest('[data-lsdonutsel]');
@@ -11314,7 +11315,7 @@ document.getElementById('app').addEventListener('click',e=>{
   const lossScopeBtn=t.closest&&t.closest('[data-lslossscope]');
   if(lossScopeBtn){lsLossScope=lossScopeBtn.getAttribute('data-lslossscope')||'region';render();return;}
   const lsdim=t.closest&&t.closest('[data-lsdim]');
-  if(lsdim){lsDim=lsdim.getAttribute('data-lsdim');render();return;}
+  if(lsdim){lsDim=lsdim.getAttribute('data-lsdim');if(lsDim!=='m'&&lsChartMode==='year')lsChartMode='all';render();return;}
   const lssync=t.closest&&t.closest('[data-lssync]');
   if(lssync){
     /* 手动把 AMZ汇总表 与退款明细同时从云端重拉，解决本机缓存比 18 日更新还旧的情况 */
@@ -14011,6 +14012,23 @@ function baoPushHist(kind,recs,p,stamp){
   /* 每次上传记一条（同日多次也算一次更新），滚动保留最近 BAO_KEEP_N 条，第 31 次自动删最老 */
   hist.push(ent);
   mt.hist=hist.slice(-(BAO_KEEP_N[kind]||30));
+  /* 年月度归档（仅月视图）：严格只认每月1日上传的那期快照，作为「上个月」整月数据；
+     例：12-01 上传 → 记为 11 月。同月重复上传覆盖、按月份升序、满 12 个月滚掉最老。
+     口径只写注释，不上界面。历史快照不回填，从每次 1 日上传起逐月累积。 */
+  if(kind==='m'){
+    const ds=String(stamp||'').slice(0,10),dp=ds.split('-');
+    if(dp.length===3&&Number(dp[2])===1){
+      let py=Number(dp[0]),pm=Number(dp[1])-1;
+      if(pm<1){pm=12;py--;}
+      const ym=py+'-'+(pm<10?'0':'')+pm;
+      const yh=Array.isArray(mt.ymHist)?mt.ymHist:[];
+      const yr={ym:ym,sale:all.sale,ref:all.ref,ord:all.ord,rqty:all.rqty,at:stamp||''};
+      const ix=yh.findIndex(function(z){return z&&z.ym===ym;});
+      if(ix>=0)yh[ix]=yr;else yh.push(yr);
+      yh.sort(function(x,z){return String(x.ym)<String(z.ym)?-1:(String(x.ym)>String(z.ym)?1:0);});
+      mt.ymHist=yh.slice(-12);
+    }
+  }
   BAO_HC={};
 }
 /* 账号 → 组长（先取账号上的「客服组长」，没有再按「达标设置② 客服→组长」对照） */
@@ -20648,6 +20666,12 @@ function lsBaoDimList(kind,mode){
 }
 /* 站点维度聚合：与报损规模/KPI 同取 AMZ汇总表最新一期快照（账号所属 site）。
    数据源=汇总表快照，不是退款明细；口径只写注释不上界面。 */
+/* 年月度归档读取：每月1日上传的汇总表快照，记作上月的整月销售额/退款额/订单量/退款量。
+   最多 12 个月、按月份升序。口径只写注释，不上界面。 */
+function lsYearMonths(){
+  const mt=baoMetaOf('m'),h=Array.isArray(mt.ymHist)?mt.ymHist:[];
+  return h.slice().sort(function(x,z){return String(x.ym)<String(z.ym)?-1:(String(x.ym)>String(z.ym)?1:0);}).slice(-12);
+}
 function lsSiteDimList(kind){
   const sf={d:'baoDSale',w:'baoWSale',m:'baoMSale'}[kind]||'baoMSale';
   const rf={d:'baoDRef',w:'baoWRef',m:'baoMRef'}[kind]||'baoMRef';
@@ -21106,10 +21130,29 @@ function lsInner(){
   /* 区域 / 核算小组对比页：整块翻页，只在 lsChartMode!=='all' 时构建；不再作为主图下方挂表。
      与报损规模、KPI 同为 AMZ汇总表最新一期口径；维度历史取自每次上传时存的 rg/gp 快照。 */
   const dimList=lsBaoDimList(kind,lsDonutMode);
-  const dimLabel=lsDonutMode==='group'?'核算小组':'区域';
+  const dimLabel=lsChartMode==='year'?'年月度趋势（近 12 个月 · 按上传月）':(lsDonutMode==='group'?'核算小组':'区域');
   const donut=lsDonutHtml(dimList,lsDonutMode,kind);
+  /* 年月度视图：整块翻页，12 个月的销售额/退款额双柱 + 退款率右轴线，取数=每月1日上传的上月整月快照。 */
+  let yearPage='';
+  if(lsChartMode==='year'){
+    const YM=lsYearMonths();
+    if(!YM.length){
+      yearPage='<div class="ls-empty">还没有年月度数据 —— 请在每月1日上传月度汇总表，系统会自动记为上个月的整月数据，攒满12个月后自动滚动</div>';
+    }else{
+      const ymTip=function(nm,v,i){const x=YM[i]||{};return lsMoney(v)+(nm==='销售额'?' · 订单量 ':' · 退款量 ')+lsNum(nm==='销售额'?(x.ord||0):(x.rqty||0));};
+      const yW=Math.max(660,YM.length*72);
+      yearPage=lsLegend([['销售额',LS_C.sale],['退款额',LS_C.ref],['退款率（右轴）',LS_C.rate]])
+        +'<div class="ls-hscroll">'+lsPlot({labels:YM.map(function(x){return x.ym.slice(2).replace('-','/');}),w:yW,h:228,right:true,tgtAxis:'r',
+          allLabels:true,hLabels:YM.length>10,pxW:yW,
+          bars:[{name:'销售额',color:LS_C.sale,vals:YM.map(function(x){return x.sale;})},
+                {name:'退款额',color:LS_C.ref,vals:YM.map(function(x){return x.ref;})}],
+          lines:[{name:'退款率',color:LS_C.rate,vals:YM.map(function(x){return x.sale>0?x.ref/x.sale*100:null;}),axis:'r',w:2,fmt:function(v){return lsPct(v/100);}}],
+          fmtL:lsMoney,fmtR:function(v){return (v>=10?Math.round(v):Math.round(v*10)/10)+'%';},
+          fmtTip:ymTip,labelFmt:function(nm,v){return lsMoney(v);},barLabelSplit:true,labelLine:true,labelLineDy:-18})+'</div>';
+    }
+  }
   let cmpPage='';
-  if(lsChartMode!=='all'){
+  if(lsChartMode!=='all'&&lsChartMode!=='year'){
     if(!dimList.length){
       cmpPage='<div class="ls-empty">该维度暂无汇总表数据 —— 到「AMZ汇总表 · ⬆ 上传指标数据源」上传后自动出现</div>';
     }else{
@@ -21274,15 +21317,17 @@ function lsInner(){
         +'<span class="ls-seg">'
         +'<button data-lsdonutmode="region" title="翻到区域对比页">区域</button>'
         +'<button data-lsdonutmode="group" title="翻到核算小组对比页">核算小组</button>'
+        +(kind==='m'?'<button data-lsdonutmode="year" title="翻到年月度趋势页">年</button>':'')
         +'</span></h3>'
         +'<div class="ls-scale-row"><div class="ls-chart">'+chart1+'</div>'+donut+'</div></section>'
       : '<section class="ls-sec"><h3 style="display:flex;align-items:center;justify-content:space-between">'
-        +'<span><button data-lsdonutmode="'+lsChartMode+'" style="border:0;background:none;color:#a4473a;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;padding:0 5px 0 0">← 返回</button>一、'+dimLabel+'对比</span>'
+        +'<span><button data-lsdonutmode="'+lsChartMode+'" style="border:0;background:none;color:#a4473a;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;padding:0 5px 0 0">← 返回</button>一、'+dimLabel+(lsChartMode==='year'?'':'对比')+'</span>'
         +'<span class="ls-seg">'
         +'<button data-lsdonutmode="region" class="'+(lsChartMode==='region'?'on':'')+'">区域</button>'
         +'<button data-lsdonutmode="group" class="'+(lsChartMode==='group'?'on':'')+'">核算小组</button>'
+        +(kind==='m'?'<button data-lsdonutmode="year" class="'+(lsChartMode==='year'?'on':'')+'">年</button>':'')
         +'</span></h3>'
-        +cmpPage+'</section>'
+        +(lsChartMode==='year'?yearPage:cmpPage)+'</section>'
       )
     +'<section class="ls-sec"><h3>二、站点报损规模与趋势</h3>'+siteSec+'</section>'
     +'<section class="ls-sec"><h3>三、品类报损透视 · 按灯</h3>'+tbl+'</section>'
