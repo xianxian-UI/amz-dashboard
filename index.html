@@ -11301,6 +11301,8 @@ document.getElementById('app').addEventListener('click',e=>{
   }
   const dsel=t.closest&&t.closest('[data-lsdonutsel]');
   if(dsel){const vv=dsel.getAttribute('data-lsdonutsel')||'';lsDonutSel=vv;render();return;}
+  const lossScopeBtn=t.closest&&t.closest('[data-lslossscope]');
+  if(lossScopeBtn){lsLossScope=lossScopeBtn.getAttribute('data-lslossscope')||'region';render();return;}
   const lsdim=t.closest&&t.closest('[data-lsdim]');
   if(lsdim){lsDim=lsdim.getAttribute('data-lsdim');render();return;}
   const lssync=t.closest&&t.closest('[data-lssync]');
@@ -20232,7 +20234,7 @@ function opsFocusSection(){
 const LS_KINDS=[['d','日','近 30 天'],['w','周','近 4 周'],['m','月','近 12 个月']];
 const LS_N={d:30,w:4,m:12};
 const LS_C={sale:'#2f5fbf',ref:'#d93b2b',ord:'#2f9e6f',rqty:'#e08a2f',rate:'#c0392b',share:'#e2872f'};
-let lsDim='d',lsLevel='1',lsSort='ref',lsDonutMode='region',lsDonutSel='',lsChartMode='all';
+let lsDim='d',lsLevel='1',lsSort='ref',lsDonutMode='region',lsDonutSel='',lsChartMode='all',lsLossScope='region';
 let lsFlt={region:'',group:'',site:''};
 let LS_CACHE={};
 
@@ -20631,6 +20633,58 @@ function lsBaoDimList(kind,mode){
   return Object.keys(reg).map(function(k){const x=reg[k];x.rate=x.sale>0?x.amt/x.sale:null;return x;})
     .sort(function(a,b){return b.amt-a.amt;});
 }
+/* 报损情况表：按维度(区域/团队/站点)聚合启用+考核账号的汇总表最新一期值，口径同 KPI。
+   口径只写源码注释，不上界面。团队=核算小组(a.group)，与对比页核算小组一致。 */
+const LS_TREND_C=['#2f5fbf','#d93b2b','#2f9e6f','#e08a2f','#8b5cf6','#0891b2','#db2777','#65a30d','#c2410c','#4f46e5'];
+function lsLossScopeRows(kind,scope){
+  const sf={d:'baoDSale',w:'baoWSale',m:'baoMSale'}[kind]||'baoMSale';
+  const rf={d:'baoDRef',w:'baoWRef',m:'baoMRef'}[kind]||'baoMRef';
+  const of={d:'baoDOrd',w:'baoWOrd',m:'baoMOrd'}[kind]||'baoMOrd';
+  const qf={d:'baoDRqty',w:'baoWRqty',m:'baoMRqty'}[kind]||'baoMRqty';
+  const reg={};
+  (DATA.accounts||[]).forEach(function(a){
+    if(!a||a.status!=='启用'||a.assess!=='纳入考核')return;
+    if(!lsAccPass(a))return;
+    const k=String(a.short==null?'':a.short).trim().toUpperCase();if(!k)return;
+    const raw=(scope==='site'?a.site:(scope==='group'?a.group:a.region));
+    let key=String(raw==null?'':raw).trim()||(scope==='site'?'未分站':(scope==='group'?'未分组':'未分区'));
+    const f=sumBaoFields(k),t=reg[key]||(reg[key]={k:key,sale:0,ref:0,ord:0,rqty:0});
+    t.sale+=Number(f[sf])||0;t.ref+=Number(f[rf])||0;t.ord+=Number(f[of])||0;t.rqty+=Number(f[qf])||0;
+  });
+  return Object.keys(reg).map(function(k){const x=reg[k];x.rate=x.sale>0?x.ref/x.sale:null;return x;})
+    .sort(function(a,b){return b.ref-a.ref;});
+}
+/* 历史趋势：每个区域/小组一条折线，横轴=baoMeta.hist 的每个上传批次(取 d/at 的月日)；
+   值=该批次该维度的退款率(%)。历史是「上传批次序列」不是自然月，口径只写注释不上界面。 */
+function lsDimTrend(kind,mode,dimKeys){
+  const f=(mode==='group'?'gp':'rg');
+  const hs=((baoMetaOf(kind).hist)||[]).filter(function(e){return e&&e[f];});
+  const labels=hs.map(function(e){
+    const s=String(e.d||e.at||'');return s.length>=10?s.slice(5):(s||'—');
+  });
+  const lines=dimKeys.map(function(k,i){
+    return {name:k,color:LS_TREND_C[i%LS_TREND_C.length],axis:'r',w:1.6,
+      vals:hs.map(function(e){const a=e[f][k];if(!a)return null;const s=Number(a.sale)||0,r=Number(a.ref)||0;return s>0?r/s*100:null;}),
+      fmt:function(v){return v==null?'—':(Math.round(v*100)/100)+'%';}};
+  });
+  return {labels:labels,lines:lines,pts:hs.length};
+}
+/* 一级分类报损 Top20：按 团队×一级分类 聚合退款明细(lsRows)。
+   销售额=该组合内按订单号去重取最大 orderAmt(同品类透视口径)；退款额求和、退款量计数、退款率=退款额/销售额。
+   按退款率降序取前20。口径只写源码注释，不上界面。 */
+function lsCatTop20(){
+  const rows=lsRows(),m={};
+  rows.forEach(function(r){
+    const g=r.group||'未分组',c=r.c1||'（未分类）',key=g+'\u0001'+c;
+    const t=m[key]||(m[key]={g:g,c:c,amt:0,rqty:0,ordSet:{},saleByOrd:{}});
+    if(r.sale>0&&(t.saleByOrd[r.ok]==null||r.sale>t.saleByOrd[r.ok]))t.saleByOrd[r.ok]=r.sale;
+    t.amt+=r.amt;t.rqty++;t.ordSet[r.ok]=1;
+  });
+  return Object.keys(m).map(function(k){
+    const t=m[k],sale=Object.keys(t.saleByOrd).reduce(function(s,o){return s+t.saleByOrd[o];},0);
+    return {g:t.g,c:t.c,sale:sale,amt:t.amt,rqty:t.rqty,rate:sale>0?t.amt/sale:null};
+  }).sort(function(a,b){return (b.rate==null?-1:b.rate)-(a.rate==null?-1:a.rate);}).slice(0,20);
+}
 function lsDonutHtml(list,mode){
   const total=list.reduce(function(s,x){return s+x.amt;},0);
   if(!list.length||total<=0)return '<div class="ls-empty">当前筛选下暂无退款数据</div>';
@@ -21003,11 +21057,53 @@ function lsInner(){
           +'<td>'+cell(lsKpiVal('rate',x.rate),lsKpiDiff(x.rate,last?last.rate:null,'rate',false),lsKpiCmp(x.rate,avg('rate'),'rate',false))+'</td>'
           +'</tr>';
       }).join('');
+      /* 历史趋势线：按上传批次，每个维度项一条折线 */
+      const trend=lsDimTrend(kind,lsDonutMode,dimList.map(function(x){return x.k;}));
+      let trendHtml='<div class="ls-sub" style="margin:14px 0 4px">各'+dimLabel+'退款率趋势 · 按上传批次</div>';
+      if(trend.pts>=2){
+        trendHtml+=lsLegend(trend.lines.map(function(l){return [l.name,l.color];}))
+          +lsPlot({labels:trend.labels,h:196,right:true,noLeft:true,lines:trend.lines,
+            fmtR:function(v){return (Math.round(v*10)/10)+'%';}});
+      }else{
+        trendHtml+='<div class="ls-empty">历史批次不足（当前 '+trend.pts+' 期）—— 每次上传汇总表累积一期，满 2 期后自动显示折线</div>';
+      }
+      /* 报损情况表：区域 / 团队 / 站点 维度切换 */
+      const scopes=[['region','区域'],['group','团队'],['site','站点']];
+      const scopeBtns='<span class="ls-lv">'+scopes.map(function(s){
+        return '<button data-lslossscope="'+s[0]+'" class="'+(lsLossScope===s[0]?'on':'')+'">'+s[1]+'</button>';
+      }).join('')+'</span>';
+      const scopeLabel=(scopes.filter(function(s){return s[0]===lsLossScope;})[0]||[])[1]||'区域';
+      const scopeRows=lsLossScopeRows(kind,lsLossScope);
+      const lossRows=scopeRows.map(function(x){
+        return '<tr><td style="text-align:left;font-weight:600;color:#333b47">'+esc(x.k)+'</td>'
+          +'<td class="num">'+lsMoney(x.sale)+'</td><td class="num">'+lsNum(x.ord)+'</td>'
+          +'<td class="num ls-ref">'+lsMoney(x.ref)+'</td><td class="num">'+lsNum(x.rqty)+'</td>'
+          +'<td class="num"><b>'+lsPct(x.rate)+'</b></td></tr>';
+      }).join('');
+      const lossTable='<div style="min-width:0"><div class="ls-sub" style="margin:0 0 4px;display:flex;align-items:center;gap:10px">报损情况表 '+scopeBtns+'</div>'
+        +'<div class="ls-tblwrap"><table class="hk-tbl ls-tbl"><thead><tr>'
+        +'<th style="text-align:left;width:92px">'+scopeLabel+'</th><th>销售额</th><th>订单量</th><th>退款额</th><th>退款量</th><th>退款率</th>'
+        +'</tr></thead><tbody>'+(lossRows||'<tr><td colspan="6" class="dim">当前筛选下无数据</td></tr>')+'</tbody></table></div></div>';
+      /* 一级分类报损 Top20：团队×一级分类，按退款率降序 */
+      const top20=lsCatTop20();
+      const topRows=top20.map(function(x,i){
+        return '<tr><td class="ls-rk">'+(i+1)+'</td>'
+          +'<td style="text-align:left">'+esc(x.g)+'</td><td style="text-align:left">'+esc(x.c)+'</td>'
+          +'<td class="num">'+lsMoney(x.sale)+'</td><td class="num ls-ref">'+lsMoney(x.amt)+'</td>'
+          +'<td class="num">'+lsNum(x.rqty)+'</td><td class="num"><b>'+lsPct(x.rate)+'</b></td></tr>';
+      }).join('');
+      const topTable='<div style="min-width:0"><div class="ls-sub" style="margin:0 0 4px">一级分类报损 Top20 · 按退款率</div>'
+        +'<div class="ls-tblwrap"><table class="hk-tbl ls-tbl"><thead><tr>'
+        +'<th style="width:34px">#</th><th style="text-align:left">团队</th><th style="text-align:left">一级分类</th>'
+        +'<th>销售额</th><th>退款额</th><th>退款量</th><th>退款率</th>'
+        +'</tr></thead><tbody>'+(topRows||'<tr><td colspan="7" class="dim">当前筛选下无退款明细</td></tr>')+'</tbody></table></div></div>';
       cmpPage=cmpChart
         +'<div class="ls-sub" style="margin:12px 0 4px">各'+dimLabel+'对比 · 较上次 / 历史均值</div>'
         +'<div class="ls-tblwrap"><table class="hk-tbl ls-tbl"><thead><tr>'
         +'<th style="text-align:left;width:130px">'+dimLabel+'</th><th>销售额</th><th>退款额</th><th>退款率</th>'
-        +'</tr></thead><tbody>'+rows+'</tbody></table></div>';
+        +'</tr></thead><tbody>'+rows+'</tbody></table></div>'
+        +trendHtml
+        +'<div class="ls-row2">'+lossTable+topTable+'</div>';
     }
   }
   /* 品类透视 */
