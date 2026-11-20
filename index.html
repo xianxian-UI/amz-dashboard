@@ -312,7 +312,7 @@
   .ls-scope{font-size:11.5px;font-weight:700;color:#a4473a;background:#fdf1ef;border:1px solid #f3d5d0;border-radius:20px;padding:2px 10px}
   .ls-src{font-size:11px;color:#9aa1ad}
   .ls-kpis{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:8px;margin:0 0 13px}
-  @media(max-width:1700px){.ls-kpis{grid-template-columns:repeat(4,minmax(0,1fr))}}
+  @media(max-width:1400px){.ls-kpis{grid-template-columns:repeat(4,minmax(0,1fr))}}
   @media(max-width:1100px){.ls-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}}
   /* 七张卡按指标分色：每张卡自带浅色渐层 + 同色左边条；差值/均值比较另按「变好绿、变差红」上色 */
   .ls-kpi{background:linear-gradient(135deg,var(--bg,#f8fafc) 0%,#fff 76%);
@@ -20291,7 +20291,7 @@ function lsKpiVal(k,v){
   if(k==='sale'||k==='ref')return lsKpiMoney(v);
   return lsKpiNum(v);
 }
-/* 较上周：率类显示百分点差（差额本身就是 pp）；金额/数量同时显示比例与完整差额。
+/* 较上次：率类显示百分点差（差额本身就是 pp）；金额/数量同时显示比例与完整差额。
    goodUp=true 表示越多越好（销售额/订单量/达标率），false 表示越少越好（退款额/退款量/退款率/退款量占比）。
    口径只在源码注释，不上界面。 */
 function lsKpiDiff(cur,prev,k,goodUp){
@@ -20429,8 +20429,9 @@ function lsPrevKpi(kind,A,SD,sumRate,ordShare,part){
     return out;
   }
   const pts=lsDetailPoints(kind);
-  /* 「较上周」：日视图取 7 天前同一天，周 / 月视图取上一期；不足跨度则不硬凑 */
-  const backN=kind==='d'?7:1;
+  /* 「较上次」：AMZ汇总表快照本身已按 日=1天 / 周=7天 / 月=30天 分好粒度，相邻两期即「较上次」；
+     快照不足 2 期才回落明细序列，三种视图统一取上一期（backN=1），不再按日期周期跨 7 天取 */
+  const backN=1;
   if(pts.length<=backN)return out;
   const c=pts[pts.length-1],p=pts[pts.length-1-backN];
   const back=function(cur,cv,pv){
@@ -20773,7 +20774,7 @@ function lsInner(){
   const seg='<span class="ls-seg">'+LS_KINDS.map(function(kp){
     return '<button data-lsdim="'+kp[0]+'" class="'+(lsDim===kp[0]?'on':'')+'" title="'+esc(kp[2]+'趋势')+'">'+kp[1]+'</button>';
   }).join('')+'</span>';
-  /* KPI 行：主数值、较上周差额与历史均值全部按 AMZ汇总表「账号报损」同口径取数。
+  /* KPI 行：主数值、较上次差额与历史均值全部按 AMZ汇总表「账号报损」同口径取数。
      销售额/订单量越多越好，退款额/退款量/退款率/退款量占比越少越好；达标率越多越好。
      退款率 = 退款额合计 ÷ 销售额合计，不再显示部分退款占比。口径只写源码注释，不上界面。 */
   const kpi=function(lab,val,k,info,avg,extra){
@@ -20785,7 +20786,7 @@ function lsInner(){
       +(extra?' title="'+esc(extra)+'"':'')+'>'
       +'<div class="kh"><span class="k">'+esc(lab)+'</span>'
       +'<span class="v'+((k==='sale'||k==='ref')?' vlong':'')+'">'+val+'</span></div>'
-      +'<div class="dv '+dc+'">较上周 '+info.t+'</div>'
+      +'<div class="dv '+dc+'">较上次 '+info.t+'</div>'
       +'<div class="av">历史均值 '+(avg&&avg.text!=null?avg.text:'—')+' <b class="'+ac+'">'+cmp.t+'</b></div>'
       +'</div>';
   };
