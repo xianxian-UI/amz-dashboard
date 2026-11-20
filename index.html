@@ -347,14 +347,16 @@
   .ls-chart{width:100%;overflow:hidden}
   .ls-chart svg{display:block;width:100%}
   .ls-scale-row{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(300px,1fr);gap:18px;align-items:start}
-  .ls-cmp-row{display:grid;grid-template-columns:minmax(0,1.35fr) minmax(0,1fr);gap:16px;align-items:start}
-  @media(max-width:1200px){.ls-cmp-row{grid-template-columns:1fr}}
+  .ls-cmp-row{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(0,1fr);gap:16px;align-items:start}
+  @media(max-width:1200px){.ls-cmp-row{grid-template-columns:1fr}.ls-cmp-side svg{height:auto!important;preserveAspectRatio:xMidYMid meet}}
   .ls-hscroll{overflow-x:auto;overflow-y:hidden;padding-bottom:4px}
   .ls-hscroll::-webkit-scrollbar{height:8px}
   .ls-hscroll::-webkit-scrollbar-thumb{background:#d7dce5;border-radius:4px}
   .ls-hscroll::-webkit-scrollbar-track{background:#f4f6fa;border-radius:4px}
   .ls-trend-key{display:flex;flex-wrap:wrap;gap:6px 14px;font-size:11px;color:#5b6270;margin-top:9px}
-  .ls-trend-key span{display:flex;align-items:center;gap:5px;white-space:nowrap}
+  .ls-trend-key span{display:flex;align-items:center;gap:5px;white-space:nowrap;transition:opacity .12s}
+  .ls-trend-key:has(span.on) span:not(.on){opacity:.5}
+  .ls-trend-key span.on b{font-weight:700!important;color:#333!important}
   .ls-trend-key i{width:12px;height:12px;border-radius:50%;background:#fff;border:2px solid currentColor;display:inline-block;flex:none}
   .ls-donut{background:#fff;border:1px solid #f1f1f4;border-radius:8px;padding:9px 11px}
   @media(max-width:1100px){.ls-scale-row{grid-template-columns:1fr}}
@@ -11312,6 +11314,9 @@ document.getElementById('app').addEventListener('click',e=>{
   }
   const dsel=t.closest&&t.closest('[data-lsdonutsel]');
   if(dsel){const vv=dsel.getAttribute('data-lsdonutsel')||'';lsDonutSel=vv;render();return;}
+  /* 趋势图聚焦：点击图例/圈号只显示该维度折线，再点一次恢复全部。 */
+  const lsfoc=t.closest&&t.closest('[data-lsfocus]');
+  if(lsfoc){const v=lsfoc.getAttribute('data-lsfocus');lsFocus=(String(lsFocus)===String(v)?'':v);render();return;}
   const lossScopeBtn=t.closest&&t.closest('[data-lslossscope]');
   if(lossScopeBtn){lsLossScope=lossScopeBtn.getAttribute('data-lslossscope')||'region';render();return;}
   const lsdim=t.closest&&t.closest('[data-lsdim]');
@@ -20265,7 +20270,7 @@ function opsFocusSection(){
 const LS_KINDS=[['d','日','近 30 天'],['w','周','近 4 周'],['m','月','近 12 个月']];
 const LS_N={d:30,w:4,m:12};
 const LS_C={sale:'#2f5fbf',ref:'#d93b2b',ord:'#2f9e6f',rqty:'#e08a2f',rate:'#c0392b',share:'#e2872f'};
-let lsDim='d',lsLevel='1',lsSort='ref',lsDonutMode='region',lsDonutSel='',lsChartMode='all',lsLossScope='region';
+let lsDim='d',lsLevel='1',lsSort='ref',lsDonutMode='region',lsDonutSel='',lsChartMode='all',lsLossScope='region',lsFocus='';
 let lsFlt={region:'',group:'',site:''};
 let LS_CACHE={};
 
@@ -20859,13 +20864,19 @@ function lsPlot(cfg){
   bars.forEach(function(s){s.vals.forEach(function(v){if(v>lmax)lmax=v;});});
   lines.forEach(function(s){if(s.axis!=='r')s.vals.forEach(function(v){if(v>lmax)lmax=v;});});
   lmax=lsNice(lmax*1.06);
-  let rmax=0;
+  let rmax=0,rminz=0;
   lines.forEach(function(s){if(s.axis==='r')s.vals.forEach(function(v){if(v>rmax)rmax=v;});});
   if(cfg.tgt!=null&&isFinite(cfg.tgt))rmax=Math.max(rmax,cfg.tgt);
   rmax=(rmax<=200)?(Math.ceil(rmax*1.06/4)*4||4):lsNice(rmax*1.12);
+  /* rMin:auto 趋势图：右轴从数据下界起并留 padding，让集中在窄幅(如5%~6%)的折线铺满绘图区，消除下方大片空白；口径只写注释不上界面。 */
+  if(cfg.rMin==='auto'){
+    let lo=Infinity,hi=-Infinity;
+    lines.forEach(function(s){if(s.axis==='r')s.vals.forEach(function(v){if(v!=null&&isFinite(v)){if(v<lo)lo=v;if(v>hi)hi=v;}});});
+    if(lo<hi){const pad=Math.max((hi-lo)*0.18,0.3);rminz=Math.max(0,Math.floor(lo-pad));rmax=Math.ceil(hi+pad);}
+  }
   const cx=function(i){return PL+iw*(i+0.5)/n;};
   const y=function(v){return PT+ih*(1-(v/(lmax||1)));};
-  const yr=function(v){return PT+ih*(1-(v/(rmax||1)));};
+  const yr=function(v){return PT+ih*(1-((v-rminz)/((rmax-rminz)||1)));};
   let g='';
   /* 网格 + 左轴刻度 */
   for(let t=0;t<=4;t++){
@@ -20876,7 +20887,7 @@ function lsPlot(cfg){
       g+='<text x="'+(PL-6)+'" y="'+(gy+3.5).toFixed(1)+'" text-anchor="end" font-size="9.5" fill="#9aa1ad">'+esc(cfg.fmtL?cfg.fmtL(lv):lsMoney(lv))+'</text>';
     }
     if(cfg.right){
-      const rv=rmax*(1-t/4);
+      const rv=rminz+(rmax-rminz)*(1-t/4);
       g+='<text x="'+(W-PR+5)+'" y="'+(gy+3.5).toFixed(1)+'" text-anchor="start" font-size="9.5" fill="#9aa1ad">'+esc(cfg.fmtR?cfg.fmtR(rv):lsPct(rv))+'</text>';
     }
   }
@@ -20906,20 +20917,22 @@ function lsPlot(cfg){
   /* 线 */
   lines.forEach(function(s,si){
     const yy=(s.axis==='r')?yr:y;
+    /* 聚焦：点击图例/圈号只高亮一个维度，其余淡化；口径只写注释不上界面。 */
+    const dim=(cfg.focusIdx!=null&&cfg.focusIdx!==''&&String(cfg.focusIdx)!==String(si)),dop=dim?0.10:1;
     /* singleSpread: 首期只有 1 个批次时，把各维度的点沿 x 轴错开，避免圆点/圈号叠成一团；
        满 2 期起恢复共 x，自然连成折线。仅传 singleSpread:true 的趋势图生效。 */
-    const sdx=(cfg.singleSpread&&n===1)?((si-(lines.length-1)/2)*Math.min(30,iw/Math.max(2,lines.length))):0;
+    const sdx=(cfg.singleSpread&&n===1)?((si-(lines.length-1)/2)*(iw/Math.max(2,lines.length))):0;
     const pts=s.vals.map(function(v,i){return (v==null||!isFinite(v))?null:[cx(i)+sdx,yy(v)];});
     let seg=[];
     const flush=function(){
-      if(seg.length>1)g+='<polyline points="'+seg.map(function(p){return p[0].toFixed(1)+','+p[1].toFixed(1);}).join(' ')+'" fill="none" stroke="'+s.color+'" stroke-width="'+(s.w||1.8)+'" stroke-linejoin="round" stroke-linecap="round"'+(s.dash?' stroke-dasharray="'+s.dash+'"':'')+'/>';
+      if(seg.length>1)g+='<polyline points="'+seg.map(function(p){return p[0].toFixed(1)+','+p[1].toFixed(1);}).join(' ')+'" fill="none" stroke="'+s.color+'" stroke-width="'+(s.w||1.8)+'" stroke-linejoin="round" stroke-linecap="round"'+(s.dash?' stroke-dasharray="'+s.dash+'"':'')+' opacity="'+dop+'" data-lsf="'+si+'"/>';
       seg=[];
     };
     pts.forEach(function(p){if(p)seg.push(p);else flush();});
     flush();
     pts.forEach(function(p,i){
       if(!p)return;
-      if(!(cfg.singleSpread&&n===1))g+='<circle cx="'+p[0].toFixed(1)+'" cy="'+p[1].toFixed(1)+'" r="2.4" fill="#fff" stroke="'+s.color+'" stroke-width="1.5"><title>'+esc(labels[i]+' · '+s.name+' '+(s.fmt?s.fmt(s.vals[i],i):lsPct(s.vals[i])))+'</title></circle>';
+      if(!(cfg.singleSpread&&n===1))g+='<circle cx="'+p[0].toFixed(1)+'" cy="'+p[1].toFixed(1)+'" r="2.4" fill="#fff" stroke="'+s.color+'" stroke-width="1.5" opacity="'+dop+'" data-lsf="'+si+'"><title>'+esc(labels[i]+' · '+s.name+' '+(s.fmt?s.fmt(s.vals[i],i):lsPct(s.vals[i])))+'</title></circle>';
       if(cfg.labelLine&&(n<=8||i===n-1||cfg.hLabels)){
         /* 末点标签居中放在点上方：改成 end 会压到前一个点的数值，start 又会被 SVG 右边界裁掉 */
         const lEnd=(i===n-1);
@@ -20927,15 +20940,15 @@ function lsPlot(cfg){
         const solo=(cfg.singleSpread&&n===1);
         const lx=solo?(p[0]+5):(p[0]+(lEnd?0:6));
         const ly=solo?Math.min(PT+ih-4,p[1]+20):Math.max(PT+13,p[1]+(lEnd?-9:(cfg.labelLineDy==null?-6:cfg.labelLineDy)));
-        gLineLabels+='<text x="'+lx.toFixed(1)+'" y="'+ly.toFixed(1)+'" text-anchor="'+(solo?'middle':(lEnd?'middle':'start'))+'" font-size="10" font-weight="700" fill="'+s.color+'" paint-order="stroke" stroke="#ffffff" stroke-width="2.4" stroke-linejoin="round">'+esc(s.labelFmt?s.labelFmt(s.vals[i]):(s.fmt?s.fmt(s.vals[i]):lsPct(s.vals[i])))+'</text>';
+        gLineLabels+='<text x="'+lx.toFixed(1)+'" y="'+ly.toFixed(1)+'" text-anchor="'+(solo?'middle':(lEnd?'middle':'start'))+'" font-size="10" font-weight="700" fill="'+s.color+'" opacity="'+dop+'" paint-order="stroke" stroke="#ffffff" stroke-width="2.4" stroke-linejoin="round">'+esc(s.labelFmt?s.labelFmt(s.vals[i]):(s.fmt?s.fmt(s.vals[i]):lsPct(s.vals[i])))+'</text>';
       }
     });
     if(cfg.lineBadge&&s.badge){
       let li=-1;for(let k=pts.length-1;k>=0;k--){if(pts[k]){li=k;break;}}
       if(li>=0){
         const bp=pts[li],bx=bp[0]+10+(s.badge.length>1?4:0),by=bp[1];
-        g+='<circle cx="'+bx.toFixed(1)+'" cy="'+by.toFixed(1)+'" r="9" fill="'+s.color+'" stroke="#fff" stroke-width="1.6"><title>'+esc(s.name+' 最新 '+(s.fmt?s.fmt(s.vals[li]):''))+'</title></circle>';
-        g+='<text x="'+bx.toFixed(1)+'" y="'+(by+3.6).toFixed(1)+'" text-anchor="middle" font-size="10.5" font-weight="700" fill="#fff">'+esc(s.badge)+'</text>';
+        g+='<circle cx="'+bx.toFixed(1)+'" cy="'+by.toFixed(1)+'" r="9" fill="'+s.color+'" stroke="#fff" stroke-width="1.6" opacity="'+dop+'" data-lsfocus="'+si+'" style="cursor:pointer"><title>'+esc(s.name+'（点击只看此线） 最新 '+(s.fmt?s.fmt(s.vals[li]):''))+'</title></circle>';
+        g+='<text x="'+bx.toFixed(1)+'" y="'+(by+3.6).toFixed(1)+'" text-anchor="middle" font-size="10.5" font-weight="700" fill="#fff" opacity="'+dop+'" data-lsfocus="'+si+'" style="cursor:pointer">'+esc(s.badge)+'</text>';
       }
     }
   });
@@ -20954,7 +20967,7 @@ function lsPlot(cfg){
     const lx=cx(i).toFixed(1),ly=(rotAll?H-5:H-6);
     if(cfg.hLabels){
       /* 项数多时改为横向平排 + 超长截断（全名进 title），配合固定每项宽度横向滚动，不再挤成一片斜字 */
-      const full=String(lb),cut=full.length>6?full.slice(0,6)+'…':full;
+      const full=String(lb),cut=full.length>12?full.slice(0,12)+'…':full;
       g+='<text x="'+lx+'" y="'+ly+'" text-anchor="middle" font-size="9" fill="#8a8fa3"><title>'+esc(full)+'</title>'+esc(cut)+'</text>';
     }else if(rotAll){
       g+='<text x="'+lx+'" y="'+ly+'" text-anchor="end" font-size="8.5" fill="#8a8fa3" transform="rotate(-42 '+lx+' '+ly+')">'+esc(lb)+'</text>';
@@ -20962,7 +20975,7 @@ function lsPlot(cfg){
       g+='<text x="'+lx+'" y="'+ly+'" text-anchor="middle" font-size="9.5" fill="#8a8fa3">'+esc(lb)+'</text>';
     }
   });
-  return '<svg viewBox="0 0 '+W+' '+H+'" preserveAspectRatio="xMidYMid meet" style="display:block;width:'+(cfg.pxW?(cfg.pxW+'px'):'100%')+';height:auto">'+g+'</svg>';
+  return '<svg viewBox="0 0 '+W+' '+H+'" preserveAspectRatio="'+(cfg.fixH?'none':'xMidYMid meet')+'" style="display:block;width:'+(cfg.pxW?(cfg.pxW+'px'):'100%')+';height:'+(cfg.fixH?(cfg.fixH+'px'):'auto')+'">'+g+'</svg>';
 }
 function lsLegend(items){
   return '<div class="ls-legend">'+items.map(function(x){
@@ -21232,10 +21245,10 @@ function lsInner(){
       const trend=lsDimTrend(kind,lsDonutMode,trendKeys);
       let trendHtml='<div class="ls-sub" style="margin:0 0 4px">各'+dimLabel+'退款率趋势 · 按上传批次</div>';
       if(trend.pts>=1){
-        trendHtml+=lsPlot({labels:trend.labels,w:470,h:226,right:true,noLeft:true,lineBadge:true,labelLine:true,singleSpread:true,lines:trend.lines,
+        trendHtml+=lsPlot({labels:trend.labels,w:549,h:228,fixH:228,rMin:'auto',focusIdx:lsFocus,right:true,noLeft:true,lineBadge:true,labelLine:true,singleSpread:true,lines:trend.lines,
             fmtR:function(v){return (Math.round(v*10)/10)+'%';}})
-          +'<div class="ls-trend-key">'+trend.lines.map(function(l){
-              return '<span style="color:'+l.color+'" title="'+esc(l.name+' 最新 '+(l.fmt&&l.vals.length?l.fmt(l.vals[l.vals.length-1]):''))+'"><i></i><b style="color:#5b6270;font-weight:400">'+esc(l.name)+'</b></span>';
+          +'<div class="ls-trend-key">'+trend.lines.map(function(l,li){
+              return '<span data-lsfocus="'+li+'" class="'+(String(lsFocus)===String(li)?'on':'')+'" style="color:'+l.color+';cursor:pointer" title="'+esc(l.name+' 最新 '+(l.fmt&&l.vals.length?l.fmt(l.vals[l.vals.length-1]):''))+'"><i></i><b style="color:#5b6270;font-weight:400">'+esc(l.name)+'</b></span>';
             }).join('')+'</div>';
       }else{
         trendHtml+='<div class="ls-empty">历史批次不足（当前 '+trend.pts+' 期）—— 每次上传汇总表累积一期，满 2 期后自动显示折线</div>';
@@ -21307,7 +21320,7 @@ function lsInner(){
     /* 站点多时每个站点固定 66px 画到宽画布里、外套横向滚动 → 标签全平排不叠、数值清楚（同核算小组对比页）。 */
     const sWide=siteList.length>10, sW=Math.max(660,siteList.length*66);
     const siteChart=lsLegend([['销售额',LS_C.sale],['退款额',LS_C.ref],['退款率（右轴）',LS_C.rate]])
-      +'<div class="ls-hscroll">'+lsPlot({labels:siteKeys,w:sW,h:190,right:true,tgtAxis:'r',
+      +'<div class="ls-hscroll">'+lsPlot({labels:siteKeys,w:sW,h:228,right:true,tgtAxis:'r',
           allLabels:true,hLabels:sWide,pxW:sW,
           bars:[{name:'销售额',color:LS_C.sale,vals:siteList.map(function(x){return x.sale;})},
                 {name:'退款额',color:LS_C.ref,vals:siteList.map(function(x){return x.amt;})}],
@@ -21318,10 +21331,10 @@ function lsInner(){
     const siteTrend=lsDimTrend(kind,'site',siteKeys.slice(0,10));
     let siteTrendHtml='<div class="ls-sub" style="margin:0 0 4px">各站点退款率趋势 · 按上传批次</div>';
     if(siteTrend.pts>=1){
-      siteTrendHtml+=lsPlot({labels:siteTrend.labels,w:470,h:190,right:true,noLeft:true,lineBadge:true,labelLine:true,singleSpread:true,lines:siteTrend.lines,
+      siteTrendHtml+=lsPlot({labels:siteTrend.labels,w:549,h:228,fixH:228,rMin:'auto',focusIdx:lsFocus,right:true,noLeft:true,lineBadge:true,labelLine:true,singleSpread:true,lines:siteTrend.lines,
           fmtR:function(v){return (Math.round(v*10)/10)+'%';}})
-        +'<div class="ls-trend-key">'+siteTrend.lines.map(function(l){
-            return '<span style="color:'+l.color+'" title="'+esc(l.name+' 最新 '+(l.fmt&&l.vals.length?l.fmt(l.vals[l.vals.length-1]):''))+'"><i></i><b style="color:#5b6270;font-weight:400">'+esc(l.name)+'</b></span>';
+        +'<div class="ls-trend-key">'+siteTrend.lines.map(function(l,li){
+            return '<span data-lsfocus="'+li+'" class="'+(String(lsFocus)===String(li)?'on':'')+'" style="color:'+l.color+';cursor:pointer" title="'+esc(l.name+' 最新 '+(l.fmt&&l.vals.length?l.fmt(l.vals[l.vals.length-1]):''))+'"><i></i><b style="color:#5b6270;font-weight:400">'+esc(l.name)+'</b></span>';
           }).join('')+'</div>';
     }else{
       siteTrendHtml+='<div class="ls-empty">历史批次不足（当前 '+siteTrend.pts+' 期）—— 每次上传汇总表累积一期，满 2 期后自动显示折线</div>';
