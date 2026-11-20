@@ -20747,7 +20747,8 @@ function lsNice(v){
 }
 function lsPlot(cfg){
   const labels=cfg.labels||[],n=labels.length||1;
-  const W=cfg.w||900,H=cfg.h||205,PL=(cfg.noLeft?8:46),PR=(cfg.right?44:8),PT=12,PB=22;
+  const rotAll=!!(cfg.allLabels&&n>12);
+  const W=cfg.w||900,H=cfg.h||205,PL=(cfg.noLeft?8:46),PR=(cfg.right?44:8),PT=12,PB=rotAll?48:(cfg.pb||22);
   const iw=Math.max(60,W-PL-PR),ih=Math.max(40,H-PT-PB);
   const bars=cfg.bars||[],lines=cfg.lines||[];
   let lmax=0;
@@ -20803,9 +20804,9 @@ function lsPlot(cfg){
     flush();
     pts.forEach(function(p,i){
       if(!p)return;
-      g+='<circle cx="'+p[0].toFixed(1)+'" cy="'+p[1].toFixed(1)+'" r="2.4" fill="#fff" stroke="'+s.color+'" stroke-width="1.5"><title>'+esc(labels[i]+' · '+s.name+' '+(s.fmt?s.fmt(s.vals[i]):lsPct(s.vals[i])))+'</title></circle>';
+      g+='<circle cx="'+p[0].toFixed(1)+'" cy="'+p[1].toFixed(1)+'" r="2.4" fill="#fff" stroke="'+s.color+'" stroke-width="1.5"><title>'+esc(labels[i]+' · '+s.name+' '+(s.fmt?s.fmt(s.vals[i],i):lsPct(s.vals[i])))+'</title></circle>';
       if(cfg.labelLine&&(n<=8||i===n-1)){
-        g+='<text x="'+(p[0]+6).toFixed(1)+'" y="'+(p[1]+(cfg.labelLineDy==null?-6:cfg.labelLineDy)).toFixed(1)+'" text-anchor="start" font-size="10" font-weight="700" fill="'+s.color+'">'+esc(s.fmt?s.fmt(s.vals[i]):lsPct(s.vals[i]))+'</text>';
+        g+='<text x="'+(p[0]+6).toFixed(1)+'" y="'+(p[1]+(cfg.labelLineDy==null?-6:cfg.labelLineDy)).toFixed(1)+'" text-anchor="start" font-size="10" font-weight="700" fill="'+s.color+'">'+esc(s.labelFmt?s.labelFmt(s.vals[i]):(s.fmt?s.fmt(s.vals[i]):lsPct(s.vals[i])))+'</text>';
       }
     });
   });
@@ -20818,8 +20819,11 @@ function lsPlot(cfg){
   /* x 轴标签 */
   const step=Math.ceil(n/12);
   labels.forEach(function(lb,i){
-    if(n>12&&i%step!==0&&i!==n-1)return;
-    g+='<text x="'+cx(i).toFixed(1)+'" y="'+(H-6)+'" text-anchor="middle" font-size="9.5" fill="#8a8fa3">'+esc(lb)+'</text>';
+    if(!cfg.allLabels&&n>12&&i%step!==0&&i!==n-1)return;
+    const lx=cx(i).toFixed(1),ly=(rotAll?H-5:H-6);
+    g+=rotAll
+      ? '<text x="'+lx+'" y="'+ly+'" text-anchor="end" font-size="8.5" fill="#8a8fa3" transform="rotate(-42 '+lx+' '+ly+')">'+esc(lb)+'</text>'
+      : '<text x="'+lx+'" y="'+ly+'" text-anchor="middle" font-size="9.5" fill="#8a8fa3">'+esc(lb)+'</text>';
   });
   return '<svg viewBox="0 0 '+W+' '+H+'" preserveAspectRatio="none" style="width:100%;height:'+H+'px">'+g+'</svg>';
 }
@@ -21018,15 +21022,8 @@ function lsInner(){
     if(!dimList.length){
       cmpPage='<div class="ls-empty">该维度暂无汇总表数据 —— 到「AMZ汇总表 · ⬆ 上传指标数据源」上传后自动出现</div>';
     }else{
-      const cmpChart=lsLegend([['销售额',LS_C.sale],['退款额',LS_C.ref],['退款率（右轴）',LS_C.rate]])
-        +lsPlot({labels:dimList.map(function(x){return x.k;}),h:220,right:true,tgtAxis:'r',
-          bars:[{name:'销售额',color:LS_C.sale,vals:dimList.map(function(x){return x.sale;})},
-                {name:'退款额',color:LS_C.ref,vals:dimList.map(function(x){return x.amt;})}],
-          lines:[{name:'退款率',color:LS_C.rate,vals:dimList.map(function(x){return x.rate==null?null:x.rate*100;}),axis:'r',w:2,fmt:function(v){return lsPct(v/100);}}],
-          fmtL:lsMoney,fmtR:function(v){return (v>=10?Math.round(v):Math.round(v*10)/10)+'%';},
-          fmtTip:function(nm,v){return (nm==='销售额'||nm==='退款额')?lsMoney(v):lsPct(v/100);},
-          labelFmt:dimList.length<=6?lsMoney:null,labelLine:dimList.length<=6,labelLineDy:-14});
-      /* 较上次 = 上一次上传的同维度值；历史均值 = 此前各次上传的同维度均值。历史快照缺失则显示「—」。 */
+      /* 较上次 = 上一次上传的同维度值；历史均值 = 此前各次上传的同维度均值。
+         不再单独成表：直接并入对比图悬浮提示（柱/折线 title）。历史快照缺失显示「—」。 */
       const dimHist=function(key){
         const f=(lsDonutMode==='group'?'gp':'rg');
         const hs=((baoMetaOf(kind).hist)||[]).filter(function(e){return e&&e[f]&&e[f][key];});
@@ -21035,13 +21032,7 @@ function lsInner(){
           return {sale:s,amt:r,rate:s>0?r/s:null};
         });
       };
-      const tone=function(good){return good===true?'#1f8a5b':(good===false?'#d93b2b':'#8993a1');};
-      const cell=function(main,d,a){
-        return '<div style="font-variant-numeric:tabular-nums">'+main+'</div>'
-          +'<div style="font-size:10.5px;color:'+tone(d.good)+'">较上次 '+d.t+'</div>'
-          +'<div style="font-size:10.5px;color:'+tone(a.good)+'">历史均值 '+a.t+'</div>';
-      };
-      const rows=dimList.map(function(x){
+      const dInfo=dimList.map(function(x){
         const hs=dimHist(x.k),last=hs.length>1?hs[hs.length-2]:null;
         const base=hs.length>1?hs.slice(0,-1):[];
         const avg=function(k){
@@ -21050,13 +21041,29 @@ function lsInner(){
           if(!vs.length)return null;
           return vs.reduce(function(s,v){return s+v;},0)/vs.length;
         };
-        return '<tr>'
-          +'<td style="text-align:left;font-weight:600;color:#333b47">'+esc(x.k)+'</td>'
-          +'<td>'+cell(lsKpiVal('sale',x.sale),lsKpiDiff(x.sale,last?last.sale:null,'sale',true),lsKpiCmp(x.sale,avg('sale'),'sale',true))+'</td>'
-          +'<td>'+cell(lsKpiVal('ref',x.amt),lsKpiDiff(x.amt,last?last.amt:null,'ref',false),lsKpiCmp(x.amt,avg('amt'),'ref',false))+'</td>'
-          +'<td>'+cell(lsKpiVal('rate',x.rate),lsKpiDiff(x.rate,last?last.rate:null,'rate',false),lsKpiCmp(x.rate,avg('rate'),'rate',false))+'</td>'
-          +'</tr>';
-      }).join('');
+        return {sale:lsKpiDiff(x.sale,last?last.sale:null,'sale',true).t,
+          saleAvg:lsKpiCmp(x.sale,avg('sale'),'sale',true).t,
+          ref:lsKpiDiff(x.amt,last?last.amt:null,'ref',false).t,
+          refAvg:lsKpiCmp(x.amt,avg('amt'),'ref',false).t,
+          rate:lsKpiDiff(x.rate,last?last.rate:null,'rate',false).t,
+          rateAvg:lsKpiCmp(x.rate,avg('rate'),'rate',false).t};
+      });
+      const tipOf=function(nm,v,i){
+        const inf=dInfo[i]||{};
+        let kk='rate';
+        if(nm==='销售额')kk='sale';else if(nm==='退款额')kk='ref';
+        const base=(kk==='rate')?lsPct(v/100):lsMoney(v);
+        return base+' · 较上次 '+(inf[kk]||'—')+' · 历史均值 '+(inf[kk+'Avg']||'—');
+      };
+      const cmpChart=lsLegend([['销售额',LS_C.sale],['退款额',LS_C.ref],['退款率（右轴）',LS_C.rate]])
+        +lsPlot({labels:dimList.map(function(x){return x.k;}),h:(dimList.length>12?252:220),right:true,tgtAxis:'r',allLabels:true,
+          bars:[{name:'销售额',color:LS_C.sale,vals:dimList.map(function(x){return x.sale;})},
+                {name:'退款额',color:LS_C.ref,vals:dimList.map(function(x){return x.amt;})}],
+          lines:[{name:'退款率',color:LS_C.rate,vals:dimList.map(function(x){return x.rate==null?null:x.rate*100;}),axis:'r',w:2,
+            fmt:function(v,i){return tipOf('退款率',v,i);},labelFmt:function(v){return lsPct(v/100);}}],
+          fmtL:lsMoney,fmtR:function(v){return (v>=10?Math.round(v):Math.round(v*10)/10)+'%';},
+          fmtTip:tipOf,
+          labelFmt:dimList.length<=12?lsMoney:null,labelLine:dimList.length<=12,labelLineDy:-14});
       /* 历史趋势线：按上传批次，每个维度项一条折线 */
       const trend=lsDimTrend(kind,lsDonutMode,dimList.map(function(x){return x.k;}));
       let trendHtml='<div class="ls-sub" style="margin:14px 0 4px">各'+dimLabel+'退款率趋势 · 按上传批次</div>';
@@ -21067,43 +21074,7 @@ function lsInner(){
       }else{
         trendHtml+='<div class="ls-empty">历史批次不足（当前 '+trend.pts+' 期）—— 每次上传汇总表累积一期，满 2 期后自动显示折线</div>';
       }
-      /* 报损情况表：区域 / 团队 / 站点 维度切换 */
-      const scopes=[['region','区域'],['group','团队'],['site','站点']];
-      const scopeBtns='<span class="ls-lv">'+scopes.map(function(s){
-        return '<button data-lslossscope="'+s[0]+'" class="'+(lsLossScope===s[0]?'on':'')+'">'+s[1]+'</button>';
-      }).join('')+'</span>';
-      const scopeLabel=(scopes.filter(function(s){return s[0]===lsLossScope;})[0]||[])[1]||'区域';
-      const scopeRows=lsLossScopeRows(kind,lsLossScope);
-      const lossRows=scopeRows.map(function(x){
-        return '<tr><td style="text-align:left;font-weight:600;color:#333b47">'+esc(x.k)+'</td>'
-          +'<td class="num">'+lsMoney(x.sale)+'</td><td class="num">'+lsNum(x.ord)+'</td>'
-          +'<td class="num ls-ref">'+lsMoney(x.ref)+'</td><td class="num">'+lsNum(x.rqty)+'</td>'
-          +'<td class="num"><b>'+lsPct(x.rate)+'</b></td></tr>';
-      }).join('');
-      const lossTable='<div style="min-width:0"><div class="ls-sub" style="margin:0 0 4px;display:flex;align-items:center;gap:10px">报损情况表 '+scopeBtns+'</div>'
-        +'<div class="ls-tblwrap"><table class="hk-tbl ls-tbl"><thead><tr>'
-        +'<th style="text-align:left;width:92px">'+scopeLabel+'</th><th>销售额</th><th>订单量</th><th>退款额</th><th>退款量</th><th>退款率</th>'
-        +'</tr></thead><tbody>'+(lossRows||'<tr><td colspan="6" class="dim">当前筛选下无数据</td></tr>')+'</tbody></table></div></div>';
-      /* 一级分类报损 Top20：团队×一级分类，按退款率降序 */
-      const top20=lsCatTop20();
-      const topRows=top20.map(function(x,i){
-        return '<tr><td class="ls-rk">'+(i+1)+'</td>'
-          +'<td style="text-align:left">'+esc(x.g)+'</td><td style="text-align:left">'+esc(x.c)+'</td>'
-          +'<td class="num">'+lsMoney(x.sale)+'</td><td class="num ls-ref">'+lsMoney(x.amt)+'</td>'
-          +'<td class="num">'+lsNum(x.rqty)+'</td><td class="num"><b>'+lsPct(x.rate)+'</b></td></tr>';
-      }).join('');
-      const topTable='<div style="min-width:0"><div class="ls-sub" style="margin:0 0 4px">一级分类报损 Top20 · 按退款率</div>'
-        +'<div class="ls-tblwrap"><table class="hk-tbl ls-tbl"><thead><tr>'
-        +'<th style="width:34px">#</th><th style="text-align:left">团队</th><th style="text-align:left">一级分类</th>'
-        +'<th>销售额</th><th>退款额</th><th>退款量</th><th>退款率</th>'
-        +'</tr></thead><tbody>'+(topRows||'<tr><td colspan="7" class="dim">当前筛选下无退款明细</td></tr>')+'</tbody></table></div></div>';
-      cmpPage=cmpChart
-        +'<div class="ls-sub" style="margin:12px 0 4px">各'+dimLabel+'对比 · 较上次 / 历史均值</div>'
-        +'<div class="ls-tblwrap"><table class="hk-tbl ls-tbl"><thead><tr>'
-        +'<th style="text-align:left;width:130px">'+dimLabel+'</th><th>销售额</th><th>退款额</th><th>退款率</th>'
-        +'</tr></thead><tbody>'+rows+'</tbody></table></div>'
-        +trendHtml
-        +'<div class="ls-row2">'+lossTable+topTable+'</div>';
+      cmpPage=cmpChart+trendHtml;
     }
   }
   /* 品类透视 */
