@@ -20657,7 +20657,7 @@ function lsPlot(cfg){
       s.vals.forEach(function(v,i){
         if(!(v>0))return;
         const h=(ih*v/(lmax||1)),x0=cx(i)-bw*bc/2+bw*si;
-        g+='<rect x="'+x0.toFixed(1)+'" y="'+(PT+ih-h).toFixed(1)+'" width="'+(bw-1.2).toFixed(1)+'" height="'+h.toFixed(1)+'" rx="1.6" fill="'+s.color+'" opacity="'+(s.op==null?0.92:s.op)+'"><title>'+esc(labels[i]+' · '+s.name+' '+(cfg.fmtTip?cfg.fmtTip(s.name,v):(cfg.fmtL?cfg.fmtL(v):lsMoney(v))))+'</title></rect>';
+        g+='<rect x="'+x0.toFixed(1)+'" y="'+(PT+ih-h).toFixed(1)+'" width="'+(bw-1.2).toFixed(1)+'" height="'+h.toFixed(1)+'" rx="1.6" fill="'+s.color+'" opacity="'+(s.op==null?0.92:s.op)+'"><title>'+esc(labels[i]+' · '+s.name+' '+(cfg.fmtTip?cfg.fmtTip(s.name,v,i):(cfg.fmtL?cfg.fmtL(v):lsMoney(v))))+'</title></rect>';
       });
     });
   }
@@ -20846,62 +20846,36 @@ function lsInner(){
     +kpi('账号退款达标率',lsKpiVal('std',SD.rate),'std',M.std.d,M.std.avg,
       '不达标率 '+lsPct(badRate)+' · 不达标 '+SD.bad+' 个')
     +'</div>';
-  /* 图一：报损规模（销售额 / 退款额 / 订单量 / 退款量 四柱）+ 退款率折线。
-     数据源 = AMZ汇总表每次上传的快照（滚动30次，第31次删最老）；不足2期回落到明细期间序列。 */
+  /* 图一：报损规模（销售额 / 退款额 两柱 + 退款率折线）。
+     订单量 / 退款量不占柱，只在悬浮销售额 / 退款额时并列显示。
+     数据源 = AMZ汇总表每次上传的快照（滚动30次，第31次删最老），不再回落到退款明细；
+     最新一期用上方 KPI 同口径的 lsAccountSum 覆盖，保证图与卡片完全一致。口径只写注释，不上界面。 */
   const US=lsUpdateSeries(kind);
-  const U=(US.length>=2)?US:P.map(function(x){return {lab:x.lab,sale:x.sale,amt:x.amt,ordn:x.ordn,rqty:x.rqty,rate:x.rate,ok:x.ok,bad:x.bad};});
+  let U=US.slice();
+  if(U.length){
+    const last=U.length-1;
+    U[last]=Object.assign({},U[last],{sale:A.sale,amt:A.ref,ordn:A.ord,rqty:A.rqty,rate:sumRate});
+  }else if(A.sale||A.ref||A.ord||A.rqty){
+    U=[{lab:String(baoMetaDate(kind)||'最新').slice(5),sale:A.sale,amt:A.ref,
+      ordn:A.ord,rqty:A.rqty,rate:sumRate,ok:SD.ok,bad:SD.bad}];
+  }
   const labels=U.map(function(x){return x.lab;});
   let chart1='';
   if(U.length){
-    chart1=lsLegend([['销售额',LS_C.sale],['退款额',LS_C.ref],['订单量',LS_C.ord],['退款量',LS_C.rqty],['退款率（右轴）',LS_C.rate]])
+    chart1=lsLegend([['销售额',LS_C.sale],['退款额',LS_C.ref],['退款率（右轴）',LS_C.rate]])
       +lsPlot({labels:labels,h:206,right:true,tgtAxis:'r',
         bars:[{name:'销售额',color:LS_C.sale,vals:U.map(function(x){return x.sale;})},
-              {name:'退款额',color:LS_C.ref,vals:U.map(function(x){return x.amt;})},
-              {name:'订单量',color:LS_C.ord,vals:U.map(function(x){return x.ordn;})},
-              {name:'退款量',color:LS_C.rqty,vals:U.map(function(x){return x.rqty;})}],
+              {name:'退款额',color:LS_C.ref,vals:U.map(function(x){return x.amt;})}],
         lines:[{name:'退款率',color:LS_C.rate,vals:U.map(function(x){return x.rate==null?null:x.rate*100;}),axis:'r',w:2,fmt:function(v){return lsPct(v/100);}}],
         fmtL:lsMoney,fmtR:function(v){return (v>=10?Math.round(v):Math.round(v*10)/10)+'%';},
-        fmtTip:function(nm,v){return (nm==='销售额'||nm==='退款额')?lsMoney(v):(nm==='退款率'?lsPct(v/100):lsNum(v));}});
+        fmtTip:function(nm,v,i){
+          if(nm==='销售额')return lsMoney(v)+' · 订单量 '+lsNum((U[i]||{}).ordn||0);
+          if(nm==='退款额')return lsMoney(v)+' · 退款量 '+lsNum((U[i]||{}).rqty||0);
+          return lsPct(v/100);
+        }});
   }else{
-    chart1='<div class="ls-empty">还没有可用的报损数据 —— 到「AMZ汇总表 · ⬆ 上传指标数据源」上传退款明细 / 账号报损后这里会自动出现</div>';
+    chart1='<div class="ls-empty">还没有可用的报损数据 —— 到「AMZ汇总表 · ⬆ 上传指标数据源」上传账号报损后这里会自动出现</div>';
   }
-  /* 图二 / 图三：退款明细「问题归类」交叉趋势（最多30次更新）。
-     口径：Top5 名称取当前明细中该归类的退款原因 / 物流渠道计数前5；历史每期用该期 dims
-     同名计数连成趋势（历史 dims 为全局同名计数，未再按归类细分，口径只写源码注释不上界面）。 */
-  const HR=(REF.hist||[]).slice(-30);
-  const rowsNow=refBaseRows();
-  const topOf=function(cat,field,n){
-    const m={};
-    rowsNow.forEach(function(r){
-      if(String(refVal(r,'issueCat')||'').trim()!==cat)return;
-      const v=String(refVal(r,field)||'').trim();if(!v||v==='-')return;
-      m[v]=(m[v]||0)+1;
-    });
-    return Object.keys(m).sort(function(a,b){return m[b]-m[a];}).slice(0,n||5);
-  };
-  const histSeries=function(field,names){
-    return HR.map(function(h,i){
-      const d=(h.dims||{})[field]||{};
-      const o={lab:String(h.at||'').slice(5,10)||('第'+(i+1)+'次')};
-      names.forEach(function(nm){o[nm]=Number(d[nm])||0;});
-      return o;
-    });
-  };
-  const RC=['#d93b2b','#2f5fbf','#2f9e6f','#e08a2f','#8e63c0'];
-  const crossChart=function(title,cat,field){
-    const names=topOf(cat,field,5);
-    if(!names.length||HR.length<2)return '';
-    const S=histSeries(field,names);
-    const lb=S.map(function(x){return x.lab;});
-    const lines=names.map(function(nm,i){return {name:nm,color:RC[i%RC.length],vals:S.map(function(x){return x[nm];}),w:1.8};});
-    return '<div class="ls-sub">'+esc(title)+'</div>'
-      +lsLegend(names.map(function(nm,i){return [nm,RC[i%RC.length]];}))
-      +lsPlot({labels:lb,h:172,right:false,lines:lines,fmtL:function(v){return Math.round(v);}});
-  };
-  const chart2=crossChart('产品 / 开发原因 · 退款原因 Top5 趋势','产品/开发原因','refReason');
-  let chart3=crossChart('物流原因 · 退款渠道 Top5 趋势','物流原因','logi');
-  /* 物流原因的退款原因趋势（同口径，叠一张小的） */
-  const chart3b=crossChart('物流原因 · 退款原因 Top5 趋势','物流原因','refReason');
   /* 品类透视 */
   const ag=lsCatAgg();
   const lv='<span class="ls-lv">'+[['1','星耀1级'],['2','星耀2级']].map(function(x){
@@ -20957,10 +20931,6 @@ function lsInner(){
     +kpis
     +'<section class="ls-sec"><h3>一、报损规模与趋势</h3>'
     +'<div class="ls-chart">'+chart1+'</div>'
-    +((chart2||chart3)?('<div class="ls-row2">'
-    +'<div>'+chart2+'</div>'
-    +'<div>'+(chart3||chart3b)+'</div></div>'):'')
-    +(chart3&&chart3b?('<div class="ls-row2"><div>'+chart3b+'</div><div></div></div>'):'')
     +'</section>'
     +'<section class="ls-sec"><h3>二、品类报损透视 · 按灯</h3>'+tbl+'</section>'
     +'</div>';
