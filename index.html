@@ -20717,6 +20717,21 @@ function lsLossScopeRows(kind,scope){
 function lsDimTrend(kind,mode,dimKeys){
   const f=(mode==='site'?'st':(mode==='group'?'gp':'rg'));
   const hs=((baoMetaOf(kind).hist)||[]).filter(function(e){return e&&e[f];});
+  /* 首期兜底：历史批次为空时，用「当前汇总表快照」按维度聚合补一个点，先显示单个圆点；
+     以后每上传一期 hist 自动多一条，点逐期连成折线。口径只写注释不上界面。 */
+  if(!hs.length){
+    const sq=(DATA.sumBao&&DATA.sumBao[kind])||{},dm={};
+    (DATA.accounts||[]).forEach(function(a){
+      if(!a)return;
+      const k=String(a.short==null?'':a.short).trim().toUpperCase();if(!k||!sq[k])return;
+      const raw=(f==='st'?a.site:(f==='gp'?a.group:a.region));
+      const key=f==='st'?String(raw==null?'':raw).trim().toUpperCase():String(raw==null?'':raw).trim();
+      if(!key)return;
+      const t=dm[key]||(dm[key]={sale:0,ref:0});
+      t.sale+=Number(sq[k].sale)||0;t.ref+=Number(sq[k].ref)||0;
+    });
+    if(Object.keys(dm).length){const e={d:baoMetaDate(kind)||todayStr()};e[f]=dm;hs.push(e);}
+  }
   const labels=hs.map(function(e){
     const s=String(e.d||e.at||'');return s.length>=10?s.slice(5):(s||'—');
   });
@@ -20889,9 +20904,12 @@ function lsPlot(cfg){
     });
   }
   /* 线 */
-  lines.forEach(function(s){
+  lines.forEach(function(s,si){
     const yy=(s.axis==='r')?yr:y;
-    const pts=s.vals.map(function(v,i){return (v==null||!isFinite(v))?null:[cx(i),yy(v)];});
+    /* singleSpread: 首期只有 1 个批次时，把各维度的点沿 x 轴错开，避免圆点/圈号叠成一团；
+       满 2 期起恢复共 x，自然连成折线。仅传 singleSpread:true 的趋势图生效。 */
+    const sdx=(cfg.singleSpread&&n===1)?((si-(lines.length-1)/2)*Math.min(30,iw/Math.max(2,lines.length))):0;
+    const pts=s.vals.map(function(v,i){return (v==null||!isFinite(v))?null:[cx(i)+sdx,yy(v)];});
     let seg=[];
     const flush=function(){
       if(seg.length>1)g+='<polyline points="'+seg.map(function(p){return p[0].toFixed(1)+','+p[1].toFixed(1);}).join(' ')+'" fill="none" stroke="'+s.color+'" stroke-width="'+(s.w||1.8)+'" stroke-linejoin="round" stroke-linecap="round"'+(s.dash?' stroke-dasharray="'+s.dash+'"':'')+'/>';
@@ -20901,11 +20919,15 @@ function lsPlot(cfg){
     flush();
     pts.forEach(function(p,i){
       if(!p)return;
-      g+='<circle cx="'+p[0].toFixed(1)+'" cy="'+p[1].toFixed(1)+'" r="2.4" fill="#fff" stroke="'+s.color+'" stroke-width="1.5"><title>'+esc(labels[i]+' · '+s.name+' '+(s.fmt?s.fmt(s.vals[i],i):lsPct(s.vals[i])))+'</title></circle>';
+      if(!(cfg.singleSpread&&n===1))g+='<circle cx="'+p[0].toFixed(1)+'" cy="'+p[1].toFixed(1)+'" r="2.4" fill="#fff" stroke="'+s.color+'" stroke-width="1.5"><title>'+esc(labels[i]+' · '+s.name+' '+(s.fmt?s.fmt(s.vals[i],i):lsPct(s.vals[i])))+'</title></circle>';
       if(cfg.labelLine&&(n<=8||i===n-1||cfg.hLabels)){
         /* 末点标签居中放在点上方：改成 end 会压到前一个点的数值，start 又会被 SVG 右边界裁掉 */
         const lEnd=(i===n-1);
-        gLineLabels+='<text x="'+(p[0]+(lEnd?0:6)).toFixed(1)+'" y="'+Math.max(PT+13,p[1]+(lEnd?-9:(cfg.labelLineDy==null?-6:cfg.labelLineDy))).toFixed(1)+'" text-anchor="'+(lEnd?'middle':'start')+'" font-size="10" font-weight="700" fill="'+s.color+'" paint-order="stroke" stroke="#ffffff" stroke-width="2.4" stroke-linejoin="round">'+esc(s.labelFmt?s.labelFmt(s.vals[i]):(s.fmt?s.fmt(s.vals[i]):lsPct(s.vals[i])))+'</text>';
+        /* singleSpread 首期：数值标签移到点正下方居中，与右侧 badge 圈号上下分开，不再被圈号盖住 */
+        const solo=(cfg.singleSpread&&n===1);
+        const lx=solo?(p[0]+5):(p[0]+(lEnd?0:6));
+        const ly=solo?Math.min(PT+ih-4,p[1]+20):Math.max(PT+13,p[1]+(lEnd?-9:(cfg.labelLineDy==null?-6:cfg.labelLineDy)));
+        gLineLabels+='<text x="'+lx.toFixed(1)+'" y="'+ly.toFixed(1)+'" text-anchor="'+(solo?'middle':(lEnd?'middle':'start'))+'" font-size="10" font-weight="700" fill="'+s.color+'" paint-order="stroke" stroke="#ffffff" stroke-width="2.4" stroke-linejoin="round">'+esc(s.labelFmt?s.labelFmt(s.vals[i]):(s.fmt?s.fmt(s.vals[i]):lsPct(s.vals[i])))+'</text>';
       }
     });
     if(cfg.lineBadge&&s.badge){
@@ -21209,8 +21231,8 @@ function lsInner(){
       const trendKeys=dimList.slice(0,(lsDonutMode==='group'?8:dimList.length)).map(function(x){return x.k;});
       const trend=lsDimTrend(kind,lsDonutMode,trendKeys);
       let trendHtml='<div class="ls-sub" style="margin:0 0 4px">各'+dimLabel+'退款率趋势 · 按上传批次</div>';
-      if(trend.pts>=2){
-        trendHtml+=lsPlot({labels:trend.labels,w:470,h:226,right:true,noLeft:true,lineBadge:true,lines:trend.lines,
+      if(trend.pts>=1){
+        trendHtml+=lsPlot({labels:trend.labels,w:470,h:226,right:true,noLeft:true,lineBadge:true,labelLine:true,singleSpread:true,lines:trend.lines,
             fmtR:function(v){return (Math.round(v*10)/10)+'%';}})
           +'<div class="ls-trend-key">'+trend.lines.map(function(l){
               return '<span style="color:'+l.color+'" title="'+esc(l.name+' 最新 '+(l.fmt&&l.vals.length?l.fmt(l.vals[l.vals.length-1]):''))+'"><i></i><b style="color:#5b6270;font-weight:400">'+esc(l.name)+'</b></span>';
@@ -21295,8 +21317,8 @@ function lsInner(){
           fmtTip:siteTip,labelFmt:function(nm,v){return lsMoney(v);},barLabelSplit:true,labelLine:true,labelLineDy:sWide?-11:-18})+'</div>';
     const siteTrend=lsDimTrend(kind,'site',siteKeys.slice(0,10));
     let siteTrendHtml='<div class="ls-sub" style="margin:0 0 4px">各站点退款率趋势 · 按上传批次</div>';
-    if(siteTrend.pts>=2){
-      siteTrendHtml+=lsPlot({labels:siteTrend.labels,w:470,h:190,right:true,noLeft:true,lineBadge:true,lines:siteTrend.lines,
+    if(siteTrend.pts>=1){
+      siteTrendHtml+=lsPlot({labels:siteTrend.labels,w:470,h:190,right:true,noLeft:true,lineBadge:true,labelLine:true,singleSpread:true,lines:siteTrend.lines,
           fmtR:function(v){return (Math.round(v*10)/10)+'%';}})
         +'<div class="ls-trend-key">'+siteTrend.lines.map(function(l){
             return '<span style="color:'+l.color+'" title="'+esc(l.name+' 最新 '+(l.fmt&&l.vals.length?l.fmt(l.vals[l.vals.length-1]):''))+'"><i></i><b style="color:#5b6270;font-weight:400">'+esc(l.name)+'</b></span>';
