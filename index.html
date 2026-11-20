@@ -21092,8 +21092,8 @@ function lsInner(){
       const nDim=dimList.length;
       const wide=(lsDonutMode==='group')&&nDim>10;
       const cw=wide?Math.max(660,nDim*66):660;
-      const cplot=lsPlot({labels:dimList.map(function(x){return x.k;}),w:cw,h:(nDim>12?252:228),right:true,tgtAxis:'r',
-          allLabels:true,hLabels:wide,pxW:wide?cw:null,
+      const cplot=lsPlot({labels:dimList.map(function(x){return x.k;}),w:cw,h:228,right:true,tgtAxis:'r',
+          allLabels:true,hLabels:wide,pxW:cw,
           bars:[{name:'销售额',color:LS_C.sale,vals:dimList.map(function(x){return x.sale;})},
                 {name:'退款额',color:LS_C.ref,vals:dimList.map(function(x){return x.amt;})}],
           lines:[{name:'退款率',color:LS_C.rate,vals:dimList.map(function(x){return x.rate==null?null:x.rate*100;}),axis:'r',w:2,
@@ -21102,7 +21102,7 @@ function lsInner(){
           fmtTip:tipOf,
           labelFmt:(wide||nDim<=20)?function(nm,v){return lsMoney(v);}:null,labelLine:(nDim<=20&&!wide),labelLineDy:-14});
       const cmpChart=lsLegend([['销售额',LS_C.sale],['退款额',LS_C.ref],['退款率（右轴）',LS_C.rate]])
-        +(wide?('<div class="ls-hscroll">'+cplot+'</div>'):cplot);
+        +'<div class="ls-hscroll">'+cplot+'</div>';
       /* 历史趋势线：按上传批次，每个维度项一条折线 */
       const trendKeys=dimList.slice(0,(lsDonutMode==='group'?8:dimList.length)).map(function(x){return x.k;});
       const trend=lsDimTrend(kind,lsDonutMode,trendKeys);
