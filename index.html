@@ -20896,8 +20896,7 @@ function lsInner(){
     +'</tr></thead><tbody>'+rowsHtml+'</tbody></table></div>';
   return '<div class="ls-wrap">'
     +'<div class="ls-mhead"><span class="ls-bar-red"></span>'+seg
-    +'<span class="ls-scope" title="数据取自 AMZ汇总表">'+esc(K[2])+' · '+esc(win)+'</span>'
-    +'<span class="ls-src" title="AMZ汇总表该维度最近更新时间">'+esc(baoMetaDate(kind)||'—')+'</span>'
+    +'<span class="ls-scope" title="AMZ汇总表该维度最近更新时间">最新更新 '+esc(baoMetaDate(kind)||'—')+'</span>'
     +'<button class="ls-sync" data-lssync="1" title="从云端重新同步 AMZ汇总表与退款明细">同步 ↻</button></div>'
     +kpis
     +'<section class="ls-sec"><h3>一、报损规模与占比趋势</h3>'
