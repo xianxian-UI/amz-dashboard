@@ -347,14 +347,15 @@
   .ls-chart{width:100%;overflow:hidden}
   .ls-chart svg{display:block;width:100%}
   .ls-scale-row{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(300px,1fr);gap:18px;align-items:start;min-height:279px}
-  .ls-cmp-row{display:grid;grid-template-columns:minmax(0,1.45fr) minmax(0,1fr);gap:10px;align-items:start;min-height:279px}
+  .ls-cmp-row{display:grid;grid-template-columns:minmax(0,1.25fr) minmax(0,1fr);gap:10px;align-items:start;min-height:279px}
+  .ls-cmp-side{position:relative}
   @media(max-width:1200px){.ls-cmp-row{grid-template-columns:1fr}.ls-cmp-side svg{height:auto!important;preserveAspectRatio:xMidYMid meet}}
   .ls-hscroll{overflow-x:auto;overflow-y:hidden;padding-bottom:4px}
   .ls-hscroll::-webkit-scrollbar{height:8px}
   .ls-hscroll::-webkit-scrollbar-thumb{background:#d7dce5;border-radius:4px}
   .ls-hscroll::-webkit-scrollbar-track{background:#f4f6fa;border-radius:4px}
   .ls-trend-key{display:flex;flex-wrap:wrap;gap:6px 14px;font-size:11px;color:#5b6270;margin-top:9px;position:relative;padding-right:92px}
-  .ls-trend-key.fold{flex-wrap:nowrap;overflow:hidden;height:22px;position:relative;padding-right:0;margin-top:6px}.ls-trend-key.fold span{display:none}.ls-trend-key.fold .ls-key-more{left:50%;right:auto;transform:translateX(-50%)}
+  .ls-trend-key.fold{position:static;flex-wrap:nowrap;overflow:visible;height:0;padding:0;margin:0}.ls-trend-key.fold span{display:none}.ls-trend-key.fold .ls-key-more{left:auto;right:0;top:0;transform:none}
   .ls-key-more{position:absolute;right:0;top:0;display:inline-block;margin:0;padding:2px 9px;font-size:10.5px;line-height:1.4;border:1px solid #e2e5ef;border-radius:10px;background:#f7f8fc;color:#5a51cb;cursor:pointer}
   .ls-key-more:hover{background:#eef0fb}
   .ls-trend-key span{display:flex;align-items:center;gap:5px;white-space:nowrap;transition:opacity .12s}
@@ -21159,7 +21160,7 @@ function lsInner(){
   let chart1='';
   if(U.length){
     chart1=lsLegend([['销售额',LS_C.sale],['退款额',LS_C.ref],['退款率（右轴）',LS_C.rate]])
-      +lsPlot({labels:labels,h:230,right:true,tgtAxis:'r',
+      +lsPlot({labels:labels,h:253,fixH:253,right:true,tgtAxis:'r',
         bars:[{name:'销售额',color:LS_C.sale,vals:U.map(function(x){return x.sale;})},
               {name:'退款额',color:LS_C.ref,vals:U.map(function(x){return x.amt;})}],
         lines:[{name:'退款率',color:LS_C.rate,vals:U.map(function(x){return x.rate==null?null:x.rate*100;}),axis:'r',w:2,fmt:function(v){return lsPct(v/100);}}],
@@ -21239,8 +21240,8 @@ function lsInner(){
       const nDim=dimList.length;
       const wide=(lsDonutMode==='group')&&nDim>10;
       const cw=wide?Math.max(660,nDim*66):660;
-      const cplot=lsPlot({labels:dimList.map(function(x){return x.k;}),w:cw,h:(wide?253:234),right:true,tgtAxis:'r',
-          allLabels:true,hLabels:wide,pxW:(wide?cw:null),
+      const cplot=lsPlot({labels:dimList.map(function(x){return x.k;}),w:cw,h:253,right:true,tgtAxis:'r',
+          allLabels:true,hLabels:wide,pxW:cw,
           bars:[{name:'销售额',color:LS_C.sale,vals:dimList.map(function(x){return x.sale;})},
                 {name:'退款额',color:LS_C.ref,vals:dimList.map(function(x){return x.amt;})}],
           lines:[{name:'退款率',color:LS_C.rate,vals:dimList.map(function(x){return x.rate==null?null:x.rate*100;}),axis:'r',w:2,
@@ -21255,7 +21256,7 @@ function lsInner(){
       const trend=lsDimTrend(kind,lsDonutMode,trendKeys);
       let trendHtml='<div class="ls-sub" style="margin:0 0 4px">各'+dimLabel+'退款率趋势 · 按上传批次</div>';
       if(trend.pts>=1){
-        const tW=Math.max(660,trend.lines.length*66);trendHtml+='<div class="ls-hscroll">'+lsPlot({labels:trend.labels,w:tW,pxW:tW,h:228,fixH:228,rMin:'auto',focusIdx:lsFocus,right:true,noLeft:true,lineBadge:true,labelLine:true,singleSpread:true,lines:trend.lines,
+        const tW=Math.max(660,trend.lines.length*66);trendHtml+='<div class="ls-hscroll">'+lsPlot({labels:trend.labels,w:tW,pxW:tW,h:253,fixH:253,rMin:'auto',focusIdx:lsFocus,right:true,noLeft:true,lineBadge:true,labelLine:true,singleSpread:true,lines:trend.lines,
             fmtR:function(v){return (Math.round(v*10)/10)+'%';}})+'</div>'
           +'<div class="ls-trend-key'+(lsKeyOpen||trend.lines.length<=6?'':' fold')+'">'+trend.lines.map(function(l,li){
               return '<span data-lsfocus="'+li+'" class="'+(String(lsFocus)===String(li)?'on':'')+'" style="color:'+l.color+';cursor:pointer" title="'+esc(l.name+' 最新 '+(l.fmt&&l.vals.length?l.fmt(l.vals[l.vals.length-1]):''))+'"><i></i><b style="color:#5b6270;font-weight:400">'+esc(l.name)+'</b></span>';
@@ -21342,7 +21343,7 @@ function lsInner(){
     /* 趋势显示全部站点，不再截前10个；口径只写注释不上界面。 */const siteTrend=lsDimTrend(kind,'site',siteKeys);
     let siteTrendHtml='<div class="ls-sub" style="margin:0 0 4px">各站点退款率趋势 · 按上传批次</div>';
     if(siteTrend.pts>=1){
-      const stW=Math.max(660,siteTrend.lines.length*66);siteTrendHtml+='<div class="ls-hscroll">'+lsPlot({labels:siteTrend.labels,w:stW,pxW:stW,h:228,fixH:228,rMin:'auto',focusIdx:lsFocus,right:true,noLeft:true,lineBadge:true,labelLine:true,singleSpread:true,lines:siteTrend.lines,
+      const stW=Math.max(660,siteTrend.lines.length*66);siteTrendHtml+='<div class="ls-hscroll">'+lsPlot({labels:siteTrend.labels,w:stW,pxW:stW,h:253,fixH:253,rMin:'auto',focusIdx:lsFocus,right:true,noLeft:true,lineBadge:true,labelLine:true,singleSpread:true,lines:siteTrend.lines,
           fmtR:function(v){return (Math.round(v*10)/10)+'%';}})+'</div>'
         +'<div class="ls-trend-key'+(lsKeyOpen||siteTrend.lines.length<=6?'':' fold')+'">'+siteTrend.lines.map(function(l,li){
             return '<span data-lsfocus="'+li+'" class="'+(String(lsFocus)===String(li)?'on':'')+'" style="color:'+l.color+';cursor:pointer" title="'+esc(l.name+' 最新 '+(l.fmt&&l.vals.length?l.fmt(l.vals[l.vals.length-1]):''))+'"><i></i><b style="color:#5b6270;font-weight:400">'+esc(l.name)+'</b></span>';
