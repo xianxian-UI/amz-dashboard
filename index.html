@@ -349,10 +349,10 @@
   .ls-scale-row{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(300px,1fr);gap:18px;align-items:start;min-height:279px}
   .ls-cmp-row{display:grid;grid-template-columns:minmax(0,1.25fr) minmax(0,1fr);gap:10px;align-items:start;min-height:279px}
   .ls-cmp-side{position:relative}
-  @media(max-width:1200px){.ls-cmp-row{grid-template-columns:1fr}.ls-cmp-side svg{height:auto!important;preserveAspectRatio:xMidYMid meet}}
-  .ls-hscroll{overflow-x:auto;overflow-y:hidden;padding-bottom:4px}
-  .ls-hscroll::-webkit-scrollbar{height:8px}
-  .ls-hscroll::-webkit-scrollbar-thumb{background:#d7dce5;border-radius:4px}
+  @media(max-width:1200px){.ls-cmp-row{grid-template-columns:1fr}.ls-cmp-side svg{height:auto!important;preserveAspectRatio:xMidYMid meet}}
+  .ls-hscroll{overflow-x:auto;overflow-y:hidden;padding-bottom:4px}
+  .ls-hscroll::-webkit-scrollbar{height:8px}
+  .ls-hscroll::-webkit-scrollbar-thumb{background:#d7dce5;border-radius:4px}
   .ls-hscroll::-webkit-scrollbar-track{background:#f4f6fa;border-radius:4px}
   .ls-trend-key{display:flex;flex-wrap:wrap;gap:6px 14px;font-size:11px;color:#5b6270;margin-top:9px;position:relative;padding-right:92px}
   .ls-trend-key.fold{position:static;flex-wrap:nowrap;overflow:visible;height:0;padding:0;margin:0}.ls-trend-key.fold span{display:none}.ls-trend-key.fold .ls-key-more{left:auto;right:0;top:0;transform:none}
@@ -13932,14 +13932,34 @@ function baoMetaDate(k){
   const h=Array.isArray(mt.hist)?mt.hist:[];
   return h.length?String(h[h.length-1].d||'').slice(0,10):'';
 }
-/* 上传日期做一期的 key：一天只记一条（同一天多次上传就覆盖），
-   不再用文件里的 dateMax —— 否则文件覆盖区间不变时历史永远只有 1 期，环比全是「首期」 */
+/* 上传日期：没有文件日期时的兜底（不再用它做「期」的身份，见 baoPeriodOf） */
 function baoDayKey(stamp,p){
   const s=String(stamp||'').slice(0,10);
   if(/^\d{4}-\d{2}-\d{2}$/.test(s))return s;
   const dm=String((p&&p.dateMax)||'').slice(0,10);
   if(/^\d{4}-\d{2}-\d{2}$/.test(dm))return dm;
   return todayStr();
+}
+/* 一期的身份 = 文件里的数据周期（dateMax），没有日期列才退回上传日期。
+   同一天 / 同一自然周补传两个不同周期的表，必须记成两期 —— 否则按上传日归并
+   会把它们压成一期，环比恒为「首期」、悬浮也只剩一个点画不出折线图。
+   dm 是历史条目里存的数据周期；老数据没有 dm 时仍用 d（上传日）兜底。 */
+function baoPeriodOf(e){
+  const dm=String((e&&e.dm)||'').slice(0,10);
+  if(/^\d{4}-\d{2}-\d{2}$/.test(dm))return dm;
+  const d=String((e&&e.d)||'').slice(0,10);
+  if(/^\d{4}-\d{2}-\d{2}$/.test(d))return d;
+  return '';
+}
+function baoCurPeriod(k){return baoPeriodOf({dm:baoMetaOf(k).dm,d:baoMetaDate(k)});}
+/* 历史条目的去重身份：
+   · 文件带日期 → 按数据周期归并（同一周期重传覆盖，不同周期各算一期）；
+   · 文件没日期 → 每次上传各算一期（ts 区分同日多次），不再按自然周压成一期。 */
+function baoPeriodKey(kind,e){
+  const pd=baoPeriodOf(e);
+  if(!pd)return '';
+  if(kind==='m')return pd.slice(0,7);
+  return e.dm?pd:(pd+'#'+Number(e.ts||0));
 }
 /* 周 key = 该周周一（周一~周日为一周） */
 function baoWeekKey(d){
@@ -13958,26 +13978,34 @@ function baoWeekLabel(d){
   const f=function(x){return (x.getUTCMonth()+1)+'/'+String(x.getUTCDate()).padStart(2,'0');};
   return f(mon)+'-'+f(sun);
 }
-/* 按周期归并 + 只留最近 N 期：
-   日 → 一天一期（取当天最后一次）；周 → 一周只留最后一天；月 → 一月只留最早一天（≈ 1 日） */
+/* 按「期」归并 + 只留最近 N 期：
+   有数据周期的文件 → 一期 = 一个数据周期（重传覆盖，不同周期各算一期）；
+   没日期的文件 → 一期 = 一次上传（同日多次也各算一期）；
+   月视图仍按自然月归并，留该月最早的数据周期。 */
 function baoHistTrim(kind,hist){
-  const arr=(Array.isArray(hist)?hist:[]).filter(function(e){return e&&e.d;});
+  /* 把 d 归一成「数据周期」：老快照 d=上传日、dm=数据周期，这里按 dm 重标，
+     同一周补传的不同周期各占一期；同一周期重复上传仍只留最新一次。 */
+  const arr=(Array.isArray(hist)?hist:[]).map(function(e){
+    if(!e||!baoPeriodOf(e))return null;
+    const o=Object.assign({},e);o.d=baoPeriodOf(e);return o;
+  }).filter(Boolean);
   arr.sort(function(a,b){return String(a.d)<String(b.d)?-1:(String(a.d)>String(b.d)?1:0);});
-  const keyOf=function(d){
-    d=String(d||'');
-    if(kind==='w')return baoWeekKey(d);
-    if(kind==='m')return d.slice(0,7);
-    return d.slice(0,10);
-  };
+  const newer=function(a,b){return Number(a.ts||0)>=Number(b.ts||0);};
   const pick={},order=[];
   arr.forEach(function(e){
-    const kk=keyOf(e.d),cur=pick[kk];
+    const kk=baoPeriodKey(kind,e),cur=pick[kk];
     if(!cur){pick[kk]=e;order.push(kk);return;}
-    if(kind==='m'){ if(String(e.d)<String(cur.d))pick[kk]=e; }   /* 月：留当月最早一天 */
-    else{ if(String(e.d)>String(cur.d))pick[kk]=e; }             /* 日 / 周：留最新一天 */
+    if(kind==='m'){
+      if(String(e.d)<String(cur.d)||(String(e.d)===String(cur.d)&&newer(e,cur)))pick[kk]=e;
+    }else{
+      if(String(e.d)>String(cur.d)||(String(e.d)===String(cur.d)&&newer(e,cur)))pick[kk]=e;
+    }
   });
   const out=order.map(function(kk){return pick[kk];});
-  out.sort(function(a,b){return String(a.d)<String(b.d)?-1:1;});
+  out.sort(function(a,b){
+    if(String(a.d)!==String(b.d))return String(a.d)<String(b.d)?-1:1;
+    return Number(a.ts||0)-Number(b.ts||0);
+  });
   return out.slice(-(BAO_KEEP_N[kind]||12));
 }
 function baoHistOf(k){
@@ -14026,11 +14054,15 @@ function baoPushHist(kind,recs,p,stamp){
     if(gp)add(hgp,gp,rec,ok,bad);
     if(st)add(hst,st,rec,ok,bad);
   });
-  const d=baoDayKey(stamp,p);
+  /* 一期 = 文件里的数据周期（dateMax），没有日期列才退回上传日期；
+     同一天补传两个不同周期的表因此会记成两期，环比与趋势都按数据周期走。 */
+  const d=baoPeriodOf({dm:p&&p.dateMax,d:baoDayKey(stamp,p)});
+  const fdm=String((p&&p.dateMax)||'').slice(0,10);
+  const hasDm=/^\d{4}-\d{2}-\d{2}$/.test(fdm);
   const pb=(qm&&qm.part&&qm.part[wf])||{};
   let partP=0,partN=0;
   Object.keys(pb).forEach(function(k){const v=pb[k]||[];partP+=Number(v[0])||0;partN+=Number(v[1])||0;});
-  const ent={d:d,at:stamp||'',ts:Date.now(),dm:String((p&&p.dateMax)||''),all:all,ld:hld,cs:hcs,partP:partP,partN:partN,rg:hrg,gp:hgp,st:hst};
+  const ent={d:d,at:stamp||'',ts:Date.now(),dm:hasDm?d:'',all:all,ld:hld,cs:hcs,partP:partP,partN:partN,rg:hrg,gp:hgp,st:hst};
   /* 每次上传记一条（同日多次也算一次更新），滚动保留最近 BAO_KEEP_N 条，第 31 次自动删最老 */
   hist.push(ent);
   mt.hist=hist.slice(-(BAO_KEEP_N[kind]||30));
@@ -14195,9 +14227,9 @@ function baoWowSeries(dim,kind,name,curRate){
   const h=baoHistSeries(dim,kind,name,'rate');
   const s=h.map(function(x){return x.v;});
   if(curRate!=null){
-    const at=String(baoMetaOf(dim).at||'');
-    const last=h[h.length-1];
-    if(last&&String(last.at||'')===at&&s.length)s[s.length-1]=curRate;
+    /* 本期身份按数据周期（dm），不是上传时间 —— 同一天补传旧周期时不能把新周期的值写进旧点 */
+    const cp=baoCurPeriod(dim),last=h[h.length-1];
+    if(cp&&last&&String(last.d)===cp&&s.length)s[s.length-1]=curRate;
     else s.push(curRate);
   }
   return s;
@@ -14249,11 +14281,7 @@ function baoTrendKey(x,metric,dim){
   if(BAO_TR[key])return key;
   const cur=x.st[dim]||{};
   const at=String(baoMetaOf(dim).at||'');
-  const curDate=baoMetaDate(dim);
-  const kOf=function(d){
-    d=String(d||'');
-    return dim==='m'?d.slice(0,7):(dim==='w'?baoWeekKey(d):d.slice(0,10));
-  };
+  const cp=baoCurPeriod(dim);
   const build=function(m){
     const pts=baoHistSeries(dim,x.kind,x.name,m);
     let cv=null;
@@ -14264,11 +14292,10 @@ function baoTrendKey(x,metric,dim){
     else if(m==='sale')cv=cur.sale;
     else if(m==='amt')cv=cur.ref;
     else cv=cur.rate;
-    if(cv!=null&&cv!==0&&curDate){
-      const last=pts[pts.length-1],has=kOf(curDate);
-      if(last&&kOf(last.d)===has)last.v=cv;
-      else if(dim!=='m')pts.push({d:curDate,at:at,v:cv});
-      else if(!pts.some(function(p){return kOf(p.d)===has;}))pts.push({d:curDate,at:at,v:cv});
+    if(cv!=null&&cv!==0&&cp){
+      const last=pts[pts.length-1];
+      if(last&&String(last.d)===cp)last.v=cv;
+      else if(!pts.some(function(p){return String(p.d)===cp;}))pts.push({d:cp,at:at,v:cv});
     }
     if(pts.length>(BAO_KEEP_N[dim]||12))pts=pts.slice(-(BAO_KEEP_N[dim]||12));
     return pts;
@@ -14293,7 +14320,7 @@ function baoSparkHtml(t){
   };
   const head='<div class="bao-tip-hd"><span>'+esc(t.nm||'')+'</span>'
     +'<i class="bao-tip-tag" style="background:'+(t.bg||'#eef2fb')+';color:'+(t.fg||'#3a4560')+'">'+esc(t.dimLbl||'')+esc(t.metric||'')+'</i></div>';
-  const spanTxt={d:'近 30 天（每天一期）',w:'近 4 周（周末日一期）',m:'近 12 个月（每月 1 日一期）'}[t.dim]||'';
+  const spanTxt='最近 '+P.length+' 期';
   if(P.length<2){
     return head+'<div class="bao-tip-sub">只有 '+P.length+' 期快照，攒够 2 期才画得出趋势</div>'
       +'<div class="bao-tip-ft"><span>'+esc(spanTxt)+'</span>'+(P.length?('<span>最新 <b>'+fmt(P[0].v)+'</b></span>'):'')+'</div>';
@@ -14646,8 +14673,7 @@ function baoInner(){
       +'<br><b>卡片</b>：整体 + 每位客服组长各一张，都按当前维度整体换色。'
       +'<b>退款量</b>与<b>部分退款占比</b>取「<b>问题明细 · 退款明细</b>」：日 = 明细里最新那一天、周 = 最新 7 天、月 = 全部日期；'
       +'<b>部分退款占比</b> = 退款金额 ÷ 订单总金额 ≤ 80% 的退款单量 ÷ 有订单金额的退款单量（按合计口径，不是各行占比的平均；与「退款分析」KPI 同一口径）。'
-      +'<br><b>历次快照</b>（悬浮数值可看趋势）：<b>日</b>一天记一期、留最新 30 天；<b>周</b>一周只留周期最后一天那期、留最新 4 周；'
-      +'<b>月</b>一月只留每月 1 日那期、留最新 12 个月。'
+      +'<br><b>历次快照</b>（悬浮数值可看趋势）：文件带日期时按数据周期记一期，没日期时每次上传记一期；各留最近 30 期，月按自然月归并。'
       +'<br>点 项目名 / 达成率 / 金额类数值 → 「AMZ汇总表」看金额明细；点 账号达成率 / 不达成率 / 不达标账号数 → 「AMZ达标表」看具体账号。</div>'
     :'';
   const metaTxt=dt?('快照：'+dt):'未上传';
@@ -20658,7 +20684,7 @@ function lsSnapPoints(kind){
   });
   out.sort(function(a,b){return String(a.k)<String(b.k)?-1:1;});
   return out;
-}
+}
 /* 报损更新序列（图一专用）：按「AMZ汇总表每次上传」记一期，滚动保留最近 30 次，
    第 31 次自动删最老。每期取该维度快照的四项汇总值与退款率。口径只写注释，不上界面。 */
 function lsUpdateSeries(kind){
@@ -21251,6 +21277,12 @@ function paTopBy(rows,field){
   var best='',bv=-1;Object.keys(m).forEach(function(k){if(m[k]>bv){bv=m[k];best=k;}});
   return best||'—';
 }
+/* 最高退款原因（按退款金额 RMB 取最大）：返回原因 + 金额，供表格/饼图悬浮提示原样展示 */
+function paTopReasonOf(rows){
+  var m={};rows.forEach(function(r){var k=r.reason||'（未填）';m[k]=(m[k]||0)+r.amt;});
+  var best='',bv=-1;Object.keys(m).forEach(function(k){if(m[k]>bv){bv=m[k];best=k;}});
+  return {reason:best||'—',amt:bv<0?0:bv};
+}
 /* 往前第 n 期的窗口：n=0 本期，n=1 上期…；日=相邻退款日，周=相邻 7 天，月=相邻自然月。 */
 function paPeriod(n){
   var w=paWindow(),a=w.anchor||'';
@@ -21315,9 +21347,10 @@ function paAgg(){
     var rate=sale>0?g.amt/sale:null;
     var ser=[rate];
     for(var i=1;i<periods.length;i++)ser.push((rateMaps[i]||{})[k]);
+    var topR=paTopReasonOf(g.rows);
     return {key:k,label:k.split('\u0001').pop(),region:r0.region,group:r0.group,
       c1:r0.c1||'—',c2:r0.c2||'—',gs:r0.gs||'—',
-      topCat:paTopBy(g.rows,paLevel==='2'?'c2':'c1'),topReason:paTopBy(g.rows,'reason'),
+      topCat:paTopBy(g.rows,paLevel==='2'?'c2':'c1'),topReason:topR.reason,topReasonAmt:topR.amt,
       sale:sale,amt:g.amt,rate:rate,
       wow:paPpDiff(ser[0],ser[1]),hist:paHistDiffs(ser)};
   });
@@ -21339,11 +21372,17 @@ function paCatAgg(){
       (shareSer[k]||(shareSer[k]=[null,null,null,null]))[i]=tot>0?mm[k]/tot:null;
     });
   });
-  var m0={},tot0=0;
-  paRefRows(periods[0]).forEach(function(r){var k=r[lv];m0[k]=(m0[k]||0)+r.amt;tot0+=r.amt;});
+  var m0={},tot0=0,ramt={},rbest={};
+  paRefRows(periods[0]).forEach(function(r){
+    var k=r[lv],rk=r.reason||'（未填）',ck=k+'\u0001'+rk;
+    m0[k]=(m0[k]||0)+r.amt;tot0+=r.amt;
+    ramt[ck]=(ramt[ck]||0)+r.amt;
+    if(!rbest[k]||ramt[ck]>rbest[k].amt)rbest[k]={reason:rk,amt:ramt[ck]};
+  });
   var list=Object.keys(m0).map(function(k){
     var ser=shareSer[k]||[];
     return {k:k,amt:m0[k],share:tot0>0?m0[k]/tot0:null,
+      topReason:(rbest[k]||{}).reason||'—',topReasonAmt:(rbest[k]||{}).amt||0,
       wow:paPpDiff(ser[0],ser[1]),hist:paHistDiffs(ser)};
   });
   list.sort(function(a,b){return b.amt-a.amt;});
@@ -21373,7 +21412,8 @@ function paPieHtml(){
     var len=CIR*x.amt/total;
     var s='<circle cx="88" cy="88" r="'+R+'" fill="none" stroke="'+PA_COLORS[i%PA_COLORS.length]+'" stroke-width="'+SW+'"'
       +' stroke-dasharray="'+len.toFixed(2)+' '+(CIR-len).toFixed(2)+'" stroke-dashoffset="'+(-off).toFixed(2)+'"'
-      +' transform="rotate(-90 88 88)"><title>'+esc(x.k)+' · 退款额 '+lsMoney(x.amt)+' · 占比 '+lsPct(x.share)+'</title></circle>';
+      +' transform="rotate(-90 88 88)"><title>'+esc(x.k)+' · 退款额 '+lsMoney(x.amt)+' · 占比 '+lsPct(x.share)
+      +' · 最高退款原因：'+esc(x.topReason)+'</title></circle>';
     off+=len;return s;
   }).join('');
   var legHead='<div style="display:flex;align-items:center;gap:5px;font-size:10px;color:#9aa1ad;line-height:1.6;border-bottom:1px solid #f0e5e2;margin-bottom:2px">'
@@ -21384,7 +21424,7 @@ function paPieHtml(){
   var leg=list.map(function(x,i){
     return '<div style="display:flex;align-items:center;gap:5px;font-size:11px;color:#5b6270;line-height:1.9">'
       +'<i style="width:9px;height:9px;border-radius:2px;background:'+PA_COLORS[i%PA_COLORS.length]+';flex:none"></i>'
-      +'<span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="'+esc(x.k)+' · '+lsMoney(x.amt)+'">'+esc(x.k)+'</span>'
+      +'<span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="'+esc(x.k)+' · '+lsMoney(x.amt)+' · 最高退款原因：'+esc(x.topReason)+'">'+esc(x.k)+'</span>'
       +'<b style="font-variant-numeric:tabular-nums;color:#333b47;width:42px;text-align:right">'+lsPct(x.share)+'</b>'
       +'<span style="width:58px;text-align:right">'+paWowHtml(x.wow)+'</span>'
       +'<span style="width:60px;text-align:right;font-variant-numeric:tabular-nums">'+paHistHtml(x.hist)+'</span></div>';
@@ -21414,7 +21454,7 @@ function paTableHtml(){
       +'<td class="num ls-ref">'+lsMoney(x.amt)+'</td>'
       +'<td class="num"><b>'+lsPct(x.rate)+'</b></td>'
       +'<td class="num">'+x.rank+'</td>'
-      +'<td>'+esc(x.topReason)+'</td>'
+      +'<td title="'+esc(x.topReason)+' · 退款额 '+esc(lsMoney(x.topReasonAmt))+'">'+esc(x.topReason)+'</td>'
       +'<td>'+paWowHtml(x.wow)+'</td>'
       +'<td>'+paHistHtml(x.hist)+'</td>';
     return '<tr>'+tds+'</tr>';
