@@ -383,6 +383,7 @@
   .ls-tbl{margin:0}
   .ls-tbl thead th{position:sticky;top:0;z-index:2}
   .ls-tbl td.num,.ls-tbl th:nth-child(n+4){text-align:right;font-variant-numeric:tabular-nums}
+  .pa-tbl th,.pa-tbl td,.pa-tbl td.num,.pa-tbl .ls-cat{text-align:center}
   .ls-tbl .ls-rk{width:46px;color:#b0b5c0;font-weight:700}
   .ls-tbl .ls-cat{text-align:left;font-weight:600;color:#3a3656;max-width:250px;overflow:hidden;text-overflow:ellipsis}
   .ls-tbl tbody tr[data-lscat]{cursor:pointer}
@@ -21142,7 +21143,9 @@ function paRefRows(){
     var day=refDayKey(refVal(r,'refTime'));
     if(!w.all&&(!day||day<w.from||day>w.to))return;
     var acc=lsS(refVal(r,'acc')).toUpperCase(),d=ai[acc]||{};
-    var region=lsS(refVal(r,'region'));if(!region||region==='-')region=d.region||'';
+    /* 区域：优先按账号管理映射（账号管理里「长沙」已拆成 长沙1/长沙2）；
+       退款明细自带的 region 是笼统「长沙」，只在账号管理缺该账号时兜底。 */
+    var region=lsS(d.region)||lsS(refVal(r,'region'));if(!region||region==='-')region='';
     var grp=lsS(refVal(r,'team'));if(!grp||grp==='-')grp=d.group||'';
     out.push({day:day,sku:lsS(refVal(r,'sku')),reason:lsS(refVal(r,'refReason'))||'（未填）',
       region:region||'（未分区）',group:grp||'（未分组）',
@@ -21259,7 +21262,7 @@ function paTableHtml(){
   }).join('');
   if(!body)body='<tr><td colspan="8" class="dim">当前时间窗暂无退款明细</td></tr>';
   var more=list.length>10?'<button class="btn xs ghost" data-paall="1" style="margin-top:8px">'+(paAll?'收起 ▲':'显示全部 '+list.length+' 项 ▼')+'</button>':'';
-  return '<div class="ls-tblwrap"><table class="hk-tbl ls-tbl"><thead><tr>'+head+'</tr></thead><tbody>'+body+'</tbody></table></div>'+more;
+  return '<div class="ls-tblwrap"><table class="hk-tbl ls-tbl pa-tbl"><thead><tr>'+head+'</tr></thead><tbody>'+body+'</tbody></table></div>'+more;
 }
 function paSection(){
   var slicer='<span class="ls-seg">'+PA_DIMS.map(function(d){
