@@ -21078,6 +21078,41 @@ function lsCatAgg(){
   return {list:list,base:base,tot:{sale:totSale,amt:totAmt,ordn:totOrd,rqty:totRqty,
     rate:totSale>0?totAmt/totSale:null,share:totOrd>0?totRqty/totOrd:null},n:sub.length};
 }
+/* 报损透视台 一/二模块数值悬浮用「最高退款原因」（口径隐藏不上界面）：
+   · 只从退款明细 REF.rows 算，行筛选与 lsRows 完全一致（运营筛选 + 丢弃行）。
+   · 退款原因优先有效值，'-'/空 退回问题归类；按退款金额(RMB)合计取最大的那个原因。
+   · 全局项 = 全量明细；品类项 = 按当前星耀级别(c1/c2)分组 —— 与二模块表格展示的品类口径一致。 */
+let LS_RCACHE={};
+function lsReasonRows(){
+  const sig=(REF.ver||0)+'|'+((REF.rows||[]).length)+'|'+(opsFilterActive()?JSON.stringify(opsFilter):'');
+  if(LS_RCACHE.sig===sig&&LS_RCACHE.rows)return LS_RCACHE.rows;
+  const ai=lsAccIdx(),out=[];
+  (REF.rows||[]).forEach(function(r,i){
+    try{if(typeof refIsDropped==='function'&&refIsDropped(r))return;}catch(e){}
+    if(!lsRowPass(r,ai))return;
+    let rsn=lsS(refVal(r,'refReason'));if(!rsn||rsn==='-')rsn=lsS(refVal(r,'issueCat'));
+    if(!rsn||rsn==='-')rsn='';
+    out.push({c1:lsS(refVal(r,'cat1'))||'（未分类）',c2:lsS(refVal(r,'cat2'))||'（未分类）',
+      reason:rsn||'（未填）',amt:refNumK(refVal(r,'refAmt'))});
+  });
+  LS_RCACHE={sig:sig,rows:out};
+  return out;
+}
+function lsTopReasonOf(rows){
+  const m={};rows.forEach(function(r){const k=r.reason||'（未填）';m[k]=(m[k]||0)+r.amt;});
+  let best='',bv=-1;Object.keys(m).forEach(function(k){if(m[k]>bv){bv=m[k];best=k;}});
+  return {reason:best||'—',amt:bv<0?0:bv};
+}
+/* 整体最高退款原因（一模块 KPI 悬浮） */
+function lsTopReasonAll(){return lsTopReasonOf(lsReasonRows());}
+/* 品类 → 最高退款原因 map（二模块表格悬浮，按当前星耀级别分组，一次扫描供全部行复用） */
+function lsTopReasonCatMap(){
+  const lv=lsLevel==='2'?'c2':'c1',m={};
+  lsReasonRows().forEach(function(r){const c=r[lv]||'（未分类）';if(!m[c])m[c]={};m[c][r.reason]=(m[c][r.reason]||0)+r.amt;});
+  const out={};
+  Object.keys(m).forEach(function(c){let best='',bv=-1;Object.keys(m[c]).forEach(function(k){if(m[c][k]>bv){bv=m[c][k];best=k;}});out[c]={reason:best||'—',amt:bv<0?0:bv};});
+  return out;
+}
 function lsOpts(field){
   const rows=lsRows();
   const set={};
@@ -21604,10 +21639,13 @@ function lsInner(){
   };
   const M={rate:mk('rate',false),sale:mk('sale',true),ref:mk('ref',false),ord:mk('ord',true),
     rqty:mk('rqty',false),share:mk('share',false),std:mk('std',true)};
+  /* 退款额 / 退款率卡片悬浮：显示当前范围退款金额最高的退款原因（口径隐藏） */
+  const topAll=lsTopReasonAll();
+  const topTip='最高退款原因：'+topAll.reason+'（退款额 '+lsMoney(topAll.amt)+'）';
   let kpis='<div class="ls-kpis">'
-    +kpi('退款率',lsKpiVal('rate',sumRate),'rate',M.rate.d,M.rate.avg)
+    +kpi('退款率',lsKpiVal('rate',sumRate),'rate',M.rate.d,M.rate.avg,topTip)
     +kpi('销售额',lsKpiVal('sale',A.sale),'sale',M.sale.d,M.sale.avg)
-    +kpi('退款额',lsKpiVal('ref',A.ref),'ref',M.ref.d,M.ref.avg)
+    +kpi('退款额',lsKpiVal('ref',A.ref),'ref',M.ref.d,M.ref.avg,topTip)
     +kpi('订单量',lsKpiVal('ord',A.ord),'ord',M.ord.d,M.ord.avg)
     +kpi('退款量',lsKpiVal('rqty',A.rqty),'rqty',M.rqty.d,M.rqty.avg)
     +kpi('退款量占比',lsKpiVal('share',ordShare),'share',M.share.d,M.share.avg)
@@ -21741,6 +21779,12 @@ function lsInner(){
   }
   /* 品类透视 */
   const ag=lsCatAgg();
+  /* 每个品类的最高退款原因（悬浮用，按当前星耀级别口径；口径隐藏不上界面） */
+  const catReason=lsTopReasonCatMap();
+  const catReasonTip=function(cat){
+    const t=catReason[cat]||{reason:'—',amt:0};
+    return '最高退款原因：'+t.reason+'（退款额 '+lsMoney(t.amt)+'）';
+  };
   const lv='<span class="ls-lv">'+[['1','星耀1级'],['2','星耀2级']].map(function(x){
     return '<button data-lslv="'+x[0]+'" class="'+(lsLevel===x[0]?'on':'')+'">'+x[1]+'</button>';
   }).join('')+'</span>';
@@ -21762,16 +21806,16 @@ function lsInner(){
         +'<td class="ls-cat"><a class="ls-cat-a">'+esc(x.cat)+'</a></td>'
         +'<td class="ls-lamp"><i style="background:'+lamp.c+'"></i><span style="color:'+lamp.c+'">'+esc(lamp.t)+'</span></td>'
         +'<td class="num">'+lsMoney(x.sale)+'</td>'
-        +'<td class="num ls-ref">'+lsMoney(x.amt)+'</td>'
-        +'<td class="num"><b style="color:'+lamp.c+'">'+lsPct(x.rate)+'</b></td>'
+        +'<td class="num ls-ref" title="'+esc(catReasonTip(x.cat))+'">'+lsMoney(x.amt)+'</td>'
+        +'<td class="num" title="'+esc(catReasonTip(x.cat))+'"><b style="color:'+lamp.c+'">'+lsPct(x.rate)+'</b></td>'
         +'<td class="num">'+lsNum(x.ordn)+'</td>'
         +'<td class="num">'+lsNum(x.rqty)+'</td>'
         +'<td class="num dim">'+lsPct(ag.tot.amt>0?x.amt/ag.tot.amt:null)+'</td>'
         +'</tr>';
     });
     rowsHtml+='<tr class="ls-sum"><td>—</td><td class="ls-cat">合计</td><td>—</td>'
-      +'<td class="num">'+lsMoney(ag.tot.sale)+'</td><td class="num">'+lsMoney(ag.tot.amt)+'</td>'
-      +'<td class="num"><b>'+lsPct(ag.tot.rate)+'</b></td><td class="num">'+lsNum(ag.tot.ordn)+'</td>'
+      +'<td class="num">'+lsMoney(ag.tot.sale)+'</td><td class="num" title="'+esc(topTip)+'">'+lsMoney(ag.tot.amt)+'</td>'
+      +'<td class="num" title="'+esc(topTip)+'"><b>'+lsPct(ag.tot.rate)+'</b></td><td class="num">'+lsNum(ag.tot.ordn)+'</td>'
       +'<td class="num">'+lsNum(ag.tot.rqty)+'</td><td class="num dim">100.00%</td></tr>';
   }
   const tbl='<div class="ls-flt">'
