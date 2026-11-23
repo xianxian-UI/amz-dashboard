@@ -329,6 +329,12 @@
   .ls-kpi .dv.good,.ls-kpi .av b.good{color:#1f8a5b}
   .ls-kpi .dv.bad,.ls-kpi .av b.bad{color:#c0392b}
   .ls-kpi .dv.flat,.ls-kpi .av b.flat{color:#9aa1ad}
+  /* 退款原因悬浮浮层：移入立即显示，替代原生 title（灰框/延迟1秒，用户看不见） */
+  .ls-tipbox{position:fixed;z-index:99999;display:none;pointer-events:none;max-width:360px;
+    background:#26313c;color:#fff;font-size:12.5px;line-height:1.6;font-weight:600;letter-spacing:.1px;
+    padding:9px 13px;border-radius:8px;box-shadow:0 8px 26px rgba(20,30,45,.28);white-space:normal;word-break:break-all}
+  .ls-tipbox b{color:#ffd9d2}
+  .ls-kpi[data-tip],.ls-tbl td[data-tip]{cursor:help}
   .ls-sync{font-size:11px;font-weight:700;color:#a4473a;background:#fff;border:1px solid #f3d5d0;
     border-radius:20px;padding:2px 10px;cursor:pointer;font-family:inherit}
   .ls-sync:hover{background:#fdf1ef}
@@ -21619,7 +21625,7 @@ function lsInner(){
     const cmp=avg&&avg.cmp?avg.cmp:{t:'—',good:null};
     const ac=cmp.good===true?'good':(cmp.good===false?'bad':'flat');
     return '<div class="ls-kpi" style="--ac:'+tone.ac+';--bg:'+tone.bg+';--bd:'+tone.bd+';--fg:'+tone.fg+'"'
-      +(extra?' title="'+esc(extra)+'"':'')+'>'
+      +(extra?' data-tip="'+esc(extra)+'"':'')+'>'
       +'<div class="kh"><span class="k">'+esc(lab)+'</span>'
       +'<span class="v'+((k==='sale'||k==='ref')?' vlong':'')+'">'+val+'</span></div>'
       +'<div class="dv '+dc+'">较上次 '+info.t+'</div>'
@@ -21806,16 +21812,16 @@ function lsInner(){
         +'<td class="ls-cat"><a class="ls-cat-a">'+esc(x.cat)+'</a></td>'
         +'<td class="ls-lamp"><i style="background:'+lamp.c+'"></i><span style="color:'+lamp.c+'">'+esc(lamp.t)+'</span></td>'
         +'<td class="num">'+lsMoney(x.sale)+'</td>'
-        +'<td class="num ls-ref" title="'+esc(catReasonTip(x.cat))+'">'+lsMoney(x.amt)+'</td>'
-        +'<td class="num" title="'+esc(catReasonTip(x.cat))+'"><b style="color:'+lamp.c+'">'+lsPct(x.rate)+'</b></td>'
+        +'<td class="num ls-ref" data-tip="'+esc(catReasonTip(x.cat))+'">'+lsMoney(x.amt)+'</td>'
+        +'<td class="num" data-tip="'+esc(catReasonTip(x.cat))+'"><b style="color:'+lamp.c+'">'+lsPct(x.rate)+'</b></td>'
         +'<td class="num">'+lsNum(x.ordn)+'</td>'
         +'<td class="num">'+lsNum(x.rqty)+'</td>'
         +'<td class="num dim">'+lsPct(ag.tot.amt>0?x.amt/ag.tot.amt:null)+'</td>'
         +'</tr>';
     });
     rowsHtml+='<tr class="ls-sum"><td>—</td><td class="ls-cat">合计</td><td>—</td>'
-      +'<td class="num">'+lsMoney(ag.tot.sale)+'</td><td class="num" title="'+esc(topTip)+'">'+lsMoney(ag.tot.amt)+'</td>'
-      +'<td class="num" title="'+esc(topTip)+'"><b>'+lsPct(ag.tot.rate)+'</b></td><td class="num">'+lsNum(ag.tot.ordn)+'</td>'
+      +'<td class="num">'+lsMoney(ag.tot.sale)+'</td><td class="num" data-tip="'+esc(topTip)+'">'+lsMoney(ag.tot.amt)+'</td>'
+      +'<td class="num" data-tip="'+esc(topTip)+'"><b>'+lsPct(ag.tot.rate)+'</b></td><td class="num">'+lsNum(ag.tot.ordn)+'</td>'
       +'<td class="num">'+lsNum(ag.tot.rqty)+'</td><td class="num dim">100.00%</td></tr>';
   }
   const tbl='<div class="ls-flt">'
@@ -22850,6 +22856,43 @@ try{
       if(t2.closest('#wbLogout')){e.preventDefault();if(confirm('确定退出登录？'))wbLogout();return;}
       if(t2.closest('#wbPwChange')){e.preventDefault();wbShowChangePw();return;}
     });
+  }
+}catch(e){}
+/* 退款原因悬浮浮层：data-tip 元素移入即显示醒目浮层，跟随鼠标，移出隐藏。
+   用事件委托绑在 document 上，动态渲染的 KPI/表格单元格也能命中，无需改各处渲染逻辑。 */
+try{
+  if(typeof document!=='undefined'&&document.addEventListener){
+    var tipBox=document.createElement('div');tipBox.className='ls-tipbox';
+    var tipTarget=null;
+    function lsTipShow(el){
+      var txt=el&&el.getAttribute?el.getAttribute('data-tip'):'';
+      if(!txt){lsTipHide();return;}
+      tipTarget=el;
+      tipBox.innerHTML=txt.replace(/最高退款原因：([^（]+)/,function(_,r){return '最高退款原因：<b>'+r+'</b>';});
+      tipBox.style.display='block';
+    }
+    function lsTipHide(){tipTarget=null;tipBox.style.display='none';}
+    function lsTipMove(e){
+      if(!tipTarget||tipBox.style.display!=='block')return;
+      var pad=14,w=tipBox.offsetWidth,h=tipBox.offsetHeight;
+      var x=(e.clientX||0)+pad,y=(e.clientY||0)+pad;
+      if(x+w>window.innerWidth-8)x=Math.max(8,(e.clientX||0)-w-pad);
+      if(y+h>window.innerHeight-8)y=Math.max(8,(e.clientY||0)-h-pad);
+      tipBox.style.left=x+'px';tipBox.style.top=y+'px';
+    }
+    document.addEventListener('mouseover',function(e){
+      var t=e.target&&e.target.closest?e.target.closest('[data-tip]'):null;
+      if(t&&t!==tipTarget){lsTipShow(t);lsTipMove(e);}
+    });
+    document.addEventListener('mousemove',lsTipMove);
+    document.addEventListener('mouseout',function(e){
+      if(!tipTarget)return;
+      var to=e.relatedTarget;
+      if(to&&tipTarget.contains&&tipTarget.contains(to))return;
+      lsTipHide();
+    });
+    if(document.body)document.body.appendChild(tipBox);
+    else document.addEventListener('DOMContentLoaded',function(){document.body.appendChild(tipBox);});
   }
 }catch(e){}
 if(typeof window!=='undefined'&&window.addEventListener){window.addEventListener('hashchange',function(){applyHashView();render();});}
