@@ -10259,6 +10259,7 @@ document.getElementById('app').addEventListener('change',e=>{
   if(id==='otdLateChk'){otdOnlyLate=!!e.target.checked;otdPage=1;otdRefresh();return;}
   if(id==='ctrColSel'){ctrColSel=e.target.value;ctrSearch='';isPage=1;render();return;}
   if(id==='refFile'){const _rf=e.target.files&&e.target.files[0];e.target.value='';if(_rf)refReadFile(_rf);return;}
+  if(id==='pasFile'){const _pf=e.target.files&&e.target.files[0];e.target.value='';if(_pf)pasReadFile(_pf);return;}
   if(id==='lightFile'){const _lf=e.target.files&&e.target.files[0];e.target.value='';if(_lf)lightReadFile(_lf);return;}
   if(id==='lightSearch'){lightSearch=e.target.value;lightPage=1;lightRefresh();return;}
   if(id==='lightSortSel'){lightSort=e.target.value||'phiDesc';lightPage=1;lightRefresh();return;}
@@ -11080,6 +11081,7 @@ document.getElementById('app').addEventListener('click',e=>{
   const _lp=e.target.closest&&e.target.closest('[data-lightpage]');
   if(_lp){const v=_lp.getAttribute('data-lightpage');lightPage=(v==='prev')?lightPage-1:(v==='next')?lightPage+1:(v==='last')?1e9:1;lightRefresh();return;}
   if(e.target.id==='refUploadBtn'){openAmzUp('ref');return;}
+  if(e.target.id==='pasUploadBtn'){var _pf=document.getElementById('pasFile');if(_pf)_pf.click();return;}
   if(e.target.id==='refExportBtn'){refExport();return;}
   if(e.target.id==='refClearBtn'){refClearAll();return;}
   if(e.target.id==='refForceBtn'){refForceReload();return;}
@@ -11335,6 +11337,10 @@ document.getElementById('app').addEventListener('click',e=>{
     try{if(typeof refReloadCloud==='function')refReloadCloud().then(function(){render();});}catch(e){}
     return;
   }
+  const paddim=t.closest&&t.closest('[data-padim]');
+  if(paddim){paDim=paddim.getAttribute('data-padim')||'cat';paAll=false;render();return;}
+  const paall=t.closest&&t.closest('[data-paall]');
+  if(paall){paAll=!paAll;lsRefresh();return;}
   const lslv=t.closest&&t.closest('[data-lslv]');
   if(lslv){lsLevel=lslv.getAttribute('data-lslv');render();return;}
   const lssort=t.closest&&t.closest('[data-lssort]');
@@ -16684,6 +16690,7 @@ function refBarHtml(){
     +'<span style="flex:1 1 auto"></span>'
     +'<button class="btn ghost" id="refExportBtn">⬇ 导出</button>'
     +'<button class="btn ghost" id="refUploadBtn">⬆ 上传退款明细</button>'
+    +'<button class="btn ghost" id="pasUploadBtn" title="上传业绩分析表：只取 SKU/付款日期/毛销售额 数值，用于产品分析的日/周销售额，不展示明细">⬆ 上传业绩分析表</button>'
     +'<button class="btn ghost" id="refClearBtn">🗑 清空</button>'
     +'<button class="btn ghost" id="refForceBtn" title="删除本机旧缓存，从云端重新拉取最新退款明细">⟳ 刷新云端</button>'
     +'</div>'
@@ -16698,14 +16705,18 @@ function refLoadingHtml(){
     return '<div class="is-empty"><div class="is-ei">⚠️</div><div class="is-et">退款明细加载失败</div>'
       +'<div class="is-ed">'+esc(REF.err||'网络超时')+'<br>可以直接上传一份新的退款明细覆盖。</div>'
       +'<button class="btn" id="refUploadBtn">⬆ 上传退款明细</button>'
+      +'<button class="btn ghost" id="pasUploadBtn" title="上传业绩分析表：只取 SKU/付款日期/毛销售额 数值，用于产品分析的日/周销售额，不展示明细">⬆ 上传业绩分析表</button>'
       +'<button class="btn ghost" id="refRetryBtn">重试加载</button>'
-      +'<input type="file" id="refFile" accept=".xlsx,.xls,.csv,.txt" style="display:none"></div>';
+      +'<input type="file" id="refFile" accept=".xlsx,.xls,.csv,.txt" style="display:none">'
+      +'<input type="file" id="pasFile" accept=".xlsx,.xls,.csv,.txt" style="display:none">'+'</div>';
   }
   return '<div class="is-empty"><div class="is-ei">⏳</div><div class="is-et">正在读取退款明细…</div>'
     +'<div class="is-ed">先读本机缓存；没有则从云端快照拉取（约 6MB，首次通常十几秒，之后走本机缓存秒开）。</div>'
     +'<div class="is-ed2" id="refProg">正在连接云端快照…</div>'
-    +'<div style="margin-top:10px"><button class="btn" id="refUploadBtn">⬆ 直接上传退款明细</button></div>'
-    +'<input type="file" id="refFile" accept=".xlsx,.xls,.csv,.txt" style="display:none"></div>';
+    +'<div style="margin-top:10px"><button class="btn" id="refUploadBtn">⬆ 直接上传退款明细</button> '
+    +'<button class="btn ghost" id="pasUploadBtn" title="上传业绩分析表：只取 SKU/付款日期/毛销售额 数值，用于产品分析的日/周销售额，不展示明细">⬆ 上传业绩分析表</button>'+'</div>'
+    +'<input type="file" id="refFile" accept=".xlsx,.xls,.csv,.txt" style="display:none">'
+    +'<input type="file" id="pasFile" accept=".xlsx,.xls,.csv,.txt" style="display:none">'+'</div>';
 }
 
 /* ══════════ 退款分析板块：12 组维度 · 两行卡片（与 FBM「多维度分析」同一套卡片样式） ══════════
@@ -17007,6 +17018,7 @@ function refAnaHtml(){
 }
 
 function refSection(){
+  try{if(typeof PAS!=='undefined'&&PAS.state==='idle')pasLoad();}catch(e){}
   if(REF.state==='idle'||REF.state==='loading'){
     if(REF.state==='idle')refEnsure();
     return refLoadingHtml();
@@ -17015,12 +17027,13 @@ function refSection(){
   /* 账号管理可能刚被改过（启用/停用/纳入考核）→ 每次进本页重算一次清洗口径，别用上次的缓存 */
   _refAccSet=null;
   const fileInput='<input type="file" id="refFile" accept=".xlsx,.xls,.csv,.txt" style="display:none">'
+    +'<input type="file" id="pasFile" accept=".xlsx,.xls,.csv,.txt" style="display:none">'
     +'<label class="keep" title="勾选=先清空历史退款明细，用本次上传的表格完全替换；不勾选=与历史合并（同退款日期区间整体替换）"><input type="checkbox" id="refUpClear"> 清除历史数据（完全替换，不做合并）</label>';
   if(!rows.length){
     return '<div class="is-empty"><div class="is-ei">💸</div><div class="is-et">还没有退款明细</div>'
       +'<div class="is-ed">上传「退款明细」导出的原表（xlsx / csv）即可：看板按<b>表头字段名</b>自动识别 '+REF_N+' 个字段（不按列顺序），识别不到的字段留空。<br>'
       +'默认与已有记录按「平台单号 + SKU + 退款时间」合并，需要整体替换时用「清空」后再传。</div>'
-      +'<button class="btn" id="refUploadBtn">⬆ 上传退款明细</button>'+fileInput+'</div>';
+      +'<button class="btn" id="refUploadBtn">⬆ 上传退款明细</button> '+'<button class="btn ghost" id="pasUploadBtn" title="上传业绩分析表：只取 SKU/付款日期/毛销售额 数值，用于产品分析的日/周销售额，不展示明细">⬆ 上传业绩分析表</button>'+fileInput+'</div>';
   }
   const mt=REF.meta||{};
   const miss=(mt.miss||[]).length;
@@ -20277,6 +20290,7 @@ function opsFocusSection(){
 const LS_KINDS=[['d','日','近 30 天'],['w','周','近 4 周'],['m','月','近 12 个月']];
 const LS_N={d:30,w:4,m:12};
 const LS_C={sale:'#2f5fbf',ref:'#d93b2b',ord:'#2f9e6f',rqty:'#e08a2f',rate:'#c0392b',share:'#e2872f'};
+let paDim='cat',paAll=false;
 let lsDim='d',lsLevel='1',lsSort='ref',lsDonutMode='region',lsDonutSel='',lsChartMode='all',lsLossScope='region',lsFocus='';let lsKeyOpen=false;
 let lsFlt={region:'',group:'',site:''};
 let LS_CACHE={};
@@ -21091,8 +21105,257 @@ function lsRefStdStat(kind){
   return {tot:tot,ok:ok,bad:bad,rate:tot?ok/tot:null};
 }
 /* ── 主体 ── */
+/* ══════════ 报损透视台 · 三、产品分析（2026-11-23） ══════════
+   口径（只写源码注释，不上界面）：
+   - 退款额 / 最高退款原因：取退款明细 REF.rows 在所选时间窗内的行。
+       月=全部；日=最新退款日那天；周=最新退款日往前 7 天。
+   - 报损率 = 退款额合计 ÷ 销售额合计；报损率排名按报损率降序。
+   - 销售额：月=按退款明细出现的 SKU 取「产品按灯」1 个月销售额（1 号若为累计值则减掉上月累计）；
+       日/周=按额外上传的「业绩分析」表明细，取同一时间窗内 SKU 的毛销售额求和。
+   - 最高退款品类 / 区域最高退款品类：该分组内退款额合计最大的星耀一级分类。
+*/
+var PAS={days:{},meta:{},state:'idle',sync:''};
+var PAS_PATH='amz2026/pasales.json.gz';
+var PA_DIMS=[['cat','品类'],['region','区域'],['group','核算小组'],['sku','SKU']];
+var PA_COLORS=['#4f7df3','#38bdf8','#818cf8','#2dd4bf','#f0a35e','#a78bfa','#60a5fa','#94a3b8','#fb7185','#a3e635'];
+function pasCloudUrl(){return SB_URL+'/storage/v1/object/authenticated/'+SB_BUCKET+'/'+PAS_PATH;}
+function paDayShift(ds,days){
+  if(!ds)return '';
+  var dt=new Date(ds+'T00:00:00Z');if(isNaN(dt.getTime()))return '';
+  dt.setUTCDate(dt.getUTCDate()+days);
+  return dt.toISOString().slice(0,10);
+}
+function paWindow(){
+  var days=[];
+  (REF.rows||[]).forEach(function(r){var d=refDayKey(refVal(r,'refTime'));if(d)days.push(d);});
+  days.sort();
+  var maxD=days[days.length-1]||'';
+  if(lsDim==='m'||!maxD)return {all:true,from:'',to:'',anchor:maxD};
+  if(lsDim==='d')return {all:false,from:maxD,to:maxD,anchor:maxD};
+  return {all:false,from:paDayShift(maxD,-6),to:maxD,anchor:maxD};
+}
+function paRefRows(){
+  var w=paWindow(),ai=lsAccIdx(),out=[];
+  (REF.rows||[]).forEach(function(r,i){
+    try{if(refIsDropped(r))return;}catch(e){}
+    if(!lsRowPass(r,ai))return;
+    var day=refDayKey(refVal(r,'refTime'));
+    if(!w.all&&(!day||day<w.from||day>w.to))return;
+    var acc=lsS(refVal(r,'acc')).toUpperCase(),d=ai[acc]||{};
+    var region=lsS(refVal(r,'region'));if(!region||region==='-')region=d.region||'';
+    var grp=lsS(refVal(r,'team'));if(!grp||grp==='-')grp=d.group||'';
+    out.push({day:day,sku:lsS(refVal(r,'sku')),reason:lsS(refVal(r,'refReason'))||'（未填）',
+      region:region||'（未分区）',group:grp||'（未分组）',
+      c1:lsS(refVal(r,'cat1'))||'（未分类）',c2:lsS(refVal(r,'cat2'))||'（未分类）',
+      amt:refNumK(refVal(r,'refAmt'))});
+  });
+  return out;
+}
+/* 产品按灯 · 单月销售额：取当前值；1 号导入若为累计值（≥上月快照），减掉上月累计只留当月。 */
+function paSale1m(sku){
+  var cur=(typeof lightCurStore==='function'?lightCurStore()[sku]:null)||[];
+  var v=Number(cur[LIGHT_IX.sale])||0;
+  if(!v&&typeof lightSales==='function'){var lg=lightSales()[sku]||{};v=Number(lg.sale)||0;}
+  /* 1 号那次导入若为累计值（≥上月快照），减掉上月累计只留当月；用上传时间的日号判定，不依赖今天。 */
+  var upDay=String(DATA.lightSalesAt||'').slice(8,10);
+  if(v&&upDay==='01'){
+    var st=(DATA.lightSnap||{})[sku],mm=(st&&st.m)||{},keys=Object.keys(mm).sort();
+    if(keys.length>1){var pv=Number((mm[keys[keys.length-2]]||[])[LIGHT_IX.sale])||0;
+      if(pv>0&&v>=pv)v=v-pv;}
+  }
+  return v;
+}
+function paSalesMap(){
+  var w=paWindow(),m={};
+  if(lsDim==='m'){
+    paRefRows().forEach(function(r){if(r.sku&&m[r.sku]==null)m[r.sku]=paSale1m(r.sku);});
+  }else{
+    var days=PAS.days||{};
+    Object.keys(days).forEach(function(d){
+      if(d<w.from||d>w.to)return;
+      var row=days[d]||{};
+      Object.keys(row).forEach(function(sku){m[sku]=(m[sku]||0)+(Number(row[sku])||0);});
+    });
+  }
+  return m;
+}
+function paGroupKey(r){
+  if(paDim==='region')return r.region;
+  if(paDim==='group')return r.region+'\u0001'+r.group;
+  if(paDim==='sku')return r.sku||'（无SKU）';
+  return r.c1;
+}
+function paTopBy(rows,field){
+  var m={};rows.forEach(function(r){m[r[field]]=(m[r[field]]||0)+r.amt;});
+  var best='',bv=-1;Object.keys(m).forEach(function(k){if(m[k]>bv){bv=m[k];best=k;}});
+  return best||'—';
+}
+function paAgg(){
+  var rows=paRefRows(),sales=paSalesMap(),m={},order=[];
+  rows.forEach(function(r){
+    var k=paGroupKey(r),g=m[k];
+    if(!g){g=m[k]={key:k,rows:[],skus:{},amt:0};order.push(k);}
+    g.rows.push(r);g.amt+=r.amt;if(r.sku)g.skus[r.sku]=1;
+  });
+  var list=order.map(function(k){
+    var g=m[k],sale=0;
+    Object.keys(g.skus).forEach(function(sk){sale+=(sales[sk]||0);});
+    return {key:k,label:k.split('\u0001').pop(),region:g.rows[0].region,group:g.rows[0].group,
+      topCat:paTopBy(g.rows,'c1'),topReason:paTopBy(g.rows,'reason'),
+      sale:sale,amt:g.amt,rate:sale>0?g.amt/sale:null};
+  });
+  list.sort(function(a,b){return (b.rate==null?-1:b.rate)-(a.rate==null?-1:a.rate)||b.amt-a.amt;});
+  list.forEach(function(x,i){x.rank=i+1;});
+  return list;
+}
+function paCatAgg(){
+  var m={};paRefRows().forEach(function(r){m[r.c1]=(m[r.c1]||0)+r.amt;});
+  var list=Object.keys(m).map(function(k){return {k:k,amt:m[k]};});
+  list.sort(function(a,b){return b.amt-a.amt;});
+  return list;
+}
+function paPieHtml(){
+  var list=paCatAgg().slice(0,10),total=list.reduce(function(s,x){return s+x.amt;},0);
+  if(!list.length||total<=0)return '<div class="ls-empty">当前时间窗暂无退款数据</div>';
+  var R=68,SW=24,CIR=2*Math.PI*R,off=0;
+  var slices=list.map(function(x,i){
+    var len=CIR*x.amt/total;
+    var s='<circle cx="88" cy="88" r="'+R+'" fill="none" stroke="'+PA_COLORS[i%PA_COLORS.length]+'" stroke-width="'+SW+'"'
+      +' stroke-dasharray="'+len.toFixed(2)+' '+(CIR-len).toFixed(2)+'" stroke-dashoffset="'+(-off).toFixed(2)+'"'
+      +' transform="rotate(-90 88 88)"><title>'+esc(x.k)+' · 退款额 '+lsMoney(x.amt)+' · 占比 '+lsPct(x.amt/total)+'</title></circle>';
+    off+=len;return s;
+  }).join('');
+  var leg=list.map(function(x,i){
+    return '<div style="display:flex;align-items:center;gap:7px;font-size:11.5px;color:#5b6270;line-height:1.9">'
+      +'<i style="width:9px;height:9px;border-radius:2px;background:'+PA_COLORS[i%PA_COLORS.length]+';flex:none"></i>'
+      +'<span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="'+esc(x.k)+'">'+esc(x.k)+'</span>'
+      +'<b style="font-variant-numeric:tabular-nums;color:#333b47">'+lsMoney(x.amt)+'</b>'
+      +'<em style="font-style:normal;color:#9aa1ad;width:44px;text-align:right;font-variant-numeric:tabular-nums">'+lsPct(x.amt/total)+'</em></div>';
+  }).join('');
+  return '<div class="ls-donut"><div style="font-size:12px;font-weight:700;color:#8d6f68;margin:0 0 4px">前10品类退款占比</div>'
+    +'<div style="display:flex;align-items:center;gap:14px">'
+    +'<svg viewBox="0 0 176 176" style="width:176px;height:176px;flex:none">'+slices
+    +'<text x="88" y="101" text-anchor="middle" font-size="14" font-weight="700" fill="#333b47">'+esc(lsMoney(total))+'</text></svg>'
+    +'<div style="flex:1;min-width:0;max-height:210px;overflow:auto">'+leg+'</div></div></div>';
+}
+function paTableHtml(){
+  var list=paAgg(),shown=paAll?list:list.slice(0,10);
+  var head='';
+  if(paDim==='cat')head='<th>品类</th><th>销售额</th><th>退款额</th><th>报损率</th><th>报损率排名</th><th>最高退款原因</th>';
+  else if(paDim==='region')head='<th>区域</th><th>区域最高退款品类</th><th>销售额</th><th>退款额</th><th>报损率</th><th>报损率排名</th><th>最高退款原因</th>';
+  else if(paDim==='group')head='<th>区域</th><th>核算小组</th><th>最高退款品类</th><th>销售额</th><th>退款额</th><th>报损率</th><th>报损率排名</th><th>最高退款原因</th>';
+  else head='<th>SKU</th><th>销售额</th><th>退款额</th><th>报损率</th><th>报损率排名</th><th>最高退款原因</th>';
+  var body=shown.map(function(x){
+    var tds='';
+    if(paDim==='group')tds='<td>'+esc(x.region)+'</td><td>'+esc(x.group)+'</td><td>'+esc(x.topCat)+'</td>';
+    else if(paDim==='region')tds='<td>'+esc(x.region)+'</td><td>'+esc(x.topCat)+'</td>';
+    else tds='<td class="ls-cat">'+esc(x.label)+'</td>';
+    tds+='<td class="num">'+lsMoney(x.sale)+'</td>'
+      +'<td class="num ls-ref">'+lsMoney(x.amt)+'</td>'
+      +'<td class="num"><b>'+lsPct(x.rate)+'</b></td>'
+      +'<td class="num">'+x.rank+'</td>'
+      +'<td>'+esc(x.topReason)+'</td>';
+    return '<tr>'+tds+'</tr>';
+  }).join('');
+  if(!body)body='<tr><td colspan="8" class="dim">当前时间窗暂无退款明细</td></tr>';
+  var more=list.length>10?'<button class="btn xs ghost" data-paall="1" style="margin-top:8px">'+(paAll?'收起 ▲':'显示全部 '+list.length+' 项 ▼')+'</button>':'';
+  return '<div class="ls-tblwrap"><table class="hk-tbl ls-tbl"><thead><tr>'+head+'</tr></thead><tbody>'+body+'</tbody></table></div>'+more;
+}
+function paSection(){
+  var slicer='<span class="ls-seg">'+PA_DIMS.map(function(d){
+    return '<button data-padim="'+d[0]+'" class="'+(paDim===d[0]?'on':'')+'">'+d[1]+'</button>';
+  }).join('')+'</span>';
+  var cur=(PA_DIMS.filter(function(d){return d[0]===paDim;})[0]||[])[1]||'品类';
+  return '<div class="ls-flt">'+slicer+'<span class="ls-sep"></span><span class="ls-cnt">按'+esc(cur)+'维度 · 共 '+paAgg().length+' 项</span></div>'
+    +'<div class="ls-scale-row"><div>'+paTableHtml()+'</div>'+paPieHtml()+'</div>';
+}
+/* ── 业绩分析表（日/周销售额来源，只取数值不展示明细）上传 ── */
+function pasParse(rows,fname){
+  if(!Array.isArray(rows)||!rows.length)return '文件是空的';
+  var hdr=-1,idx={},best=0;
+  for(var i=0;i<Math.min(rows.length,10);i++){
+    var r=rows[i]||[],mp={},n=0;
+    for(var j=0;j<r.length;j++){
+      var h=String(r[j]==null?'':r[j]).replace(/\s/g,'').replace(/[¥￥,]/g,'');
+      var k=null;
+      if(/SKU/i.test(h))k='sku';
+      else if(h.indexOf('付款日期')>=0||h.indexOf('日期')>=0)k='day';
+      else if(h.indexOf('毛销售额')>=0||h.indexOf('销售额')>=0)k='sale';
+      if(k&&mp[k]==null){mp[k]=j;n++;}
+    }
+    if(n>best){best=n;hdr=i;idx=mp;}
+  }
+  if(hdr<0||idx.sku==null||idx.day==null||idx.sale==null)return '没认出表头：需要「SKU / 付款日期 / 毛销售额」三列';
+  var byDay={},cnt=0;
+  for(var i=hdr+1;i<rows.length;i++){
+    var r=rows[i]||[];
+    /* XLSX cellDates:true 会把日期列读成 Date 对象；先归一成 YYYY/MM/DD，再交给 refDayKey。 */
+    var dv=r[idx.day];
+    var dayRaw=(dv instanceof Date)
+      ? dv.getFullYear()+'/'+('0'+(dv.getMonth()+1)).slice(-2)+'/'+('0'+dv.getDate()).slice(-2)
+      : String(dv==null?'':dv);
+    if(dayRaw.indexOf('总计')>=0)continue;
+    var sku=String(r[idx.sku]==null?'':r[idx.sku]).trim();
+    if(!sku||/总计|合计/.test(sku))continue;
+    var d=refDayKey(dayRaw);
+    if(!d&&isExcelSerial(dayRaw))d=fmtDate(dayRaw,'day');
+    if(!d)continue;
+    var v=refNumK(r[idx.sale]);if(!v)continue;
+    var dm=byDay[d]||(byDay[d]={});
+    dm[sku]=(dm[sku]||0)+v;cnt++;
+  }
+  if(!cnt)return '没有可用数据行';
+  var ds=Object.keys(byDay).sort().slice(-14),keep={};
+  ds.forEach(function(d){keep[d]=byDay[d];});
+  var skuSet={};ds.forEach(function(d){Object.keys(keep[d]).forEach(function(k){skuSet[k]=1;});});
+  PAS.days=keep;
+  PAS.meta={file:String(fname||''),at:todayStr(),rows:cnt,skus:Object.keys(skuSet).length};
+  PAS.state='loaded';
+  pasSave();
+  return '业绩分析表导入完成：'+cnt+' 行 → '+ds.length+' 天 / '+PAS.meta.skus+' 个 SKU（仅取数值用于日/周销售额，不展示明细；保留最新 '+ds.length+' 天）';
+}
+function pasSave(){
+  PAS.sync='saving';
+  var json=JSON.stringify({v:1,meta:PAS.meta,days:PAS.days});
+  refGzipBlob(json).then(function(blob){
+    return fetch(SB_URL+'/storage/v1/object/'+SB_BUCKET+'/'+PAS_PATH,{
+      method:'POST',headers:sbStorageHeaders({'Content-Type':'application/gzip','x-upsert':'true','cache-control':'no-cache'}),body:blob
+    });
+  }).then(function(r){if(!r.ok)throw new Error('HTTP '+r.status);PAS.sync='cloud';})
+    .catch(function(e){PAS.sync='local';console.warn('[pas] 云端同步失败：',e&&e.message);});
+  render();
+}
+function pasLoad(){
+  if(PAS.state==='loading'||PAS.state==='loaded')return;
+  PAS.state='loading';
+  fetch(pasCloudUrl(),{headers:sbStorageHeaders()}).then(function(r){
+    if(!r.ok)throw new Error('HTTP '+r.status);
+    return r.arrayBuffer();
+  }).then(function(b){return refGunzipBlob(new Blob([b],{type:'application/gzip'}));})
+    .then(function(txt){var o=JSON.parse(txt);PAS.days=o.days||{};PAS.meta=o.meta||{};PAS.state='loaded';})
+    .catch(function(){PAS.state='empty';});
+}
+function pasReadFile(file){
+  if(!file)return;
+  var ext=String((file.name.split('.').pop()||'')).toLowerCase(),rd=new FileReader();
+  var fin=function(rows){alert(pasParse(rows,file.name));};
+  if((ext==='xlsx'||ext==='xls')&&window.XLSX){
+    rd.onload=function(){
+      try{
+        var wb=XLSX.read(new Uint8Array(rd.result),{type:'array',cellDates:true}),best=[];
+        wb.SheetNames.forEach(function(sn){var a=XLSX.utils.sheet_to_json(wb.Sheets[sn],{header:1,defval:'',blankrows:false,raw:true});if(a.length>best.length)best=a;});
+        fin(best);
+      }catch(e){alert('读取失败：'+((e&&e.message)||e));}
+    };
+    rd.readAsArrayBuffer(file);return;
+  }
+  rd.onload=function(){var txt=decodeText(rd.result).replace(/^\uFEFF/,'');fin(txt.split(/\r?\n/).filter(function(l){return l.trim()!=='';}).map(otdCutCSV));};
+  rd.readAsArrayBuffer(file);
+}
+
 function lsInner(){
   LS_CACHE={};
+  try{if(PAS.state==='idle')pasLoad();}catch(e){}
   try{if(REF.state==='idle'&&typeof refEnsure==='function')refEnsure();}catch(e){}
   const kind=lsDim;
   const ser=lsSeries(kind);
@@ -21378,7 +21641,7 @@ function lsInner(){
         +(lsChartMode==='year'?yearPage:cmpPage)+'</section>'
       )
     +'<section class="ls-sec"><h3>二、站点报损规模与趋势</h3>'+siteSec+'</section>'
-    +'<section class="ls-sec"><h3>三、品类报损透视 · 按灯</h3>'+tbl+'</section>'
+    +'<section class="ls-sec"><h3>三、产品分析</h3>'+paSection()+'</section>'
     +'</div>';
 }
 function lossFocusSection(){return '<div id="lsWrap">'+lsInner()+'</div>';}
