@@ -20960,7 +20960,9 @@ function lsPlot(cfg){
       s.vals.forEach(function(v,i){
         if(!(v>0))return;
         const h=(ih*v/(lmax||1)),x0=cx(i)-bw*bc/2+bw*si;
-        g+='<rect x="'+x0.toFixed(1)+'" y="'+(PT+ih-h).toFixed(1)+'" width="'+(bw-1.2).toFixed(1)+'" height="'+h.toFixed(1)+'" rx="1.6" fill="'+s.color+'" opacity="'+(s.op==null?0.92:s.op)+'"><title>'+esc(labels[i]+' · '+s.name+' '+(cfg.fmtTip?cfg.fmtTip(s.name,v,i):(cfg.fmtL?cfg.fmtL(v):lsMoney(v))))+'</title></rect>';
+        const tipTxt=labels[i]+' · '+s.name+' '+(cfg.fmtTip?cfg.fmtTip(s.name,v,i):(cfg.fmtL?cfg.fmtL(v):lsMoney(v)));
+        g+='<rect x="'+x0.toFixed(1)+'" y="'+(PT+ih-h).toFixed(1)+'" width="'+(bw-1.2).toFixed(1)+'" height="'+h.toFixed(1)+'" rx="1.6" fill="'+s.color+'" opacity="'+(s.op==null?0.92:s.op)+'"'
+          +(cfg.tipFloat?' data-tip="'+esc(tipTxt)+'"':'><title>'+esc(tipTxt)+'</title>')+'/>';
         if(cfg.labelFmt&&(n<=8||i===n-1||cfg.hLabels)){
           /* 标签 x = 该柱自身中心（x0+半宽），不是整组中心，否则两根柱的数值会叠在一起；
              y 只跟柱顶走（-5），矮柱不再被压到基线同一高度互相打架；白描边保证压在柱身上也看得清。 */
@@ -20992,7 +20994,11 @@ function lsPlot(cfg){
     flush();
     pts.forEach(function(p,i){
       if(!p)return;
-      if(!(cfg.singleSpread&&n===1))g+='<circle cx="'+p[0].toFixed(1)+'" cy="'+p[1].toFixed(1)+'" r="2.4" fill="#fff" stroke="'+s.color+'" stroke-width="1.5" opacity="'+dop+'" data-lsf="'+si+'"><title>'+esc(labels[i]+' · '+s.name+' '+(s.fmt?s.fmt(s.vals[i],i):lsPct(s.vals[i])))+'</title></circle>';
+      if(!(cfg.singleSpread&&n===1)){
+        const tipTxt=labels[i]+' · '+s.name+' '+(s.fmt?s.fmt(s.vals[i],i):lsPct(s.vals[i]));
+        g+='<circle cx="'+p[0].toFixed(1)+'" cy="'+p[1].toFixed(1)+'" r="2.4" fill="#fff" stroke="'+s.color+'" stroke-width="1.5" opacity="'+dop+'" data-lsf="'+si+'"'
+          +(cfg.tipFloat?' data-tip="'+esc(tipTxt)+'"':'><title>'+esc(tipTxt)+'</title>')+'/>';
+      }
       if(cfg.labelLine&&(n<=8||i===n-1||cfg.hLabels)){
         /* 末点标签居中放在点上方：改成 end 会压到前一个点的数值，start 又会被 SVG 右边界裁掉 */
         const lEnd=(i===n-1);
@@ -21099,6 +21105,7 @@ function lsReasonRows(){
     let rsn=lsS(refVal(r,'refReason'));if(!rsn||rsn==='-')rsn=lsS(refVal(r,'issueCat'));
     if(!rsn||rsn==='-')rsn='';
     out.push({c1:lsS(refVal(r,'cat1'))||'（未分类）',c2:lsS(refVal(r,'cat2'))||'（未分类）',
+      site:String(lsS(refVal(r,'site'))||'').trim().toUpperCase(),
       reason:rsn||'（未填）',amt:refNumK(refVal(r,'refAmt'))});
   });
   LS_RCACHE={sig:sig,rows:out};
@@ -21111,6 +21118,17 @@ function lsTopReasonOf(rows){
 }
 /* 整体最高退款原因（一模块 KPI 悬浮） */
 function lsTopReasonAll(){return lsTopReasonOf(lsReasonRows());}
+/* 按站点的最高退款原因（站点图柱子/折线悬浮）：站点代码统一大写匹配；无 site 列的明细不计入 */
+function lsTopReasonSite(site){
+  const k=String(site==null?'':site).trim().toUpperCase();
+  if(!k)return lsTopReasonAll();
+  const hit=lsTopReasonOf(lsReasonRows().filter(function(r){return r.site===k;}));
+  return (hit.reason&&hit.reason!=='—')?hit:lsTopReasonAll(); /* 该站点无明细时回退整体 */
+}
+/* 悬浮文案：原因（退款额 ¥X）；口径只写注释，不上界面 */
+function lsTopReasonTipText(t){
+  t=t||{};return (t.reason||'—')+'（退款额 '+lsMoney(t.amt||0)+'）';
+}
 /* 品类 → 最高退款原因 map（二模块表格悬浮，按当前星耀级别分组，一次扫描供全部行复用） */
 function lsTopReasonCatMap(){
   const lv=lsLevel==='2'?'c2':'c1',m={};
@@ -21675,15 +21693,17 @@ function lsInner(){
   let chart1='';
   if(U.length){
     chart1=lsLegend([['销售额',LS_C.sale],['退款额',LS_C.ref],['退款率（右轴）',LS_C.rate]])
-      +lsPlot({labels:labels,h:253,fixH:253,right:true,tgtAxis:'r',
+      +lsPlot({labels:labels,h:253,fixH:253,right:true,tgtAxis:'r',tipFloat:true,
         bars:[{name:'销售额',color:LS_C.sale,vals:U.map(function(x){return x.sale;})},
               {name:'退款额',color:LS_C.ref,vals:U.map(function(x){return x.amt;})}],
         lines:[{name:'退款率',color:LS_C.rate,vals:U.map(function(x){return x.rate==null?null:x.rate*100;}),axis:'r',w:2,fmt:function(v){return lsPct(v/100);}}],
         fmtL:lsMoney,fmtR:function(v){return (v>=10?Math.round(v):Math.round(v*10)/10)+'%';},
         fmtTip:function(nm,v,i){
-          if(nm==='销售额')return lsMoney(v)+' · 订单量 '+lsNum((U[i]||{}).ordn||0);
-          if(nm==='退款额')return lsMoney(v)+' · 退款量 '+lsNum((U[i]||{}).rqty||0);
-          return lsPct(v/100);
+          let s;
+          if(nm==='销售额')s=lsMoney(v)+' · 订单量 '+lsNum((U[i]||{}).ordn||0);
+          else if(nm==='退款额')s=lsMoney(v)+' · 退款量 '+lsNum((U[i]||{}).rqty||0);
+          else s=lsPct(v/100);
+          return s+' ｜ 最高退款原因：'+lsTopReasonTipText(lsTopReasonAll());
         },labelFmt:function(nm,v){return lsMoney(v);},labelLine:true});
   }else{
     chart1='<div class="ls-empty">还没有可用的报损数据 —— 到「AMZ汇总表 · ⬆ 上传指标数据源」上传账号报损后这里会自动出现</div>';
@@ -21845,15 +21865,14 @@ function lsInner(){
     const siteKeys=siteList.map(function(x){return x.k;});
     const siteTip=function(nm,v,i){
       const x=siteList[i]||{};
-      if(nm==='退款率')return lsPct(v/100);
-      const subs=Object.keys(x.sub||{}).sort(function(a,b){return x.sub[b]-x.sub[a];})
-        .slice(0,6).map(function(g){return g+' '+lsMoney(x.sub[g]);}).join('、');
-      return lsMoney(v)+(nm==='销售额'?' · 订单量 ':' · 退款量 ')+'｜核算小组：'+(subs||'—');
+      const reason='最高退款原因：'+lsTopReasonTipText(lsTopReasonSite(x.k));
+      if(nm==='退款率')return lsPct(v/100)+' ｜ '+reason;
+      return lsMoney(v)+(nm==='销售额'?' · 订单量 ':' · 退款量 ')+' ｜ '+reason;
     };
     /* 站点多时每个站点固定 66px 画到宽画布里、外套横向滚动 → 标签全平排不叠、数值清楚（同核算小组对比页）。 */
     const sWide=siteList.length>10, sW=Math.max(660,siteList.length*66);
     const siteChart=lsLegend([['销售额',LS_C.sale],['退款额',LS_C.ref],['退款率（右轴）',LS_C.rate]])
-      +'<div class="ls-hscroll">'+lsPlot({labels:siteKeys,w:sW,h:(sWide?253:234),right:true,tgtAxis:'r',
+      +'<div class="ls-hscroll">'+lsPlot({labels:siteKeys,w:sW,h:(sWide?253:234),right:true,tgtAxis:'r',tipFloat:true,
           allLabels:true,hLabels:sWide,pxW:(sWide?sW:null),
           bars:[{name:'销售额',color:LS_C.sale,vals:siteList.map(function(x){return x.sale;})},
                 {name:'退款额',color:LS_C.ref,vals:siteList.map(function(x){return x.amt;})}],
@@ -21864,7 +21883,13 @@ function lsInner(){
     /* 趋势显示全部站点，不再截前10个；口径只写注释不上界面。 */const siteTrend=lsDimTrend(kind,'site',siteKeys);
     let siteTrendHtml='<div class="ls-sub" style="margin:0 0 4px">各站点退款率趋势 · 按上传批次</div>';
     if(siteTrend.pts>=1){
-      const stW=Math.max(660,siteTrend.lines.length*66);siteTrendHtml+='<div class="ls-hscroll">'+lsPlot({labels:siteTrend.labels,w:stW,pxW:stW,h:253,fixH:253,rMin:'auto',focusIdx:lsFocus,right:true,noLeft:true,lineBadge:true,labelLine:true,singleSpread:true,lines:siteTrend.lines,
+      /* 折线点悬浮带该站点最高退款原因；标签仍用原 fmt，不被加长 */
+      const stLines=siteTrend.lines.map(function(l){
+        const baseFmt=l.fmt,rsn=lsTopReasonSite(l.name);
+        return Object.assign({},l,{labelFmt:baseFmt,
+          fmt:function(v){return (baseFmt?baseFmt(v):lsPct(v))+' ｜ 最高退款原因：'+lsTopReasonTipText(rsn);}});
+      });
+      const stW=Math.max(660,siteTrend.lines.length*66);siteTrendHtml+='<div class="ls-hscroll">'+lsPlot({labels:siteTrend.labels,w:stW,pxW:stW,h:253,fixH:253,rMin:'auto',focusIdx:lsFocus,right:true,noLeft:true,lineBadge:true,labelLine:true,singleSpread:true,tipFloat:true,lines:stLines,
           fmtR:function(v){return (Math.round(v*10)/10)+'%';}})+'</div>'
         +'<div class="ls-trend-key'+(lsKeyOpen||siteTrend.lines.length<=6?'':' fold')+'">'+siteTrend.lines.map(function(l,li){
             return '<span data-lsfocus="'+li+'" class="'+(String(lsFocus)===String(li)?'on':'')+'" style="color:'+l.color+';cursor:pointer" title="'+esc(l.name+' 最新 '+(l.fmt&&l.vals.length?l.fmt(l.vals[l.vals.length-1]):''))+'"><i></i><b style="color:#5b6270;font-weight:400">'+esc(l.name)+'</b></span>';
