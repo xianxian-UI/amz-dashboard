@@ -383,7 +383,8 @@
   .ls-tbl{margin:0}
   .ls-tbl thead th{position:sticky;top:0;z-index:2}
   .ls-tbl td.num,.ls-tbl th:nth-child(n+4){text-align:right;font-variant-numeric:tabular-nums}
-  .pa-tbl th,.pa-tbl td,.pa-tbl td.num,.pa-tbl .ls-cat{text-align:center}
+  /* 产品分析表全部字段居中：提高特异性+important，压过后面 .ls-tbl .ls-cat 的左对齐 */
+  table.pa-tbl th,table.pa-tbl td,table.pa-tbl td.num,table.pa-tbl .ls-cat{text-align:center!important}
   .ls-tbl .ls-rk{width:46px;color:#b0b5c0;font-weight:700}
   .ls-tbl .ls-cat{text-align:left;font-weight:600;color:#3a3656;max-width:250px;overflow:hidden;text-overflow:ellipsis}
   .ls-tbl tbody tr[data-lscat]{cursor:pointer}
@@ -11340,6 +11341,8 @@ document.getElementById('app').addEventListener('click',e=>{
   }
   const paddim=t.closest&&t.closest('[data-padim]');
   if(paddim){paDim=paddim.getAttribute('data-padim')||'cat';paAll=false;render();return;}
+  const palevel=t.closest&&t.closest('[data-palevel]');
+  if(palevel){paLevel=palevel.getAttribute('data-palevel')||'1';paAll=false;render();return;}
   const paall=t.closest&&t.closest('[data-paall]');
   if(paall){paAll=!paAll;lsRefresh();return;}
   const lslv=t.closest&&t.closest('[data-lslv]');
@@ -21113,10 +21116,16 @@ function lsRefStdStat(kind){
    - 报损率 = 退款额合计 ÷ 销售额合计；报损率排名按报损率降序。
    - 销售额：月=按退款明细出现的 SKU 取「产品按灯」1 个月销售额（1 号若为累计值则减掉上月累计）；
        日/周=按额外上传的「业绩分析」表明细，取同一时间窗内 SKU 的毛销售额求和。
-   - 最高退款品类 / 区域最高退款品类：该分组内退款额合计最大的星耀一级分类。
+   - 最高退款品类 / 区域最高退款品类：该分组内退款额合计最大的品类（跟随星耀1/2级切换）。
+   - 品类维度保留「星耀1级/星耀2级」切换：1级按 cat1 统计，2级按 cat2 统计（默认1级）。
+   - 最高退款原因：按当前分组条件，在 refund 明细里把「退款金额(RMB)」按原因求和取最多；
+     优先用「退款原因」有效值（排除 - / 空），该组全为占位时退用「问题归类」按同法取最多
+     （源数据存在整批退款原因为 - 的批次，如 2026-11-16）。口径隐藏，不上界面。
+   - SKU 维度：每行额外给出该 SKU 的星耀一级品类 / 星耀二级品类 / 商品状态。
 */
 var PAS={days:{},meta:{},state:'idle',sync:''};
 var PAS_PATH='amz2026/pasales.json.gz';
+var paLevel='1';   /* 星耀级别：1=星耀一级分类, 2=星耀二级分类 */
 var PA_DIMS=[['cat','品类'],['region','区域'],['group','核算小组'],['sku','SKU']];
 var PA_COLORS=['#4f7df3','#38bdf8','#818cf8','#2dd4bf','#f0a35e','#a78bfa','#60a5fa','#94a3b8','#fb7185','#a3e635'];
 function pasCloudUrl(){return SB_URL+'/storage/v1/object/authenticated/'+SB_BUCKET+'/'+PAS_PATH;}
@@ -21147,9 +21156,14 @@ function paRefRows(){
        退款明细自带的 region 是笼统「长沙」，只在账号管理缺该账号时兜底。 */
     var region=lsS(d.region)||lsS(refVal(r,'region'));if(!region||region==='-')region='';
     var grp=lsS(refVal(r,'team'));if(!grp||grp==='-')grp=d.group||'';
-    out.push({day:day,sku:lsS(refVal(r,'sku')),reason:lsS(refVal(r,'refReason'))||'（未填）',
+    /* 退款原因：优先「退款原因」列；遇到 '-'/空 这类占位，退用「问题归类」列
+       （源数据存在整批退款原因都是 '-' 的批次，例如 2026-11-16）。 */
+    var rsn=lsS(refVal(r,'refReason'));if(!rsn||rsn==='-')rsn=lsS(refVal(r,'issueCat'));
+    if(!rsn||rsn==='-')rsn='';
+    out.push({day:day,sku:lsS(refVal(r,'sku')),reason:rsn||'（未填）',
       region:region||'（未分区）',group:grp||'（未分组）',
       c1:lsS(refVal(r,'cat1'))||'（未分类）',c2:lsS(refVal(r,'cat2'))||'（未分类）',
+      gs:lsS(refVal(r,'goodsState'))||'—',
       amt:refNumK(refVal(r,'refAmt'))});
   });
   return out;
@@ -21186,7 +21200,7 @@ function paGroupKey(r){
   if(paDim==='region')return r.region;
   if(paDim==='group')return r.region+'\u0001'+r.group;
   if(paDim==='sku')return r.sku||'（无SKU）';
-  return r.c1;
+  return paLevel==='2'?r.c2:r.c1;   /* 品类维度：跟随星耀1/2级切换 */
 }
 function paTopBy(rows,field){
   var m={};rows.forEach(function(r){m[r[field]]=(m[r[field]]||0)+r.amt;});
@@ -21203,8 +21217,10 @@ function paAgg(){
   var list=order.map(function(k){
     var g=m[k],sale=0;
     Object.keys(g.skus).forEach(function(sk){sale+=(sales[sk]||0);});
-    return {key:k,label:k.split('\u0001').pop(),region:g.rows[0].region,group:g.rows[0].group,
-      topCat:paTopBy(g.rows,'c1'),topReason:paTopBy(g.rows,'reason'),
+    var r0=g.rows[0]||{};
+    return {key:k,label:k.split('\u0001').pop(),region:r0.region,group:r0.group,
+      c1:r0.c1||'—',c2:r0.c2||'—',gs:r0.gs||'—',
+      topCat:paTopBy(g.rows,paLevel==='2'?'c2':'c1'),topReason:paTopBy(g.rows,'reason'),
       sale:sale,amt:g.amt,rate:sale>0?g.amt/sale:null};
   });
   list.sort(function(a,b){return (b.rate==null?-1:b.rate)-(a.rate==null?-1:a.rate)||b.amt-a.amt;});
@@ -21212,7 +21228,8 @@ function paAgg(){
   return list;
 }
 function paCatAgg(){
-  var m={};paRefRows().forEach(function(r){m[r.c1]=(m[r.c1]||0)+r.amt;});
+  var lv=paLevel==='2'?'c2':'c1',m={};
+  paRefRows().forEach(function(r){m[r[lv]]=(m[r[lv]]||0)+r.amt;});
   var list=Object.keys(m).map(function(k){return {k:k,amt:m[k]};});
   list.sort(function(a,b){return b.amt-a.amt;});
   return list;
@@ -21235,7 +21252,7 @@ function paPieHtml(){
       +'<b style="font-variant-numeric:tabular-nums;color:#333b47">'+lsMoney(x.amt)+'</b>'
       +'<em style="font-style:normal;color:#9aa1ad;width:44px;text-align:right;font-variant-numeric:tabular-nums">'+lsPct(x.amt/total)+'</em></div>';
   }).join('');
-  return '<div class="ls-donut"><div style="font-size:12px;font-weight:700;color:#8d6f68;margin:0 0 4px">前10品类退款占比</div>'
+  return '<div class="ls-donut"><div style="font-size:12px;font-weight:700;color:#8d6f68;margin:0 0 4px">前10'+(paLevel==='2'?'星耀二级':'星耀一级')+'品类退款占比</div>'
     +'<div style="display:flex;align-items:center;gap:14px">'
     +'<svg viewBox="0 0 176 176" style="width:176px;height:176px;flex:none">'+slices
     +'<text x="88" y="101" text-anchor="middle" font-size="14" font-weight="700" fill="#333b47">'+esc(lsMoney(total))+'</text></svg>'
@@ -21243,15 +21260,17 @@ function paPieHtml(){
 }
 function paTableHtml(){
   var list=paAgg(),shown=paAll?list:list.slice(0,10);
+  var lvName=paLevel==='2'?'星耀二级品类':'星耀一级品类';
   var head='';
-  if(paDim==='cat')head='<th>品类</th><th>销售额</th><th>退款额</th><th>报损率</th><th>报损率排名</th><th>最高退款原因</th>';
+  if(paDim==='cat')head='<th>'+lvName+'</th><th>销售额</th><th>退款额</th><th>报损率</th><th>报损率排名</th><th>最高退款原因</th>';
   else if(paDim==='region')head='<th>区域</th><th>区域最高退款品类</th><th>销售额</th><th>退款额</th><th>报损率</th><th>报损率排名</th><th>最高退款原因</th>';
   else if(paDim==='group')head='<th>区域</th><th>核算小组</th><th>最高退款品类</th><th>销售额</th><th>退款额</th><th>报损率</th><th>报损率排名</th><th>最高退款原因</th>';
-  else head='<th>SKU</th><th>销售额</th><th>退款额</th><th>报损率</th><th>报损率排名</th><th>最高退款原因</th>';
+  else head='<th>SKU</th><th>星耀一级品类</th><th>星耀二级品类</th><th>商品状态</th><th>销售额</th><th>退款额</th><th>报损率</th><th>报损率排名</th><th>最高退款原因</th>';
   var body=shown.map(function(x){
     var tds='';
     if(paDim==='group')tds='<td>'+esc(x.region)+'</td><td>'+esc(x.group)+'</td><td>'+esc(x.topCat)+'</td>';
     else if(paDim==='region')tds='<td>'+esc(x.region)+'</td><td>'+esc(x.topCat)+'</td>';
+    else if(paDim==='sku')tds='<td class="ls-cat">'+esc(x.label)+'</td><td>'+esc(x.c1)+'</td><td>'+esc(x.c2)+'</td><td>'+esc(x.gs)+'</td>';
     else tds='<td class="ls-cat">'+esc(x.label)+'</td>';
     tds+='<td class="num">'+lsMoney(x.sale)+'</td>'
       +'<td class="num ls-ref">'+lsMoney(x.amt)+'</td>'
@@ -21260,7 +21279,7 @@ function paTableHtml(){
       +'<td>'+esc(x.topReason)+'</td>';
     return '<tr>'+tds+'</tr>';
   }).join('');
-  if(!body)body='<tr><td colspan="8" class="dim">当前时间窗暂无退款明细</td></tr>';
+  if(!body)body='<tr><td colspan="'+(paDim==='sku'?9:8)+'" class="dim">当前时间窗暂无退款明细</td></tr>';
   var more=list.length>10?'<button class="btn xs ghost" data-paall="1" style="margin-top:8px">'+(paAll?'收起 ▲':'显示全部 '+list.length+' 项 ▼')+'</button>':'';
   return '<div class="ls-tblwrap"><table class="hk-tbl ls-tbl pa-tbl"><thead><tr>'+head+'</tr></thead><tbody>'+body+'</tbody></table></div>'+more;
 }
@@ -21268,6 +21287,12 @@ function paSection(){
   var slicer='<span class="ls-seg">'+PA_DIMS.map(function(d){
     return '<button data-padim="'+d[0]+'" class="'+(paDim===d[0]?'on':'')+'">'+d[1]+'</button>';
   }).join('')+'</span>';
+  /* 品类维度保留星耀一级 / 星耀二级 的区别与统计切换 */
+  if(paDim==='cat'){
+    slicer+='<span class="ls-sep"></span><span class="ls-lv">'+[['1','星耀1级'],['2','星耀2级']].map(function(x){
+      return '<button data-palevel="'+x[0]+'" class="'+(paLevel===x[0]?'on':'')+'">'+x[1]+'</button>';
+    }).join('')+'</span>';
+  }
   var cur=(PA_DIMS.filter(function(d){return d[0]===paDim;})[0]||[])[1]||'品类';
   return '<div class="ls-flt">'+slicer+'<span class="ls-sep"></span><span class="ls-cnt">按'+esc(cur)+'维度 · 共 '+paAgg().length+' 项</span></div>'
     +'<div class="ls-scale-row"><div>'+paTableHtml()+'</div>'+paPieHtml()+'</div>';
