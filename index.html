@@ -409,6 +409,33 @@
   table.ca-tbl .ls-tblwrap,table.ca-tblwrap{max-height:none}
   .ca-sub .ls-tblwrap{max-height:340px}
   .ca-sub .ls-tbl{margin:0}
+  /* 产品分析（第三模块）与渠道分析（第四模块）字号/行高/留白完全对齐：
+     12px 正文、11.5px 表头、上 3px 下 2px 的紧凑行高。双写 .pa-tbl 提高特异性，
+     否则会被 `.hk-row2 .hk-tbl th`（12.5px / 5px 8px）压回去。 */
+  table.pa-tbl.pa-tbl{font-size:12px}
+  table.pa-tbl.pa-tbl th{padding:3px 7px;font-size:11.5px;line-height:1.35}
+  table.pa-tbl.pa-tbl td{padding:2px 7px;line-height:1.45}
+  table.pa-tbl.pa-tbl .ls-lamp{font-size:12px}
+  /* ── 可搜索下拉（ssel）：既能打字过滤选项，也能点箭头展开下拉 ──
+     用 input + 自绘面板，而不是 <input list=datalist>：datalist 在部分浏览器点一下不出列表，
+     且选中后无法立刻触发看板重绘。这里选中即写状态 → render()。 */
+  .ssel{position:relative;display:inline-flex;align-items:center;vertical-align:middle}
+  .ssel>input{font-family:inherit;font-size:12px;color:#3a3550;background:#fff;
+    border:1px solid #d5d9e6;border-radius:6px;padding:3px 19px 3px 7px;outline:none;
+    width:100%;min-width:88px;text-overflow:ellipsis}
+  .ssel>input::placeholder{color:#a8adbd}
+  .ssel>input:focus{border-color:#c3a9a2;box-shadow:0 0 0 2px rgba(217,59,43,.08)}
+  .ssel>i{position:absolute;right:6px;top:50%;margin-top:-6px;width:0;height:0;pointer-events:none;
+    border-left:4px solid transparent;border-right:4px solid transparent;border-top:5px solid #9aa1ad}
+  .ssel-pop{position:absolute;top:100%;left:0;z-index:80;margin-top:3px;min-width:100%;
+    max-height:232px;overflow:auto;background:#fff;border:1px solid #e4e8f0;border-radius:8px;
+    box-shadow:0 8px 22px rgba(30,32,44,.14);padding:3px}
+  .ssel-pop[hidden]{display:none}
+  .ssel-pop b{display:block;padding:4px 8px;border-radius:5px;font-size:12px;font-weight:400;color:#3f444d;
+    white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer}
+  .ssel-pop b:hover{background:#fdf3f1;color:#c0392b}
+  .ssel-pop b.on{background:#fdeeea;color:#c0392b;font-weight:700}
+  .ssel-pop .ssel-none{padding:7px 8px;color:#9aa1ad;font-size:11.5px}
   .ls-tbl .ls-rk{width:46px;color:#b0b5c0;font-weight:700}
   .ls-tbl .ls-cat{text-align:left;font-weight:600;color:#3a3656;max-width:250px;overflow:hidden;text-overflow:ellipsis}
   .ls-tbl tbody tr[data-lscat]{cursor:pointer}
@@ -1911,6 +1938,22 @@
   .um-nm b{color:#3a3550;font-size:13px}
   .um-tbl td.um-stale{color:#c0392b;font-weight:600}
   .um-sub{font-size:11px;color:#a2a7b8;margin-top:2px}
+  /* 字段查看权限：表格里的一小格 + 弹层里的 5 行勾选 */
+  .um-fpc{text-align:center;white-space:nowrap}
+  .um-fpbtn{font:inherit;font-size:11.5px;font-weight:700;border-radius:6px;padding:2px 8px;cursor:pointer;
+    border:1px solid;background:#fff;font-variant-numeric:tabular-nums}
+  .um-fpbtn.um-fp-ok{color:#2f7d5b;border-color:#bfe2d3;background:#f4fbf7}
+  .um-fpbtn.um-fp-lim{color:#b3562f;border-color:#f2d2c4;background:#fdf6f2}
+  .um-fpbtn:hover{filter:brightness(.97)}
+  .um-fp-all{font-size:11.5px;color:#5a51cb;font-weight:700}
+  .um-fpmodal{max-width:560px}
+  .um-fplist{display:flex;flex-direction:column;gap:2px;margin-top:6px}
+  .um-fpline{display:flex;align-items:center;gap:8px;padding:7px 9px;border:1px solid #eef0f6;border-radius:8px;
+    font-size:13px;color:#3a3550;cursor:pointer}
+  .um-fpline:hover{background:#fafbfe;border-color:#e0e5f0}
+  .um-fpline input{width:15px;height:15px;accent-color:#d93b2b;flex:none}
+  .um-fpline span{font-weight:600;min-width:64px}
+  .um-fpline em{font-style:normal;font-size:11.5px;color:#9aa1ad;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis}
   .um-me{display:inline-block;margin-left:6px;font-size:10px;padding:0 5px;border-radius:99px;background:#e8f7f0;color:#2e9e6b}
   .um-off{display:inline-block;margin-left:6px;font-size:10px;padding:0 5px;border-radius:99px;background:#fdeaea;color:#d64545}
   .um-sel{font-family:inherit;font-size:12px;border:1px solid #e2dff2;border-radius:8px;padding:4px 6px;background:#fcfcff;max-width:110px}
@@ -3819,9 +3862,43 @@ const UM_MODS=[
 ];
 const UM_ROLES={admin:'管理员',mgr:'管理经理',supervisor:'管理主管',cslead:'客服组长',cs:'客服',ops:'运营',viewer:'只读'};
 const UM_SCOPES={all:'全部数据',mgr:'本经理名下',supervisor:'本主管名下',cs:'本客服名下',cslead:'本组长名下',custom:'指定核算小组/地域/账号'};
+
+/* ================= 字段查看权限（数据范围旁边那一组） =================
+   5 个敏感指标：销售额 / 订单量 / 利润 / 利润率 / 退款金额。
+   存在 perms 这个 JSON 列的 _fields 子键里（{sale:false,…}），不新增数据库列，
+   所以后端 amz_user_save 不用改表；缺省一律视为「有权限」，老账号升级后不会突然看不见数。
+   没权限时统一显示 ***（金额、数量、比率全打码 —— 只码金额不码比率等于白码，比率能反推出金额量级）。
+   打码用哨兵值 FP_MASK 往下游传：数据层把数值换成它，lsMoney/lsNum/lsPct 认出来后输出 ***，
+   这样图表/表格/提示框几十处调用点都不用单独改。 */
+const UM_FIELDS=[
+  {k:'sale',n:'销售额'},{k:'order',n:'订单量'},{k:'profit',n:'利润'},
+  {k:'margin',n:'利润率'},{k:'refund',n:'退款金额'}
+];
+const FP_MASK='\u0001FPMASK';
+function fpFieldsOf(u){
+  const f=((u&&u.perms)||{})._fields||{};
+  const o={};
+  UM_FIELDS.forEach(function(x){o[x.k]=(f[x.k]===false)?false:true;});
+  return o;
+}
+function fpCount(u){
+  const f=fpFieldsOf(u);let n=0;
+  UM_FIELDS.forEach(function(x){if(f[x.k])n++;});
+  return n;
+}
+function fpCan(k){
+  let u=null;
+  try{u=WB.user||null;}catch(e){}
+  /* 未登录（本地打开/离线预览）：不拦，免得整块看板变成 *** */
+  if(!u)return true;
+  if(u.role==='admin')return true;
+  return fpFieldsOf(u)[k]!==false;
+}
+function fpM(k,v){return fpCan(k)?v:FP_MASK;}
+
 let UM={users:[],mods:[],q:'',busy:false,msg:'',err:'',
   addOpen:false,add:null,pwFor:'',pwVal:'',pwMust:true,scopeFor:'',scopeVal:null,usage:null,
-  scopeTab:'group',scopeQ:'',
+  scopeTab:'group',scopeQ:'',fpFor:'',
   /* 搜索 + 筛选 + 批量勾选 */
   sel:{},fRole:'',fScope:'',fMod:'',
   bulkOpen:false,bulkMode:'add',bulkPerms:{},bulkScope:'',bulkNote:'',
@@ -4008,6 +4085,7 @@ function umTable(){
       <td>${roleSel}</td>
       <td>${isAdm?'<b style="color:#5a51cb">全部数据</b>':`<select data-umscope="${u.uid}" class="um-sel">${Object.keys(UM_SCOPES).map(s=>`<option value="${s}" ${u.scopeType===s?'selected':''}>${UM_SCOPES[s]}</option>`).join('')}</select>
         ${u.scopeType==='custom'?`<div class="um-sub">指定：${esc(fmtScopeVal(u.scopeValue))}</div>`:''}`}</td>
+      <td class="um-fpc">${umFpCell(u,isAdm)}</td>
       ${cells}
       <td class="${lg.stale?'um-stale':''}">${esc(lg.txt)}</td>
       <td class="um-pw"><code>${esc(u.password||'—')}</code>
@@ -4020,7 +4098,7 @@ function umTable(){
   return `<div class="um-scroll" id="umMainScroll"><table class="um-tbl">
     <thead>
       <tr><th rowspan="2" class="um-pickc"><input type="checkbox" id="umSelAll" title="全选当前筛选结果" ${allOn?'checked':''}></th>
-        <th rowspan="2">姓名</th><th rowspan="2">角色</th><th rowspan="2">数据范围</th>${head}<th rowspan="2">最近登录</th><th rowspan="2">密码</th><th rowspan="2">权限</th></tr>
+        <th rowspan="2">姓名</th><th rowspan="2">角色</th><th rowspan="2">数据范围</th><th rowspan="2" title="销售额 / 订单量 / 利润 / 利润率 / 退款金额 这 5 个数字能不能看；没勾的显示 ***">字段查看</th>${head}<th rowspan="2">最近登录</th><th rowspan="2">密码</th><th rowspan="2">权限</th></tr>
       <tr>${sub}</tr>
     </thead>
     <tbody>${rows}</tbody></table></div>
@@ -4355,6 +4433,47 @@ function umScopePaint(){
     if(!sp&&n){tabs[i].insertAdjacentHTML('beforeend',' <span class="n"></span>');sp=tabs[i].querySelector('.n');}
     if(sp)sp.textContent=n?String(n):'';
   }
+}
+/* ---------- 字段查看权限：表格里那一小格 + 勾选弹层 ----------
+   5 个字段任一被关掉，看板里对应的数字（含比率、占比、图表）一律显示 ***。 */
+function umFpCell(u,isAdm){
+  if(isAdm)return '<span class="um-fp-all">全部 5/5</span>';
+  const f=fpFieldsOf(u),n=fpCount(u);
+  const off=UM_FIELDS.filter(function(x){return !f[x.k];}).map(function(x){return x.n;});
+  const cls=n===UM_FIELDS.length?'um-fp-ok':'um-fp-lim';
+  return '<button class="um-fpbtn '+cls+'" data-umfp="'+esc(u.uid)+'" title="点击设置该用户能看哪些字段">'
+    +n+'/'+UM_FIELDS.length+'</button>'
+    +(off.length?'<div class="um-sub">隐藏：'+esc(off.join('、'))+'</div>':'');
+}
+function umFpModal(){
+  if(!UM.fpFor)return '';
+  const u=umUserOf(UM.fpFor)||{};
+  const f=fpFieldsOf(u);
+  const isAdm=u.role==='admin';
+  const rows=UM_FIELDS.map(function(x){
+    return '<label class="um-fpline">'
+      +'<input type="checkbox" data-umfpk="'+x.k+'" '+(isAdm||f[x.k]?'checked':'')+' '+(isAdm?'disabled':'')+'>'
+      +'<span>'+x.n+'</span>'
+      +'<em>'+(x.k==='sale'?'AMZ 汇总表 / 报损透视台 / 产品按灯的销售额':
+             x.k==='order'?'订单量（含订单维度下的订单量 / 退款占比分母）':
+             x.k==='profit'?'产品按灯的利润（含利润得分 / 利润总分）':
+             x.k==='margin'?'产品按灯的利润率（利润 ÷ 销售额，含利润率得分 / 总分）':
+             '退款额 / 退款明细金额 / 物流退款金额 / 产品按灯退款金额')+'</em></label>';
+  }).join('');
+  return '<div class="mask" id="mask"><div class="modal um-fpmodal">'
+    +'<header><h2>字段查看权限 · '+esc(u.username||'')+'</h2></header>'
+    +'<div class="body one-col">'
+    +'<p class="um-desc">取消勾选的字段在整块看板里显示 <b>***</b>，比率/占比/图表会一起屏蔽 —— '
+    +'只码金额留着比率，等于把金额量级白送。<b>管理员</b>恒定全开，避免把自己锁死。</p>'
+    +'<p class="um-desc">生效范围：<b>产品按灯</b>（销售额 / 利润 / 利润率 / 退款金额及其得分、总分、PHI、导出）、'
+    +'AMZ 汇总表、报损透视台一～四模块、退款明细（金额卡与金额列、导出）。</p>'
+    +(isAdm?'<p class="um-desc"><b>这个人是管理员，5 个字段全部可见且不可改。</b></p>':'')
+    +'<div class="um-fplist">'+rows+'</div>'
+    +'</div>'
+    +'<footer>'
+    +(isAdm?'':'<button class="btn ghost xs" id="umFpAll">全部开启</button><button class="btn ghost xs" id="umFpNone">全部关闭</button>')
+    +'<button class="btn" id="umFpClose">完成</button>'
+    +'</footer></div></div>';
 }
 function umScopeModal(){
   if(!UM.scopeFor)return '';
@@ -6803,6 +6922,25 @@ function isGoCtxHtml(){
     +'→ 已在「'+esc(tab?tab[1]:'')+'」按该账号筛选'+cnt
     +'<button class="is-gocx-x" data-goclear="1">清除筛选 ✕</button></div>';
 }
+/* 汇总表列 key → 字段权限键；不是金额/数量列返回 null（如账号、站点这些不遮） */
+function fpSumKey(k){
+  const s=String(k||'');
+  if(/^bao[DSWM]Sale$/.test(s))return 'sale';
+  if(/^bao[DSWM]Ref$/.test(s))return 'refund';
+  if(/^bao[DSWM]Rqty$/.test(s))return 'refund';
+  if(/^bao[DSWM]Ord$/.test(s))return 'order';
+  if(/^bao[DSWM]Rate$/.test(s))return 'rate';        /* 报损率 = 退款额 ÷ 销售额 */
+  if(/^bao[DSWM]QtyShare$/.test(s))return 'share';   /* 退款占比 = 退款量 ÷ 订单量 */
+  return null;
+}
+function fpAllowKey(k){
+  if(k==='sale')return fpCan('sale');
+  if(k==='order')return fpCan('order');
+  if(k==='refund')return fpCan('refund');
+  if(k==='rate')return fpCan('sale')&&fpCan('refund');
+  if(k==='share')return fpCan('order')&&fpCan('refund');
+  return true;
+}
 function sumBodyInner(){
   const all=sumData();const list=sumFiltered();
   const pages=Math.max(1,Math.ceil(list.length/pageSize));
@@ -6821,6 +6959,10 @@ function sumBodyInner(){
     /* 整行一条指标都没有时不做 0 值映射（交回 ⑤ 的无数据口径） */
     const rowEmpty=SUM_M_KEYS.every(function(k){return a[k]==null||String(a[k]).trim()==='';});
     const tds=vcSum.map(function(c){const k=c[0],raw=a[k]==null?'':a[k];
+      /* 字段查看权限：汇总表的金额/订单量列按 5 个字段各自判断，没权限直接 ***，
+         连带去掉跳转链接与悬浮 title（带着原值的 title 等于漏）。 */
+      const _fk=fpSumKey(k);
+      if(_fk&&!fpAllowKey(_fk))return '<td class="num">***</td>';
       if(mSet[k]){
         const zt=stdZeroTo(k),ztr=stdZeroRaw(k);
         const isMapped=!rowEmpty&&isFinite(zt)&&(raw===''||stdIsZero(raw));
@@ -8486,6 +8628,12 @@ function secUserApi(action, body){
       perms: (u.perms !== undefined ? u.perms : (body.perms !== undefined ? body.perms : cur.perms)) || {},
       must_change: mc,
       active: umPick(u.active, body.active, cur.active, true) };
+    /* 字段查看权限存在 perms 这个 JSON 列的 _fields 子键里：不新增数据库列，
+       amz_user_save 本来就把 perms 原样存下去，所以这里只需合并，无需改表结构。 */
+    if (body.fields && typeof body.fields === 'object') {
+      payload.perms = Object.assign({}, payload.perms || {}, {
+        _fields: Object.assign({}, ((payload.perms || {})._fields || {}), body.fields) });
+    }
     /* 按人范围(mgr/supervisor/cs/cslead)不消费 G/R/A 条件：清掉残留的自定义范围，
        否则服务端会把地域/他人条件 AND 进过滤，导致「本经理名下」等变成空白或错数 */
     if (['mgr', 'supervisor', 'cs', 'cslead'].indexOf(payload.scope_type) >= 0) payload.scope_value = [];
@@ -8905,6 +9053,11 @@ function wbLocal(action,body){
     if(body.person)u.person=body.person;
     if(body.role)u.role=body.role;
     if(body.perms&&typeof body.perms==='object')u.perms=Object.assign({},u.perms||{},body.perms);
+    /* 字段查看权限：存在 perms._fields，不动模块权限结构 */
+    if(body.fields&&typeof body.fields==='object'){
+      u.perms=u.perms||{};
+      u.perms._fields=Object.assign({},u.perms._fields||{},body.fields);
+    }
     return commit();
   }
   if(action==='user.permBatch'){
@@ -9756,7 +9909,7 @@ function render(){
   if(_vw&&WB.user&&_vw!==WB._lastUsageView){WB._lastUsageView=_vw;wbLogUsage(_vw);}
   if(view==='stdcfg'&&cfgTab==='usage'&&!(UM.usage&&UM.usage.since))umUsageLoad();
   const content=(view==='summary')?sumView():(view==='standard')?stdView():(view==='stdcfg')?stdCfgView():(view==='issue')?issueView():(view==='compliance')?pcView():(view==='account')?accountView():(view==='policy')?policyView():(view==='health')?healthView():healthView();
-  document.getElementById('app').innerHTML=`<div class="layout${navFold?' navfold':''}">${navFold?'<div class="navpeek" title="鼠标移到左边缘展开模块导航"><i>›</i></div>':''}${navBar()}<section class="content">${content}</section></div>${formModal()}${policyModal()}${amzUploadModal()}${quickModal()}${reasonModal()}${uploadModal()}${pcFormModal()}${pcDetailModal()}${pcFollowModal()}${pcFocusModal()}${isUploadModal()}${riskNoteModal()}${kbAddModal()}${sumSrcModal()}${lightbox()}${umAddModal()}${umPwModal()}${umScopeModal()}${umBulkModal()}${umReqApModal()}${stopModal()}`;
+  document.getElementById('app').innerHTML=`<div class="layout${navFold?' navfold':''}">${navFold?'<div class="navpeek" title="鼠标移到左边缘展开模块导航"><i>›</i></div>':''}${navBar()}<section class="content">${content}</section></div>${formModal()}${policyModal()}${amzUploadModal()}${quickModal()}${reasonModal()}${uploadModal()}${pcFormModal()}${pcDetailModal()}${pcFollowModal()}${pcFocusModal()}${isUploadModal()}${riskNoteModal()}${kbAddModal()}${sumSrcModal()}${lightbox()}${umAddModal()}${umPwModal()}${umScopeModal()}${umFpModal()}${umBulkModal()}${umReqApModal()}${stopModal()}`;
 }
 function goPage(p){
   const list=filtered();const pages=Math.max(1,Math.ceil(list.length/pageSize));
@@ -10288,7 +10441,7 @@ document.getElementById('app').addEventListener('change',e=>{
   if(id==='pasFile'){const _pf=e.target.files&&e.target.files[0];e.target.value='';if(_pf)pasReadFile(_pf);return;}
   if(id==='lightFile'){const _lf=e.target.files&&e.target.files[0];e.target.value='';if(_lf)lightReadFile(_lf);return;}
   if(id==='lightSearch'){lightSearch=e.target.value;lightPage=1;lightRefresh();return;}
-  if(id==='lightSortSel'){lightSort=e.target.value||'phiDesc';lightPage=1;lightRefresh();return;}
+  if(id==='lightSortSel'){lightSort=lightSortOk(e.target.value)?(e.target.value||'phiDesc'):'phiDesc';lightPage=1;lightRefresh();return;}
   if(id==='lightFState'||id==='lightFCat1'||id==='lightFCat2'||id==='lightFGrade'||id==='lightFAssess'||id==='lightFDev'||id==='lightF3m'||id==='lightFPhi'){
     var _fk={lightFState:'state',lightFCat1:'cat1',lightFCat2:'cat2',lightFGrade:'grade',lightFAssess:'assess',lightFDev:'dev',lightF3m:'full3m',lightFPhi:'phi'}[id];
     lightF=lightF||{};lightF[_fk]=e.target.value;lightPage=1;lightRefresh();return;
@@ -10362,6 +10515,22 @@ document.getElementById('app').addEventListener('change',e=>{
     }
     UM.msg='';UM.err='';
     umSavePerm(uid,{scopeType:val}).then(function(ok){if(ok)umLoad(true).then(function(){if(umOnScreen())render();});});
+    return;
+  }
+  /* 字段查看权限：勾一格就存一格。
+     先把新值写回内存再静默保存 —— 否则连点几个字段时，后一次的 payload 基于旧内存，
+     前一次勾的会被覆盖（模块权限那边踩过同样的坑）。 */
+  const _fpk=e.target.closest?e.target.closest('[data-umfpk]'):null;
+  if(_fpk){
+    const uid=UM.fpFor;if(!uid)return;
+    const k=_fpk.getAttribute('data-umfpk');
+    const u=umUserOf(uid)||{};
+    const cur=fpFieldsOf(u);
+    cur[k]=!!_fpk.checked;
+    u.perms=Object.assign({},u.perms||{},{_fields:Object.assign({},cur)});
+    UM.msg='';UM.err='';
+    const patch={};patch[k]=!!_fpk.checked;
+    umSavePerm(uid,{fields:patch},{quiet:true});
     return;
   }
   /* 筛选下拉：改完立即过滤（纯前端，不打服务端） */
@@ -10645,7 +10814,21 @@ document.getElementById('app').addEventListener('click',e=>{
   /* ---------- 用户与权限 ---------- */
   if(e.target.id==='umRefresh'){UM.msg='';UM.err='';umLoad(true).then(function(){if(umOnScreen())render();});return;}
   /* 折叠框 / 遮罩关闭：三个弹层 + 申请审批区一起收 */
-  if(e.target.id==='mask'){if(UM.addOpen||UM.pwFor||UM.scopeFor||UM.bulkOpen||UM.reqApOpen){UM.addOpen=false;UM.pwFor='';UM.scopeFor='';UM.bulkOpen=false;UM.reqApOpen=false;render();return;}}
+  if(e.target.id==='mask'){if(UM.addOpen||UM.pwFor||UM.scopeFor||UM.bulkOpen||UM.reqApOpen||UM.fpFor){UM.addOpen=false;UM.pwFor='';UM.scopeFor='';UM.bulkOpen=false;UM.reqApOpen=false;UM.fpFor='';render();return;}}
+  /* 字段查看权限：打开弹层 / 关闭 / 一键全开 / 一键全关 */
+  const _fpOpen=e.target.closest?e.target.closest('[data-umfp]'):null;
+  if(_fpOpen){UM.fpFor=_fpOpen.getAttribute('data-umfp');UM.msg='';UM.err='';render();return;}
+  if(e.target.id==='umFpClose'){UM.fpFor='';render();return;}
+  if(e.target.id==='umFpAll'||e.target.id==='umFpNone'){
+    const uid=UM.fpFor;if(!uid)return;
+    const on=e.target.id==='umFpAll';
+    const patch={};UM_FIELDS.forEach(function(x){patch[x.k]=on;});
+    UM.msg='';UM.err='';
+    umSavePerm(uid,{fields:patch}).then(function(ok){
+      if(ok){umLoad(true).then(function(){if(umOnScreen())render();});}
+    });
+    return;
+  }
   /* ---- 筛选 ---- */
   if(e.target.id==='umFReset'){
     UM.fRole='';UM.fScope='';UM.fMod='';UM.q='';
@@ -12106,6 +12289,126 @@ function csWeeks(){
   });
   return ws.slice(0,CS_WEEK_N);
 }
+/* ══════════════════════════════════════════════════════════════════
+   可搜索下拉 ssel —— 健康看板所有维度筛选统一用它：
+   既能「点箭头从列表里选」（原生下拉的手感），也能「直接打字过滤」（选项几十个时不用翻）。
+   选项列表存在 SSEL_OPTS，按 kind:key 缓存；DOM 里只留 data-sselk（谁）与 data-sselcur（已生效值）。
+   提交统一走 sselCommit → 写状态 → render()，和原来的 <select> 行为完全一致。
+   ───────────────────────────────────────────────────────────────── */
+const SSEL_OPTS={};
+function sselNorm(opts){
+  return (opts||[]).map(function(o){
+    if(o&&typeof o==='object')return {v:String(o.v==null?'':o.v),l:String(o.l==null?o.v:o.l)};
+    return {v:String(o==null?'':o),l:String(o==null?'':o)};
+  });
+}
+function sselHtml(kind,key,cur,opts,width,tip){
+  const id=kind+':'+key;
+  const list=sselNorm(opts);
+  SSEL_OPTS[id]=list;
+  const v=String(cur==null?'':cur);
+  const hit=list.filter(function(o){return o.v===v;})[0];
+  return '<span class="ssel" data-sselk="'+esc(id)+'" data-sselcur="'+esc(v)+'"'
+    +(width?' style="width:'+width+'"':'')+(tip?' title="'+esc(tip)+'"':'')+'>'
+    +'<input type="text" autocomplete="off" spellcheck="false" value="'+esc(hit?hit.l:v)+'" placeholder="全部">'
+    +'<i></i><div class="ssel-pop" hidden></div></span>';
+}
+function sselPaint(root,q){
+  const id=root.getAttribute('data-sselk')||'';
+  const cur=String(root.getAttribute('data-sselcur')||'');
+  const pop=root.querySelector('.ssel-pop');if(!pop)return;
+  const kw=String(q==null?'':q).trim().toLowerCase();
+  const list=SSEL_OPTS[id]||[];
+  const hit=kw?list.filter(function(o){return (o.l+' '+o.v).toLowerCase().indexOf(kw)>=0;}):list;
+  let h='<b data-sselpick=""'+(cur===''?' class="on"':'')+'>全部</b>';
+  if(hit.length){
+    h+=hit.map(function(o){
+      return '<b data-sselpick="'+esc(o.v)+'"'+(o.v===cur?' class="on"':'')+'>'+esc(o.l)+'</b>';
+    }).join('');
+  }else{
+    h+='<div class="ssel-none">没有匹配「'+esc(kw)+'」的选项</div>';
+  }
+  pop.innerHTML=h;pop.hidden=false;
+}
+function sselClose(root){const pop=root&&root.querySelector('.ssel-pop');if(pop)pop.hidden=true;}
+function sselCommit(root,val){
+  const id=root.getAttribute('data-sselk')||'';
+  const i=id.indexOf(':');
+  const kind=id.slice(0,i),key=id.slice(i+1),v=String(val==null?'':val);
+  if(kind==='hkf'){hkFilter[key]=v;}
+  else if(kind==='csf'){csCoreFlt[key]=v;}
+  else if(kind==='refF'){refF[key]=v;refPage=1;}
+  else if(kind==='refCol'){refColSel=v;refSearch='';refPage=1;}
+  else if(kind==='lsflt'){
+    lsFlt[key]=v;
+    if(key==='region'){lsFlt.group='';lsFlt.site='';}
+    if(key==='group'){lsFlt.site='';}
+  }
+  root.setAttribute('data-sselcur',v);
+  render();
+}
+(function sselBind(){
+  const host=document.getElementById('app');if(!host)return;
+  /* 点条目要用 mousedown：click 之前 input 会先 blur，面板一收就点空了 */
+  host.addEventListener('mousedown',function(e){
+    const pick=e.target.closest?e.target.closest('[data-sselpick]'):null;
+    if(!pick)return;
+    const root=pick.closest('.ssel');if(!root)return;
+    e.preventDefault();
+    sselCommit(root,pick.getAttribute('data-sselpick'));
+  });
+  host.addEventListener('focusin',function(e){
+    const root=e.target.closest?e.target.closest('.ssel'):null;
+    if(!root||e.target.tagName!=='INPUT')return;
+    sselPaint(root,'');           /* 展开时先列全部，当前值高亮，方便直接挑 */
+  });
+  host.addEventListener('input',function(e){
+    const root=e.target.closest?e.target.closest('.ssel'):null;
+    if(!root||e.target.tagName!=='INPUT')return;
+    sselPaint(root,e.target.value);
+  });
+  host.addEventListener('keydown',function(e){
+    const root=e.target.closest?e.target.closest('.ssel'):null;
+    if(!root||e.target.tagName!=='INPUT')return;
+    if(e.key==='Escape'){sselClose(root);e.target.value=e.target.getAttribute('data-sselcur')||'';e.target.blur();return;}
+    if(e.key==='Enter'){
+      e.preventDefault();
+      const cur=String(root.getAttribute('data-sselcur')||'');
+      const kw=String(e.target.value||'').trim().toLowerCase();
+      const list=SSEL_OPTS[root.getAttribute('data-sselk')]||[];
+      const hit=kw?list.filter(function(o){return (o.l+' '+o.v).toLowerCase().indexOf(kw)>=0;}):list;
+      /* 回车：唯一匹配直接用；多匹配取第一个；空输入＝清空筛选 */
+      if(!kw){sselCommit(root,'');return;}
+      if(hit.length){sselCommit(root,hit[0].v);return;}
+      e.target.value=cur;
+    }
+  });
+  /* 失焦收拾残局：输入了半截文字没选 → 唯一包含匹配就归一，否则回退到已生效值 */
+  host.addEventListener('focusout',function(e){
+    const root=e.target.closest?e.target.closest('.ssel'):null;
+    if(!root||e.target.tagName!=='INPUT')return;
+    const inp=e.target;
+    setTimeout(function(){
+      const pop=root.querySelector('.ssel-pop');
+      if(pop&&!pop.hidden)return;                     /* 面板还开着：在选，不动 */
+      const cur=String(root.getAttribute('data-sselcur')||'');
+      const v=String(inp.value||'').trim();
+      if(v===cur)return;
+      const list=SSEL_OPTS[root.getAttribute('data-sselk')]||[];
+      if(v===''){sselCommit(root,'');return;}
+      const exact=list.filter(function(o){return o.l===v||o.v===v;})[0];
+      if(exact){sselCommit(root,exact.v);return;}
+      const kw=v.toLowerCase();
+      const hit=list.filter(function(o){return (o.l+' '+o.v).toLowerCase().indexOf(kw)>=0;});
+      if(hit.length===1){sselCommit(root,hit[0].v);return;}
+      inp.value=cur;                                   /* 无匹配或多匹配：还原，避免"打了字结果空表" */
+    },90);
+  });
+  document.addEventListener('mousedown',function(e){
+    if(e.target.closest&&e.target.closest('.ssel'))return;
+    document.querySelectorAll('.ssel-pop').forEach(function(p){p.hidden=true;});
+  });
+})();
 /* 三、四模块共用筛选（已上移到开头的「维度」栏，作用于三/四）：
    排序按管理链路自上而下 —— 区域 / 核算分组 / 管理主管 / 管理组长 / 管理销售 / 客服 / 客服组长 / 站点 */
 const HK_FILTER_FIELDS=[['region','区域'],['bigGroup','核算分组'],['supervisor','管理主管'],['leader','管理组长'],['sales','管理销售'],['cs','客服'],['csLeader','客服组长'],['site','站点']];
@@ -12131,9 +12434,8 @@ function hkFilterBar(){
   let h='<div class="hk-fbar hk-fbar-top"><span>筛选</span>';
   HK_FILTER_FIELDS.forEach(function(f){
     const cur=String(hkFilter[f[0]]||'').trim();
-    h+='<label>'+f[1]+'<select data-hkf="'+f[0]+'"><option value="">全部</option>'
-      +hkOpts(f[0]).map(function(v){return '<option value="'+esc(v)+'"'+(v===cur?' selected':'')+'>'+esc(v)+'</option>';}).join('')
-      +'</select></label>';
+    /* 可搜索下拉：人多的维度（销售/客服/站点）直接打字找，比翻长列表快 */
+    h+='<label>'+f[1]+sselHtml('hkf',f[0],cur,hkOpts(f[0]),'118px','可输入搜索，也可点开下拉选')+'</label>';
   });
   h+='<button class="hk-freset" data-hkfreset="1"'+(hkFilterActive()?'':' disabled')+'>重置</button></div>';
   return h;
@@ -12927,9 +13229,7 @@ function csCoreFilterBar(){
   const F=csCoreFlt||{};
   const sel=function(key,label,list){
     const cur=String(F[key]||'');
-    return '<label>'+label+'<select data-csf="'+key+'"><option value="">全部</option>'
-      +list.map(function(v){return '<option value="'+esc(v)+'"'+(v===cur?' selected':'')+'>'+esc(v)+'</option>';}).join('')
-      +'</select></label>';
+    return '<label>'+label+sselHtml('csf',key,cur,list,'124px','可输入搜索，也可点开下拉选')+'</label>';
   };
   return '<div class="hk-fbar"><span>筛选</span>'
     +sel('cs','客服',csLsAll(DATA.stdCfg))
@@ -16300,6 +16600,10 @@ function refCalc(r,k){
 }
 /* 单元格显示值：计算列现算；日期列裁到年月日 */
 function refShow(r,k){
+  /* 字段权限：退款金额 / 订单金额 / 部分退款比例（能反推两个金额）。
+     放在这里是因为表格单元格和「导出 CSV」都走这个函数，一处打码两处一致。 */
+  if((k==='refAmt'&&!fpCan('refund'))||(k==='orderAmt'&&!fpCan('sale'))
+    ||(k==='partialRate'&&(!fpCan('refund')||!fpCan('sale'))))return '***';
   const c=REF_BY_KEY[k];
   if(c&&c.calc)return refCalc(r,k);
   const v=refVal(r,k);
@@ -16590,20 +16894,21 @@ function refKpiHtml(rows){
     {label:'退款笔数',val:i0(st.n),unit:' 条',k:'n',f:i0},
     {label:'涉及账号',val:i0(st.accs),unit:' 个',k:'accs',f:i0},
     {label:'涉及 SKU',val:i0(st.skus),unit:' 个',k:'skus',f:i0},
-    {label:'订单金额（RMB）',val:i2(st.amtO),unit:'',k:'amtO',f:i2,tip:'「订单总金额（RMB）」列合计'},
-    {label:'退款金额（RMB）',val:i2(st.amtR),unit:'',k:'amtR',f:i2,tip:'「退款金额（RMB）」列合计'},
+    /* 金额两张卡按字段权限打码：无权限时连环比一起收起来（环比也是金额差） */
+    {label:'订单金额（RMB）',val:fpCan('sale')?i2(st.amtO):'***',unit:'',k:'amtO',f:i2,mask:!fpCan('sale'),tip:'「订单总金额（RMB）」列合计'},
+    {label:'退款金额（RMB）',val:fpCan('refund')?i2(st.amtR):'***',unit:'',k:'amtR',f:i2,mask:!fpCan('refund'),tip:'「退款金额（RMB）」列合计'},
     {label:'部分退款占比',val:(st.nV?i2(st.nP/st.nV*100):'—'),unit:(st.nV?' %':''),k:'partP',f:pc,tip:'部分退款（退款金额 ÷ 订单总金额 ≤ 80%）的退款单量 ÷ 有订单金额的退款单量'}
   ];
   return '<div class="is-kpi">'+cards.map(function(x){
-    var w=refKpiWow(x.k,x.f,x.unit||'');
+    var w=x.mask?{html:''}:refKpiWow(x.k,x.f,x.unit||'');
     return '<div class="is-k" style="--kc:#2f6f5b">'
       +'<div class="is-kl">'+esc(x.label)+'</div>'
       +'<div class="is-kv">'+x.val+(x.unit||'')+'</div>'
       +(w.html?'<div class="is-kf">'+w.html+'</div>':'')
-      +'<div class="kpi-pop">'
+      +(x.mask?'':'<div class="kpi-pop">'
         +'<div class="kpi-pop-h">'+esc(x.label)+' · 整体 / 站点趋势（最近 30 天）</div>'
         +refKpiChartSvg(x.k,x.f,refKpiDaySeries())
-      +'</div></div>';
+      +'</div>')+'</div>';
   }).join('')+'</div>';
 }
 function refStats(rows){
@@ -16712,7 +17017,7 @@ function refPageGo(v){
   const p=document.getElementById('refPager');if(p)p.innerHTML=refPagerHtml();
 }
 /* ── 工具栏 ── */
-function refOpts(kind,cur){
+function refOptVals(kind){
   const set={};
   refBaseRows().forEach(function(r){
     let v='';
@@ -16721,31 +17026,34 @@ function refOpts(kind,cur){
     else v=refVal(r,kind);
     if(v)set[v]=1;
   });
-  const arr=Object.keys(set).sort();
+  return Object.keys(set).sort();
+}
+function refOpts(kind,cur){
+  const arr=refOptVals(kind);
   if(arr.length>400)return '';
   return '<option value="">全部</option>'+arr.map(function(v){
     return '<option value="'+esc(v)+'"'+(cur===v?' selected':'')+'>'+esc(v)+'</option>';
   }).join('');
 }
 function refBarHtml(){
-  const colOpts='<option value="">全部字段</option>'+REF_STORE.map(function(c){
-    return '<option value="'+c.k+'"'+(refColSel===c.k?' selected':'')+'>'+esc(c.label)+'</option>';
-  }).join('');
+  /* 搜索列 39 个字段，也做成可搜索下拉 */
+  const colOpts=REF_STORE.map(function(c){return {v:c.k,l:c.label};});
   const exactBtn=refColSel?'<button id="refExactBtn" class="acc-scope-btn" title="切换匹配方式：包含（默认）/ 精确（字段值完全相等）">匹配：'+(refExact?'精确':'包含')+'</button>':'';
   const sortSel='<span class="is-sel"><label>排序</label><select id="refSortSel">'
     +[['refTimeDesc','退款时间 ↓'],['refTimeAsc','退款时间 ↑'],['refAmtDesc','退款金额 ↓'],['orderAmtDesc','订单金额 ↓'],['partialDesc','部分退款比例 ↓'],['shipHoursDesc','发货时长 ↓'],['acc','账号']].map(function(o){
       return '<option value="'+o[0]+'"'+(refSort===o[0]?' selected':'')+'>'+o[1]+'</option>';
     }).join('')+'</select></span>';
-  const siteSel='<span class="is-sel"><label>站点</label><select id="refSiteSel">'+refOpts('site',refF.site)+'</select></span>';
-  const catSel='<span class="is-sel"><label>问题归类</label><select id="refCatSel">'+refOpts('issueCat',refF.issueCat)+'</select></span>';
-  const reaSel='<span class="is-sel"><label>退款原因</label><select id="refReasonSel">'+refOpts('refReason',refF.refReason)+'</select></span>';
+  /* 站点/问题归类/退款原因：选项多（尤其退款原因几十条），统一用可搜索下拉 */
+  const siteSel='<span class="is-sel"><label>站点</label>'+sselHtml('refF','site',refF.site,refOptVals('site'),'124px','可输入搜索，也可点开下拉选')+'</span>';
+  const catSel='<span class="is-sel"><label>问题归类</label>'+sselHtml('refF','issueCat',refF.issueCat,refOptVals('issueCat'),'132px','可输入搜索，也可点开下拉选')+'</span>';
+  const reaSel='<span class="is-sel"><label>退款原因</label>'+sselHtml('refF','refReason',refF.refReason,refOptVals('refReason'),'150px','可输入搜索，也可点开下拉选')+'</span>';
   const dtStyle='width:128px;border:1px solid #dde5e1;border-radius:8px;padding:4px 6px;font-size:12.5px;font-family:inherit';
   const dateRange='<span class="is-sel"><label>退款时间</label><input type="date" id="refD1" value="'+esc(refF.d1||'')+'" style="'+dtStyle+'">'
     +'<span class="dim">至</span><input type="date" id="refD2" value="'+esc(refF.d2||'')+'" style="'+dtStyle+'"></span>';
   const filtOn=Object.keys(refF).some(function(k){return String(refF[k]||'').trim();})||!!refSearch;
   /* 两行：① 搜索 + 右侧操作按钮  ② 维度筛选 */
   return '<div class="toolbar is-bar">'
-    +'<span class="is-sel"><label>搜索列</label><select id="refColSel">'+colOpts+'</select></span>'
+    +'<span class="is-sel"><label>搜索列</label>'+sselHtml('refCol','sel',refColSel,colOpts,'136px','选择在哪个字段里搜索；留空＝搜索全部字段')+'</span>'
     +'<input id="refSearch" class="search" style="width:380px;flex:0 0 auto;min-width:200px" placeholder="🔍 '+(refColSel?('在「'+esc((REF_BY_KEY[refColSel]||{}).label||refColSel)+'」中搜索（空格/逗号分隔多个词）'):'搜索全部字段（空格/逗号分隔多个词，任一命中）')+'" value="'+esc(refSearch)+'">'
     +exactBtn
     +'<span style="flex:1 1 auto"></span>'
@@ -17977,7 +18285,7 @@ function lightList(){
   if(F.dev==='1'||F.dev==='0')rows=rows.filter(function(r){return !!r.devWithin3m===(F.dev==='1');});
   if(F.full3m==='1'||F.full3m==='0')rows=rows.filter(function(r){return !!r.full3m===(F.full3m==='1');});
   if(F.phi)rows=rows.filter(function(r){return lightPhiBand(r.phi)===F.phi;});
-  var s=lightSort;
+  var s=lightSortCur();
   rows.sort(function(a,b){
     if(s==='phiAsc')return a.phi-b.phi;
     if(s==='lossDesc')return b.lossRate-a.lossRate;
@@ -17988,6 +18296,15 @@ function lightList(){
   });
   return rows;
 }
+/* 排序也受字段权限约束：按「销售额 / 退款金额 / 报损率」排序会把量级顺序漏出去，
+   值全是 *** 但谁大谁小一目了然，所以没权限就不给按它排（回退到 PHI）。 */
+function lightSortOk(k){
+  if(k==='saleDesc')return fpCan('sale');
+  if(k==='refDesc')return fpCan('refund');
+  if(k==='lossDesc')return fpCan('refund')&&fpCan('sale');
+  return true;
+}
+function lightSortCur(){return lightSortOk(lightSort)?lightSort:'phiDesc';}
 function lightLvClass(light){return light==='红灯'?'ll-red':(light==='黄灯'?'ll-yellow':(light==='绿灯'?'ll-green':''));}
 function lightOverviewHtml(){
   var rows=lightBuild().rows,cnt={S:0,A:0,B:0,C:0,D:0,E:0,F:0,NA:0};
@@ -18067,17 +18384,28 @@ function lightTableHtml(){
     +'<th>卖出销量</th><th>退款单量</th><th>退款单率</th><th>退款单得分</th><th class="lg-total">退款单总分</th>'
     +'</tr>';
   function td(v,cls,title){return '<td'+(cls?' class="'+cls+'"':'')+(title?' title="'+esc(title)+'"':'')+'>'+(v===''||v==null?'<span class="fbm-nil">—</span>':v)+'</td>';}
+  /* 字段权限：五个字段各自独立判断。派生列（得分/总分/PHI/报损率/退款单率）跟着它依赖的字段一起码，
+     否则「金额遮住了、得分还亮着」照样能看出量级。 */
+  var MASK='***';
+  var cS=fpCan('sale'),cP=fpCan('profit'),cM=fpCan('margin'),cR=fpCan('refund'),cO=fpCan('order');
+  var cPM=cP&&cM;              /* 利润得分/利润总分 */
+  var cLoss=cR&&cS;            /* 报损率 = 退款金额 ÷ 销售额 */
+  var cOrd=cO&&cR;             /* 退款单率 = 退款单量 ÷ 卖出销量 */
+  var cPhi=cS&&cP&&cM&&cR&&cO; /* PHI = 四项总分之和 */
   var body=part.map(function(r){
     var s='<tr>';
     s+='<td class="lg-sku"><a class="sku-jump" data-golightsku="'+esc(r.sku)+'" title="点击跳转到退款明细">'+esc(r.sku)+'</a></td>';
     s+=td(esc(r.state));s+=td(esc(r.cat1));s+=td(esc(r.cat2));
-    s+=td(lightFmt(r.sale,2))+td(String(r.sSale),lightLvClass(r.lightSale))+td('<b>'+r.tSale.toFixed(1)+'</b>','lg-total');
-    s+=td(lightFmt(r.profit,2))+td(lightPct(r.profitRate))+td(String(r.sMargin),lightLvClass(r.lightMargin))+td('<b>'+r.tMargin.toFixed(1)+'</b>','lg-total');
+    s+=td(cS?lightFmt(r.sale,2):MASK)+td(cS?String(r.sSale):MASK,cS?lightLvClass(r.lightSale):'')+td(cS?'<b>'+r.tSale.toFixed(1)+'</b>':MASK,'lg-total');
+    s+=td(cP?lightFmt(r.profit,2):MASK)+td(cM?lightPct(r.profitRate):MASK)
+      +td(cPM?String(r.sMargin):MASK,cPM?lightLvClass(r.lightMargin):'')
+      +td(cPM?'<b>'+r.tMargin.toFixed(1)+'</b>':MASK,'lg-total');
     /* 最高退款原因：由悬浮 title 改为「是否考核」后的常驻列（原三段内容原样搬入） */
+    var _amtTxt=function(v){return cR?(refFmtNum(v,2)+' 元'):'***';};
     var _rtipLines=[];
-    if(r.topReason)_rtipLines.push('该 SKU 退款金额最高的原因：'+r.topReason+'（'+refFmtNum(r.topReasonAmt,2)+' 元）');
+    if(r.topReason)_rtipLines.push('该 SKU 退款金额最高的原因：'+r.topReason+'（'+_amtTxt(r.topReasonAmt)+'）');
     if(REF.topReason&&REF.topReason.reason){
-      _rtipLines.push('整体最高退款原因：'+REF.topReason.reason+'（'+refFmtNum(REF.topReason.amt,2)+' 元）');
+      _rtipLines.push('整体最高退款原因：'+REF.topReason.reason+'（'+_amtTxt(REF.topReason.amt)+'）');
       var _cmp='相比上次：';
       if(REF.topPrev&&REF.topPrev.reason){
         if(REF.topPrev.reason===REF.topReason.reason)_cmp+='无变化（仍为 '+REF.topReason.reason+'）';
@@ -18086,13 +18414,17 @@ function lightTableHtml(){
       _rtipLines.push(_cmp);
     }
     /* 摘要只显示该 SKU 最高原因（原因名+金额），详情三段默认收起、点击展开 */
-    var _rtSum=(r.topReason?r.topReason+'（'+refFmtNum(r.topReasonAmt,2)+' 元）':(REF.topReason&&REF.topReason.reason?REF.topReason.reason+'（'+refFmtNum(REF.topReason.amt,2)+' 元）':'—'));
+    var _rtSum=(r.topReason?r.topReason+'（'+_amtTxt(r.topReasonAmt)+'）':(REF.topReason&&REF.topReason.reason?REF.topReason.reason+'（'+_amtTxt(REF.topReason.amt)+'）':'—'));
     var _rtipHtml='<span class="rt-sum">'+esc(_rtSum)+'<span class="rt-arrow">▾</span></span>'
       +'<span class="rt-detail">'+(_rtipLines.length?_rtipLines.map(function(x){return '<span class="rt-seg">'+esc(x)+'</span>';}).join(''):'<span class="rt-nil">—</span>')+'</span>';
-    s+=td(lightFmt(r.refAmt,2))+td(lightPct(r.lossRate))+td(String(r.sLoss),lightLvClass(r.lightLoss))+td('<b>'+r.tLoss.toFixed(1)+'</b>','lg-total');
-    s+=td(lightFmt(r.qty))+td(lightFmt(r.refCnt))+td(lightPct(r.orderRate),lightLvClass(r.lightRate),'退款单量 '+r.refCnt+' ÷ 卖出销量 '+r.qty)
-      +td(String(r.sOrder),lightLvClass(r.lightOrder))+td('<b>'+r.tOrder.toFixed(1)+'</b>','lg-total');
-    s+='<td class="lg-phi"><b>'+(Math.round(r.phi*10)/10)+'</b></td>';
+    s+=td(cR?lightFmt(r.refAmt,2):MASK)+td(cLoss?lightPct(r.lossRate):MASK)
+      +td(cLoss?String(r.sLoss):MASK,cLoss?lightLvClass(r.lightLoss):'')
+      +td(cLoss?'<b>'+r.tLoss.toFixed(1)+'</b>':MASK,'lg-total');
+    s+=td(cO?lightFmt(r.qty):MASK)+td(cR?lightFmt(r.refCnt):MASK)
+      +td(cOrd?lightPct(r.orderRate):MASK,cOrd?lightLvClass(r.lightRate):'',cOrd?('退款单量 '+r.refCnt+' ÷ 卖出销量 '+r.qty):'')
+      +td(cOrd?String(r.sOrder):MASK,cOrd?lightLvClass(r.lightOrder):'')
+      +td(cOrd?'<b>'+r.tOrder.toFixed(1)+'</b>':MASK,'lg-total');
+    s+='<td class="lg-phi"><b>'+(cPhi?(Math.round(r.phi*10)/10):MASK)+'</b></td>';
     /* 按灯类型始终给出等级值（不考核不再占着这一栏，改到「是否考核」列显示） */
     s+=r.grade?('<td class="lg-type lg-g-'+esc(r.grade.charAt(0))+'">'+esc(r.grade)+' '+esc(r.status)+'</td>'):'<td class="lg-type">—</td>';
     s+=r.notAssess?('<td class="lg-assess lg-na">'+esc(r.notAssess)+'</td>'):'<td class="lg-assess">纳入考核</td>';
@@ -18136,11 +18468,20 @@ function lightExport(){
   var head=['SKU','商品状态','星耀一级分类','星耀二级分类','销售额','销售额得分','销售额总分','利润','利润率','利润得分','利润总分',
     '退款金额','报损率','报损得分','报损总分','卖出销量','退款单量','退款单率','退款单得分','退款单总分','PHI总得分','按灯类型','是否考核','最高退款原因','开发时间','是否开发时间3个月内','是否是3个月数据'];
   var q=function(v){var s=String(v==null?'':v);return /[",\r\n]/.test(s)?'"'+s.replace(/"/g,'""')+'"':s;};
+  /* 导出也走字段权限：表格遮了、导出漏了，等于没遮 */
+  var MASK='***';
+  var cS=fpCan('sale'),cP=fpCan('profit'),cM=fpCan('margin'),cR=fpCan('refund'),cO=fpCan('order');
+  var cPM=cP&&cM,cLoss=cR&&cS,cOrd=cO&&cR,cPhi=cS&&cP&&cM&&cR&&cO;
   var lines=[head.map(q).join(',')];
   rows.forEach(function(r){
-    lines.push([r.sku,r.state,r.cat1,r.cat2,r.sale,r.sSale,r.tSale.toFixed(1),r.profit,lightPct(r.profitRate),r.sMargin,r.tMargin.toFixed(1),
-      r.refAmt,lightPct(r.lossRate),r.sLoss,r.tLoss.toFixed(1),r.qty,r.refCnt,lightPct(r.orderRate),r.sOrder,r.tOrder.toFixed(1),
-      (Math.round(r.phi*10)/10),(r.grade+' '+r.status).trim(),(r.notAssess||'纳入考核'),lightExportRtip(r),r.devTime,(r.devWithin3m?'是':'否'),(r.full3m?'是':'否')].map(q).join(','));
+    lines.push([
+      r.sku,r.state,r.cat1,r.cat2,
+      cS?r.sale:MASK,cS?r.sSale:MASK,cS?r.tSale.toFixed(1):MASK,
+      cP?r.profit:MASK,cM?lightPct(r.profitRate):MASK,cPM?r.sMargin:MASK,cPM?r.tMargin.toFixed(1):MASK,
+      cR?r.refAmt:MASK,cLoss?lightPct(r.lossRate):MASK,cLoss?r.sLoss:MASK,cLoss?r.tLoss.toFixed(1):MASK,
+      cO?r.qty:MASK,cR?r.refCnt:MASK,cOrd?lightPct(r.orderRate):MASK,cOrd?r.sOrder:MASK,cOrd?r.tOrder.toFixed(1):MASK,
+      (cPhi?(Math.round(r.phi*10)/10):MASK),(r.grade+' '+r.status).trim(),(r.notAssess||'纳入考核'),
+      (cR?lightExportRtip(r):MASK),r.devTime,(r.devWithin3m?'是':'否'),(r.full3m?'是':'否')].map(q).join(','));
   });
   downloadBlob(new Blob(['\uFEFF'+lines.join('\r\n')],{type:'text/csv;charset=utf-8'}),'产品按灯_'+rows.length+'个SKU_'+todayStr()+'.csv');
 }
@@ -18175,7 +18516,8 @@ function lightSection(){
     }).join('')+'</select></span>'
     +'<span class="is-sel"><label>排序</label><select id="lightSortSel">'
     +[['phiDesc','PHI总得分 ↓'],['phiAsc','PHI总得分 ↑'],['lossDesc','报损率 ↓'],['saleDesc','销售额 ↓'],['refDesc','退款金额 ↓'],['sku','SKU']].map(function(o){
-      return '<option value="'+o[0]+'"'+(lightSort===o[0]?' selected':'')+'>'+o[1]+'</option>';
+      var ok=lightSortOk(o[0]);
+      return '<option value="'+o[0]+'"'+(lightSortCur()===o[0]?' selected':'')+(ok?'':' disabled')+'>'+o[1]+(ok?'':'（无权限）')+'</option>';
     }).join('')+'</select></span>'
     +'</div>';
   var lc=(DATA.lightSnapMeta&&DATA.lightSnapMeta.lastClean)?(' · 最近一次满期清洗：'+esc(String(DATA.lightSnapMeta.lastClean.at||''))+'，保留 '+DATA.lightSnapMeta.lastClean.kept+' 个、删除 '+DATA.lightSnapMeta.lastClean.removed+' 个'):'';
@@ -20420,8 +20762,13 @@ function lsTargetRate(){
   }catch(e){}
   return null;
 }
-function lsPct(v,d){return (v==null||!isFinite(v))?'—':(v*100).toFixed(d==null?2:d)+'%';}
+function lsPct(v,d){
+  /* 字段无查看权限：数据层已把值换成哨兵，这里统一出 ***（与金额/数量同一套） */
+  if(v==='\u0001FPMASK')return '***';
+  return (v==null||!isFinite(v))?'—':(v*100).toFixed(d==null?2:d)+'%';
+}
 function lsMoney(v){
+  if(v==='\u0001FPMASK')return '***';
   if(v==null||!isFinite(v))return '—';
   const a=Math.abs(v);
   if(a>=1e8)return (v/1e8).toFixed(2)+'亿';
@@ -20429,6 +20776,7 @@ function lsMoney(v){
   return Math.round(v).toLocaleString('zh-CN');
 }
 function lsNum(v){
+  if(v==='\u0001FPMASK')return '***';
   if(v==null||!isFinite(v))return '—';
   return Math.round(v).toLocaleString('zh-CN');
 }
@@ -20443,6 +20791,7 @@ function lsKpiNum(v){
 }
 function lsKpiIsRate(k){return k==='rate'||k==='share'||k==='std';}
 function lsKpiVal(k,v){
+  if(v==='\u0001FPMASK')return '***';      /* 字段无查看权限 */
   if(v==null||!isFinite(v))return '—';
   if(lsKpiIsRate(k))return (v*100).toFixed(2)+'%';
   if(k==='sale'||k==='ref')return lsKpiMoney(v);
@@ -20757,8 +21106,17 @@ function lsBaoDimList(kind,mode){
     t.ord+=ord;t.rqty+=rqty;
   });
   return Object.keys(reg).map(function(k){
-    const x=reg[k];x.rate=x.sale>0?x.amt/x.sale:null;x.share=x.ord>0?x.rqty/x.ord:null;return x;
-  }).sort(function(a,b){return b.amt-a.amt;});
+    const x=reg[k];
+    /* 先算比率（要用原值），再按字段权限打码：金额、订单量、退款量各自独立判断。
+       比率要两个字段都有权限才放行（只放开一个也能反推出另一个的量级）。 */
+    x.rate=x.sale>0?x.amt/x.sale:null;x.share=x.ord>0?x.rqty/x.ord:null;
+    const canRate=fpCan('sale')&&fpCan('refund'),canShare=fpCan('order')&&fpCan('refund');
+    x.sale=fpM('sale',x.sale);x.amt=fpM('refund',x.amt);
+    x.ord=fpM('order',x.ord);x.rqty=fpM('refund',x.rqty);
+    if(!canRate)x.rate=FP_MASK;
+    if(!canShare)x.share=FP_MASK;
+    return x;
+  }).sort(function(a,b){return (b.amt===FP_MASK?0:b.amt)-(a.amt===FP_MASK?0:a.amt);});
 }
 /* 站点维度聚合：与报损规模/KPI 同取 AMZ汇总表最新一期快照（账号所属 site）。
    数据源=汇总表快照，不是退款明细；口径只写注释不上界面。 */
@@ -20766,7 +21124,15 @@ function lsBaoDimList(kind,mode){
    最多 12 个月、按月份升序。口径只写注释，不上界面。 */
 function lsYearMonths(){
   const mt=baoMetaOf('m'),h=Array.isArray(mt.ymHist)?mt.ymHist:[];
-  return h.slice().sort(function(x,z){return String(x.ym)<String(z.ym)?-1:(String(x.ym)>String(z.ym)?1:0);}).slice(-12);
+  const out=h.slice().sort(function(x,z){return String(x.ym)<String(z.ym)?-1:(String(x.ym)>String(z.ym)?1:0);})
+    .slice(-12).map(function(x){return Object.assign({},x);});
+  /* 字段权限：整列打码（只码某一期没意义，趋势一画就看出来了） */
+  out.forEach(function(x){
+    if(!fpCan('sale'))x.sale=FP_MASK;
+    if(!fpCan('refund')){x.ref=FP_MASK;x.rqty=FP_MASK;}
+    if(!fpCan('order'))x.ord=FP_MASK;
+  });
+  return out;
 }
 function lsSiteDimList(kind){
   const sf={d:'baoDSale',w:'baoWSale',m:'baoMSale'}[kind]||'baoMSale';
@@ -20788,11 +21154,17 @@ function lsSiteDimList(kind){
     const sub=String(a.group==null?'':a.group).trim()||'未分组';
     t.sub[sub]=(t.sub[sub]||0)+amt;
   });
-  return Object.keys(reg).map(function(k){const x=reg[k];
+  return Object.keys(reg).map(function(k){
+    const x=reg[k];
     x.rate=x.sale>0?x.amt/x.sale:null;
     x.share=x.ord>0?x.rqty/x.ord:null;
+    const canRate=fpCan('sale')&&fpCan('refund'),canShare=fpCan('order')&&fpCan('refund');
+    x.sale=fpM('sale',x.sale);x.amt=fpM('refund',x.amt);
+    x.ord=fpM('order',x.ord);x.rqty=fpM('refund',x.rqty);
+    if(!canRate)x.rate=FP_MASK;
+    if(!canShare)x.share=FP_MASK;
     return x;})
-    .sort(function(a,b){return b.amt-a.amt;});
+    .sort(function(a,b){return (b.amt===FP_MASK?0:b.amt)-(a.amt===FP_MASK?0:a.amt);});
 }
 /* 报损情况表：按维度(区域/团队/站点)聚合启用+考核账号的汇总表最新一期值，口径同 KPI。
    口径只写源码注释，不上界面。团队=核算小组(a.group)，与对比页核算小组一致。 */
@@ -20871,6 +21243,10 @@ function lsCatTop20(){
   }).sort(function(a,b){return (b.rate==null?-1:b.rate)-(a.rate==null?-1:a.rate);}).slice(0,20);
 }
 function lsDonutHtml(list,mode,kind){
+  /* 金额维度这张环形图靠扇区面积表示退款额占比，无「退款金额」权限时整块占位：
+     面积比就是金额比，遮数字不遮面积等于没遮。 */
+  if((typeof lsMetric==='undefined'||lsMetric!=='qty')&&!fpCan('refund'))
+    return '<div class="ls-empty">退款金额无查看权限（***）</div>';
   const total=list.reduce(function(s,x){return s+x.amt;},0);
   /* 圆环每行叠加「较上次 / 历史均值」角标，数据取自每次上传存的 rg/gp 快照；
      退款额越少越好(goodUp=false)，上色按指标变好/变差。口径只写注释不上界面。 */
@@ -20962,10 +21338,23 @@ function lsNice(v){
 }
 function lsPlot(cfg){
   const labels=cfg.labels||[],n=labels.length||1;
+  const bars=cfg.bars||[],lines=cfg.lines||[];
+  /* 字段权限：数据层被码住的系列值是哨兵 FP_MASK。
+     ① 所有系列都被码 → 整图换成占位，别让人从柱子比例/坐标轴反推量级；
+     ② 只有部分系列被码 → 该系列留空（转 null），其余正常画。 */
+  const _fpAll=[];
+  bars.forEach(function(s){if(s.vals)_fpAll.push.apply(_fpAll,s.vals);});
+  lines.forEach(function(s){if(s.vals)_fpAll.push.apply(_fpAll,s.vals);});
+  if(_fpAll.length&&_fpAll.every(function(v){return v==='\u0001FPMASK';}))
+    return '<div class="ls-empty">该指标无查看权限（***）</div>';
+  const _fpFix=function(s){
+    if(!s.vals)return;
+    for(let i=0;i<s.vals.length;i++){if(s.vals[i]==='\u0001FPMASK')s.vals[i]=null;}
+  };
+  bars.forEach(_fpFix);lines.forEach(_fpFix);
   const rotAll=!!(cfg.allLabels&&n>12&&!cfg.hLabels);
   const W=cfg.w||900,H=cfg.h||205,PL=(cfg.noLeft?8:46),PR=(cfg.right?44:8),PT=12,PB=rotAll?48:(cfg.pb||22);
   const iw=Math.max(60,W-PL-PR),ih=Math.max(40,H-PT-PB);
-  const bars=cfg.bars||[],lines=cfg.lines||[];
   /* 首期单点且维度多于12个：数值标签分两行错开；口径只写注释不上界面。 */
   const manySolo=!!(cfg.singleSpread&&n===1&&lines.length>12);
   let lmax=0;
@@ -21141,8 +21530,17 @@ function lsCatAgg(){
     return bv-av||fallback||String(a.cat).localeCompare(String(b.cat),'zh');
   });
   list.forEach(function(x,i){x.rank=i+1;});
-  return {list:list,base:lsMetric==='qty'?totShare:base,tot:{sale:totSale,amt:totAmt,ordn:totOrd,rqty:totRqty,
-    rate:totSale>0?totAmt/totSale:null,share:totShare},n:sub.length};
+  /* 排序、排名、灯值全部在原值上算完，最后一步才按字段权限打码（否则排序会按 *** 乱跳） */
+  const canRate=fpCan('sale')&&fpCan('refund'),canShare=fpCan('order')&&fpCan('refund');
+  list.forEach(function(x){
+    x.sale=fpM('sale',x.sale);x.amt=fpM('refund',x.amt);
+    x.ordn=fpM('order',x.ordn);x.rqty=fpM('refund',x.rqty);
+    if(!canRate)x.rate=FP_MASK;
+    if(!canShare)x.share=FP_MASK;
+  });
+  return {list:list,base:lsMetric==='qty'?totShare:base,tot:{sale:fpM('sale',totSale),amt:fpM('refund',totAmt),
+    ordn:fpM('order',totOrd),rqty:fpM('refund',totRqty),
+    rate:canRate?(totSale>0?totAmt/totSale:null):FP_MASK,share:canShare?totShare:FP_MASK,ordRaw:totOrd,rqtyRaw:totRqty,saleRaw:totSale,amtRaw:totAmt},n:sub.length};
 }
 /* 报损透视台 一/二模块数值悬浮用「最高退款原因」（口径隐藏不上界面）：
    · 只从退款明细 REF.rows 算，行筛选与 lsRows 完全一致（运营筛选 + 丢弃行）。
@@ -21203,10 +21601,7 @@ function lsOpts(field){
 }
 function lsSel(field,label){
   const cur=lsFlt[field]||'';
-  const opts=lsOpts(field);
-  let h='<label>'+esc(label)+'<select data-lsflt="'+field+'"><option value="">全部</option>';
-  opts.forEach(function(v){h+='<option value="'+esc(v)+'"'+(v===cur?' selected':'')+'>'+esc(v)+'</option>';});
-  return h+'</select></label>';
+  return '<label>'+esc(label)+sselHtml('lsflt',field,cur,lsOpts(field),'118px','可输入搜索，也可点开下拉选')+'</label>';
 }
 /* KPI 取数：AMZ汇总表「账号报损」当前维度各账号列 —— 销售额/退款额/订单量/退款量分别求和。
    口径与「AMZ汇总表」里给每个账号显示的 bao{D/W/M}{Sale/Ref/Ord/Rqty} 完全一致（含退款量取自退款明细的同源口径），
@@ -21226,7 +21621,8 @@ function lsAccountSum(kind){
     rqty+=Number(f[P+'Rqty'])||0;
     n++;
   });
-  return {sale:sale,ref:ref,ord:ord,rqty:rqty,n:n};
+  /* 字段权限：先算完再打码（rate 之类的派生值必须在原值上算，否则会算出 NaN 比例的假数） */
+  return {sale:fpM('sale',sale),ref:fpM('refund',ref),ord:fpM('order',ord),rqty:fpM('refund',rqty),n:n};
 }
 /* 账号退款达标率：取值按「AMZ达标表」口径 —— 当前维度退款率(bao{D/W/M}Rate)逐账号用「达标设置③」阈值判定。
    达标率=判定为达标(ok)的账号 ÷ 有退款率取值的账号；不达标账号数=判定为 fail 的账号。
@@ -21490,6 +21886,16 @@ function paAgg(){
     return (bv==null?-1:bv)-(av==null?-1:av)||(qtyMode?b.rqty-a.rqty:b.amt-a.amt);
   });
   list.forEach(function(x,i){x.rank=i+1;});
+  /* 排名算完再按字段权限打码（排序/排名必须用原值，否则会被 *** 搅乱） */
+  var canRate=fpCan('sale')&&fpCan('refund'),canShare=fpCan('order')&&fpCan('refund');
+  list.forEach(function(x){
+    x.sale=fpM('sale',x.sale);x.amt=fpM('refund',x.amt);
+    x.ordn=fpM('order',x.ordn);x.rqty=fpM('refund',x.rqty);
+    x.topReasonAmt=fpM('refund',x.topReasonAmt);
+    if(!canRate){x.rate=FP_MASK;}
+    if(!canShare){x.share=FP_MASK;}
+    if((qtyMode&&!canShare)||(!qtyMode&&!canRate)){x.wow=null;x.hist=null;}
+  });
   return list;
 }
 /* 品类退款占比 + 其环比/历史环比；占比分母 = 该期全部品类退款额（三者同口径）。
@@ -21541,9 +21947,12 @@ function paHistHtml(deltas){
   }).join('');
 }
 function paPieHtml(){
+  /* 金额维度这块饼是「退款额占比」，无退款金额权限时整块占位：
+     扇区大小本身就能反推金额量级，只码中心数字没意义。订单维度看笔数，不受该权限影响。 */
+  var qty=(typeof lsMetric!=='undefined'&&lsMetric==='qty');
+  if(!qty&&!fpCan('refund'))return '<div class="ls-empty">退款金额无查看权限（***）</div>';
   var all=paCatAgg(),total=all.reduce(function(s,x){return s+x.amt;},0);
   var list=all.slice(0,10);
-  var qty=(typeof lsMetric!=='undefined'&&lsMetric==='qty');
   var fmt=function(v){return qty?lsNum(v)+' 件':lsMoney(v);};
   if(!list.length||total<=0)return '<div class="ls-empty">当前时间窗暂无退款数据</div>';
   var R=68,SW=24,CIR=2*Math.PI*R,off=0;
@@ -21748,8 +22157,10 @@ function lsInner(){
       +'</div>';
   };
   const A=lsAccountSum(kind),SD=lsRefStdStat(kind);
-  const sumRate=A.sale>0?A.ref/A.sale:null;
-  const ordShare=A.ord>0?A.rqty/A.ord:null;
+  /* 比率要两个字段都有查看权限才放行，否则出 ***（只放开一个就能反推另一个） */
+  const canRate=fpCan('sale')&&fpCan('refund'),canShare=fpCan('order')&&fpCan('refund');
+  const sumRate=canRate?(A.sale>0?A.ref/A.sale:null):FP_MASK;
+  const ordShare=canShare?(A.ord>0?A.rqty/A.ord:null):FP_MASK;
   const badRate=SD.tot?SD.bad/SD.tot:null;
   const PV=lsPrevKpi(kind,A,SD,sumRate,ordShare,null);
   const kpiCur={sale:A.sale,ref:A.ref,ord:A.ord,rqty:A.rqty,rate:sumRate,share:ordShare,std:SD.rate};
@@ -21791,7 +22202,7 @@ function lsInner(){
      数据源 = AMZ汇总表每次上传的快照（滚动30次，第31次删最老），不再回落到退款明细；
      最新一期用上方 KPI 同口径的 lsAccountSum 覆盖，保证图与卡片完全一致。口径只写注释，不上界面。 */
   const US=lsUpdateSeries(kind);
-  let U=US.slice();
+  let U=US.map(function(x){return Object.assign({},x);});   /* 拷一份：下面要就地打码，别改到缓存 */
   if(U.length){
     const last=U.length-1;
     U[last]=Object.assign({},U[last],{sale:A.sale,amt:A.ref,ordn:A.ord,rqty:A.rqty,rate:sumRate});
@@ -21799,17 +22210,22 @@ function lsInner(){
     U=[{lab:String(baoMetaDate(kind)||'最新').slice(5),sale:A.sale,amt:A.ref,
       ordn:A.ord,rqty:A.rqty,rate:sumRate,ok:SD.ok,bad:SD.bad}];
   }
+  /* 字段权限：整列一起码。只码最新一期、历史期照常显示真实值，等于没码。 */
+  if(!canRate)U.forEach(function(x){x.rate=FP_MASK;});
+  if(!fpCan('sale'))U.forEach(function(x){x.sale=FP_MASK;});
+  if(!fpCan('refund'))U.forEach(function(x){x.amt=FP_MASK;x.rqty=FP_MASK;});
+  if(!fpCan('order'))U.forEach(function(x){x.ordn=FP_MASK;});
   const labels=U.map(function(x){return x.lab;});
   /* 订单维度：柱换订单量/退款量，折线换退款占比；金额维度保持销售额/退款额/退款率。 */
   const qtyMode=lsMetric==='qty';
   let chart1='';
   if(U.length){
     chart1=qtyMode
-      ? lsLegend([['订单量',LS_C.ord],['退款量',LS_C.rqty],['退款占比（右轴）',LS_C.share]])
+      ? (fpCan('order')||fpCan('refund')?lsLegend([['订单量',LS_C.ord],['退款量',LS_C.rqty],['退款占比（右轴）',LS_C.share]]):'')
         +lsPlot({labels:labels,h:253,fixH:253,right:true,tgtAxis:'r',tipFloat:true,
           bars:[{name:'订单量',color:LS_C.ord,vals:U.map(function(x){return x.ordn||0;})},
                 {name:'退款量',color:LS_C.rqty,vals:U.map(function(x){return x.rqty||0;})}],
-          lines:[{name:'退款占比',color:LS_C.share,vals:U.map(function(x){return (x.ordn>0)?x.rqty/x.ordn*100:null;}),axis:'r',w:2,fmt:function(v){return lsPct(v/100);}}],
+          lines:[{name:'退款占比',color:LS_C.share,vals:U.map(function(x){return (x.ordn==='\u0001FPMASK'||x.rqty==='\u0001FPMASK')?'\u0001FPMASK':((typeof x.ordn==='number'&&typeof x.rqty==='number'&&x.ordn>0)?x.rqty/x.ordn*100:null);}),axis:'r',w:2,fmt:function(v){return lsPct(v/100);}}],
           fmtL:lsNum,fmtR:function(v){return (v>=10?Math.round(v):Math.round(v*10)/10)+'%';},
           fmtTip:function(nm,v,i){
             const x=U[i]||{};
@@ -21817,11 +22233,11 @@ function lsInner(){
             if(nm==='退款量')return lsNum(v)+' ｜ 订单量 '+lsNum(x.ordn||0);
             return lsPct(v/100)+' ｜ 最高退款原因：'+lsTopReasonTipText(lsTopReasonAll());
           },labelFmt:function(nm,v){return lsNum(v);},labelLine:true})
-      : lsLegend([['销售额',LS_C.sale],['退款额',LS_C.ref],['退款率（右轴）',LS_C.rate]])
+      : (fpCan('sale')||fpCan('refund')?lsLegend([['销售额',LS_C.sale],['退款额',LS_C.ref],['退款率（右轴）',LS_C.rate]]):'')
         +lsPlot({labels:labels,h:253,fixH:253,right:true,tgtAxis:'r',tipFloat:true,
           bars:[{name:'销售额',color:LS_C.sale,vals:U.map(function(x){return x.sale;})},
                 {name:'退款额',color:LS_C.ref,vals:U.map(function(x){return x.amt;})}],
-          lines:[{name:'退款率',color:LS_C.rate,vals:U.map(function(x){return x.rate==null?null:x.rate*100;}),axis:'r',w:2,fmt:function(v){return lsPct(v/100);}}],
+          lines:[{name:'退款率',color:LS_C.rate,vals:U.map(function(x){return (typeof x.rate==='number')?x.rate*100:(x.rate==='\u0001FPMASK'?'\u0001FPMASK':null);}),axis:'r',w:2,fmt:function(v){return lsPct(v/100);}}],
           fmtL:lsMoney,fmtR:function(v){return (v>=10?Math.round(v):Math.round(v*10)/10)+'%';},
           fmtTip:function(nm,v,i){
             let s;
@@ -21867,8 +22283,8 @@ function lsInner(){
             :[{name:'销售额',color:LS_C.sale,vals:YM.map(function(x){return x.sale;})},
               {name:'退款额',color:LS_C.ref,vals:YM.map(function(x){return x.ref;})}],
           lines:[qtyY
-            ?{name:'退款占比',color:LS_C.share,vals:YM.map(function(x){return x.ord>0?x.rqty/x.ord*100:null;}),axis:'r',w:2,fmt:function(v){return lsPct(v/100);}}
-            :{name:'退款率',color:LS_C.rate,vals:YM.map(function(x){return x.sale>0?x.ref/x.sale*100:null;}),axis:'r',w:2,fmt:function(v){return lsPct(v/100);}}],
+            ?{name:'退款占比',color:LS_C.share,vals:YM.map(function(x){return (x.ord==='\u0001FPMASK'||x.rqty==='\u0001FPMASK')?'\u0001FPMASK':(x.ord>0?x.rqty/x.ord*100:null);}),axis:'r',w:2,fmt:function(v){return lsPct(v/100);}}
+            :{name:'退款率',color:LS_C.rate,vals:YM.map(function(x){return (x.sale==='\u0001FPMASK'||x.ref==='\u0001FPMASK')?'\u0001FPMASK':(x.sale>0?x.ref/x.sale*100:null);}),axis:'r',w:2,fmt:function(v){return lsPct(v/100);}}],
           fmtL:qtyY?lsNum:lsMoney,fmtR:function(v){return (v>=10?Math.round(v):Math.round(v*10)/10)+'%';},
           fmtTip:ymTip,labelFmt:qtyY?function(nm,v){return lsNum(v);}:function(nm,v){return lsMoney(v);},barLabelSplit:true,labelLine:true,labelLineDy:-18})+'</div>';
     }
@@ -21939,9 +22355,9 @@ function lsInner(){
             :[{name:'销售额',color:LS_C.sale,vals:dimList.map(function(x){return x.sale;})},
               {name:'退款额',color:LS_C.ref,vals:dimList.map(function(x){return x.amt;})}],
           lines:[qtyCmp
-            ?{name:'退款占比',color:LS_C.share,vals:dimList.map(function(x){return x.share==null?null:x.share*100;}),axis:'r',w:2,
+            ?{name:'退款占比',color:LS_C.share,vals:dimList.map(function(x){return x.share==='\u0001FPMASK'?'\u0001FPMASK':(x.share==null?null:x.share*100);}),axis:'r',w:2,
               fmt:function(v,i){return tipOf('退款占比',v,i);},labelFmt:function(v){return lsPct(v/100);}}
-            :{name:'退款率',color:LS_C.rate,vals:dimList.map(function(x){return x.rate==null?null:x.rate*100;}),axis:'r',w:2,
+            :{name:'退款率',color:LS_C.rate,vals:dimList.map(function(x){return x.rate==='\u0001FPMASK'?'\u0001FPMASK':(x.rate==null?null:x.rate*100);}),axis:'r',w:2,
               fmt:function(v,i){return tipOf('退款率',v,i);},labelFmt:function(v){return lsPct(v/100);}}],
           fmtL:qtyCmp?lsNum:lsMoney,fmtR:function(v){return (v>=10?Math.round(v):Math.round(v*10)/10)+'%';},
           fmtTip:tipOf,
@@ -22067,16 +22483,16 @@ function lsInner(){
           allLabels:true,hLabels:sWide,pxW:(sWide?sW:null),
           bars:[{name:'订单量',color:LS_C.ord,vals:siteList.map(function(x){return x.ord||0;})},
                 {name:'退款量',color:LS_C.rqty,vals:siteList.map(function(x){return x.rqty||0;})}],
-          lines:[{name:'退款占比',color:LS_C.share,vals:siteList.map(function(x){return x.share==null?null:x.share*100;}),axis:'r',w:2,
+          lines:[{name:'退款占比',color:LS_C.share,vals:siteList.map(function(x){return x.share==='\u0001FPMASK'?'\u0001FPMASK':(x.share==null?null:x.share*100);}),axis:'r',w:2,
             fmt:function(v){return lsPct(v/100);}}],
           fmtL:lsNum,fmtR:function(v){return (v>=10?Math.round(v):Math.round(v*10)/10)+'%';},
           fmtTip:siteTip,labelFmt:function(nm,v){return lsNum(v);},barLabelSplit:true,labelLine:true,labelLineDy:sWide?-11:-18})+'</div>'
-      : lsLegend([['销售额',LS_C.sale],['退款额',LS_C.ref],['退款率（右轴）',LS_C.rate]])
+      : (fpCan('sale')||fpCan('refund')?lsLegend([['销售额',LS_C.sale],['退款额',LS_C.ref],['退款率（右轴）',LS_C.rate]]):'')
         +'<div class="ls-hscroll">'+lsPlot({labels:siteKeys,w:sW,h:(sWide?253:234),right:true,tgtAxis:'r',tipFloat:true,
           allLabels:true,hLabels:sWide,pxW:(sWide?sW:null),
           bars:[{name:'销售额',color:LS_C.sale,vals:siteList.map(function(x){return x.sale;})},
                 {name:'退款额',color:LS_C.ref,vals:siteList.map(function(x){return x.amt;})}],
-          lines:[{name:'退款率',color:LS_C.rate,vals:siteList.map(function(x){return x.rate==null?null:x.rate*100;}),axis:'r',w:2,
+          lines:[{name:'退款率',color:LS_C.rate,vals:siteList.map(function(x){return x.rate==='\u0001FPMASK'?'\u0001FPMASK':(x.rate==null?null:x.rate*100);}),axis:'r',w:2,
             fmt:function(v){return lsPct(v/100);}}],
           fmtL:lsMoney,fmtR:function(v){return (v>=10?Math.round(v):Math.round(v*10)/10)+'%';},
           fmtTip:siteTip,labelFmt:function(nm,v){return lsMoney(v);},barLabelSplit:true,labelLine:true,labelLineDy:sWide?-11:-18})+'</div>');
@@ -22201,7 +22617,12 @@ function caAggBy(keyFields,dimLabel){
       wow:paPpDiff(ser[0],ser[1]),hist:paHistDiffs(ser)};
   });
   list.sort(function(a,b){return b.amt-a.amt;});
-  return {list:list,tot:tot,n:rows.length,periods:periods.length,qty:qty};
+  /* 字段权限：金额与占比一起打码（只码金额、留着占比，等于把金额量级白送）。
+     订单维度统计的是笔数，不是金额，不受「退款金额」权限影响。 */
+  if(!qty&&!fpCan('refund')){
+    list.forEach(function(x){x.amt=FP_MASK;x.share=FP_MASK;x.wow=null;x.hist=null;});
+  }
+  return {list:list,tot:(qty?tot:fpM('refund',tot)),n:rows.length,periods:periods.length,qty:qty};
 }
 /* 主表：物流渠道 × 退款原因 的二维聚合（每组合一行） */
 function caChannelAgg(){
