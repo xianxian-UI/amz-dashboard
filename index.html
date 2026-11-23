@@ -309,6 +309,10 @@
   .ls-seg button+button{border-left:1px solid #f6e2de}
   .ls-seg button:hover{background:#fdf3f1}
   .ls-seg button.on{background:#d93b2b;color:#fff}
+  /* 口径切换（金额维度 / 订单维度）文字较长，禁止换行+禁止压缩，免得工具栏把按钮挤扁 */
+  .ls-seg.ls-metseg{flex:none}
+  .ls-seg.ls-metseg button{white-space:nowrap;padding:5px 12px}
+  .ls-mhead .ls-scope,.ls-mhead .ls-sync{flex:none;white-space:nowrap}
   .ls-scope{font-size:11.5px;font-weight:700;color:#a4473a;background:#fdf1ef;border:1px solid #f3d5d0;border-radius:20px;padding:2px 10px}
   .ls-src{font-size:11px;color:#9aa1ad}
   .ls-kpis{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:8px;margin:0 0 13px}
@@ -391,13 +395,20 @@
   .ls-tbl td.num,.ls-tbl th:nth-child(n+4){text-align:right;font-variant-numeric:tabular-nums}
   /* 产品分析表全部字段居中：提高特异性+important，压过后面 .ls-tbl .ls-cat 的左对齐 */
   table.pa-tbl th,table.pa-tbl td,table.pa-tbl td.num,table.pa-tbl .ls-cat{text-align:center!important}
-  /* 渠道分析（第四模块）：表格居中 + 两张附表并排，窄屏回落单列 */
+  /* 渠道分析（第四模块）：表格居中 + 两张附表并排，窄屏回落单列；整体行高收紧更紧凑 */
   table.ca-tbl th,table.ca-tbl td,table.ca-tbl td.num,table.ca-tbl .ls-cat{text-align:center!important}
-  .ca-sub{background:#fff;border:1px solid #f1f1f4;border-radius:8px;padding:10px 12px;min-width:0}
-  .ca-sub h4{margin:0 0 8px;font-size:12.5px;font-weight:700;color:#a4473a}
-  .ca-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin-top:12px}
+  .ca-sub{background:#fff;border:1px solid #f1f1f4;border-radius:8px;padding:8px 10px;min-width:0}
+  .ca-sub h4{margin:0 0 5px;font-size:12.5px;font-weight:700;color:#a4473a}
+  .ca-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-top:8px}
   @media(max-width:1100px){.ca-grid{grid-template-columns:minmax(0,1fr)}}
-  .ca-more{font-size:11px;color:#9aa1ad;margin-top:6px;text-align:right}
+  .ca-more{font-size:11px;color:#9aa1ad;margin-top:4px;text-align:right}
+  /* 紧凑：单元格上下留白压到 2px、字号 12px、表头 11.5px，一屏能多看 4~5 行 */
+  table.ca-tbl{font-size:12px}
+  table.ca-tbl th{padding:3px 7px;font-size:11.5px;line-height:1.35}
+  table.ca-tbl td{padding:2px 7px;line-height:1.45}
+  table.ca-tbl .ls-tblwrap,table.ca-tblwrap{max-height:none}
+  .ca-sub .ls-tblwrap{max-height:340px}
+  .ca-sub .ls-tbl{margin:0}
   .ls-tbl .ls-rk{width:46px;color:#b0b5c0;font-weight:700}
   .ls-tbl .ls-cat{text-align:left;font-weight:600;color:#3a3656;max-width:250px;overflow:hidden;text-overflow:ellipsis}
   .ls-tbl tbody tr[data-lscat]{cursor:pointer}
@@ -10283,7 +10294,7 @@ document.getElementById('app').addEventListener('change',e=>{
     lightF=lightF||{};lightF[_fk]=e.target.value;lightPage=1;lightRefresh();return;
   }
   if(id==='refColSel'){refColSel=e.target.value;refSearch='';refPage=1;render();return;}
-  if(id==='refSortSel'){refSort=e.target.value||'refTimeDesc';refPage=1;refRefresh();return;}
+  if(id==='refSortSel'){refSort=e.target.value||'refTimeDesc';refPage=1;render();return;}
   if(id==='refSiteSel'){refF.site=e.target.value;refPage=1;render();return;}
   if(id==='refCatSel'){refF.issueCat=e.target.value;refPage=1;render();return;}
   if(id==='refReasonSel'){refF.refReason=e.target.value;refPage=1;render();return;}
@@ -11345,6 +11356,9 @@ document.getElementById('app').addEventListener('click',e=>{
   if(lossScopeBtn){lsLossScope=lossScopeBtn.getAttribute('data-lslossscope')||'region';render();return;}
   const lsdim=t.closest&&t.closest('[data-lsdim]');
   if(lsdim){lsDim=lsdim.getAttribute('data-lsdim');if(lsDim!=='m'&&lsChartMode==='year')lsChartMode='all';render();return;}
+  /* 报损透视台：金额维度 / 订单维度切换（一/二/三/四模块统一跟随） */
+  const lsmet=t.closest&&t.closest('[data-lsmetric]');
+  if(lsmet){lsMetric=lsmet.getAttribute('data-lsmetric')==='qty'?'qty':'amt';render();return;}
   const lssync=t.closest&&t.closest('[data-lssync]');
   if(lssync){
     /* 手动把 AMZ汇总表 与退款明细同时从云端重拉，解决本机缓存比 18 日更新还旧的情况 */
@@ -12543,7 +12557,9 @@ function healthCloseAgg(n){
   });
   let noDate=0;
   const everSet={},recSet={},accSet={},shopSet={},everAccSet={},recAccSet={},nearAccSet={},nearBackAccSet={};
-  (DATA.accounts||[]).forEach(function(a){
+  /* 跟随「账号安全总览」顶部筛选（区域/核算分组/主管/组长/销售/客服/客服组长/站点）：
+     账号对象自带这些字段，直接用 hkApply（内部走 hkPass），改筛选后本块随之重算。 */
+  hkApply(DATA.accounts||[]).forEach(function(a){
     const st=String(a.status==null?'':a.status);
     const short=String(a.short==null?'':a.short).trim();
     const acc=String(a.account==null?'':a.account).trim()||short;
@@ -20337,6 +20353,9 @@ const LS_N={d:30,w:4,m:12};
 const LS_C={sale:'#2f5fbf',ref:'#d93b2b',ord:'#2f9e6f',rqty:'#e08a2f',rate:'#c0392b',share:'#e2872f'};
 let paDim='cat',paAll=false;
 let lsDim='d',lsLevel='1',lsSort='ref',lsDonutMode='region',lsDonutSel='',lsChartMode='all',lsLossScope='region',lsFocus='';let lsKeyOpen=false;
+/* 报损透视台口径：amt=金额（销售额/退款额/报损率，默认）；qty=订单（订单量/退款量/退款占比）。
+   四个模块统一跟随这个开关，按模块各自可得的数据做映射，缺数据的指标显示「—」不硬编。 */
+let lsMetric='amt';
 let lsFlt={region:'',group:'',site:''};
 let LS_CACHE={};
 
@@ -20720,20 +20739,26 @@ function lsUpdateSeries(kind){
 function lsBaoDimList(kind,mode){
   const sf={d:'baoDSale',w:'baoWSale',m:'baoMSale'}[kind]||'baoMSale';
   const rf={d:'baoDRef',w:'baoWRef',m:'baoMRef'}[kind]||'baoMRef';
+  /* 订单量 / 退款量：订单维度对比页要用（同一份汇总表快照里的字段） */
+  const of={d:'baoDOrd',w:'baoWOrd',m:'baoMOrd'}[kind]||'baoMOrd';
+  const qf={d:'baoDRqty',w:'baoWRqty',m:'baoMRqty'}[kind]||'baoMRqty';
   const reg={};
   (DATA.accounts||[]).forEach(function(a){
     if(!a||a.status!=='启用'||a.assess!=='纳入考核')return;
     if(!lsAccPass(a))return;
     const k=String(a.short==null?'':a.short).trim().toUpperCase();if(!k)return;
     const f=sumBaoFields(k),amt=Number(f[rf])||0,sale=Number(f[sf])||0;
-    if(!amt&&!sale)return;
+    const ord=Number(f[of])||0,rqty=Number(f[qf])||0;
+    if(!amt&&!sale&&!ord&&!rqty)return;
     const key=String((mode==='group'?a.group:a.region)==null?'':(mode==='group'?a.group:a.region)).trim()||(mode==='group'?'未分组':'未分区');
     const sub=String((mode==='group'?a.region:a.group)==null?'':(mode==='group'?a.region:a.group)).trim()||(mode==='group'?'未分区':'未分组');
-    const t=reg[key]||(reg[key]={k:key,amt:0,sale:0,sub:{}});
+    const t=reg[key]||(reg[key]={k:key,amt:0,sale:0,ord:0,rqty:0,sub:{}});
     t.amt+=amt;t.sale+=sale;t.sub[sub]=(t.sub[sub]||0)+amt;
+    t.ord+=ord;t.rqty+=rqty;
   });
-  return Object.keys(reg).map(function(k){const x=reg[k];x.rate=x.sale>0?x.amt/x.sale:null;return x;})
-    .sort(function(a,b){return b.amt-a.amt;});
+  return Object.keys(reg).map(function(k){
+    const x=reg[k];x.rate=x.sale>0?x.amt/x.sale:null;x.share=x.ord>0?x.rqty/x.ord:null;return x;
+  }).sort(function(a,b){return b.amt-a.amt;});
 }
 /* 站点维度聚合：与报损规模/KPI 同取 AMZ汇总表最新一期快照（账号所属 site）。
    数据源=汇总表快照，不是退款明细；口径只写注释不上界面。 */
@@ -20746,20 +20771,27 @@ function lsYearMonths(){
 function lsSiteDimList(kind){
   const sf={d:'baoDSale',w:'baoWSale',m:'baoMSale'}[kind]||'baoMSale';
   const rf={d:'baoDRef',w:'baoWRef',m:'baoMRef'}[kind]||'baoMRef';
+  /* 订单维度：同源取该期订单量/退款量，站点级聚合（报损表口径，与 KPI 同源） */
+  const of={d:'baoDOrd',w:'baoWOrd',m:'baoMOrd'}[kind]||'baoMOrd';
+  const qf={d:'baoDRqty',w:'baoWRqty',m:'baoMRqty'}[kind]||'baoMRqty';
   const reg={};
   (DATA.accounts||[]).forEach(function(a){
     if(!a||a.status!=='启用'||a.assess!=='纳入考核')return;
     if(!lsAccPass(a))return;
     const k=String(a.short==null?'':a.short).trim().toUpperCase();if(!k)return;
     const f=sumBaoFields(k),amt=Number(f[rf])||0,sale=Number(f[sf])||0;
-    if(!amt&&!sale)return;
+    const ord=Number(f[of])||0,rqty=Number(f[qf])||0;
+    if(!amt&&!sale&&!ord&&!rqty)return;
     const key=String(a.site==null?'':a.site).trim().toUpperCase()||'未分站';
-    const t=reg[key]||(reg[key]={k:key,amt:0,sale:0,sub:{}});
-    t.amt+=amt;t.sale+=sale;
+    const t=reg[key]||(reg[key]={k:key,amt:0,sale:0,ord:0,rqty:0,sub:{}});
+    t.amt+=amt;t.sale+=sale;t.ord+=ord;t.rqty+=rqty;
     const sub=String(a.group==null?'':a.group).trim()||'未分组';
     t.sub[sub]=(t.sub[sub]||0)+amt;
   });
-  return Object.keys(reg).map(function(k){const x=reg[k];x.rate=x.sale>0?x.amt/x.sale:null;return x;})
+  return Object.keys(reg).map(function(k){const x=reg[k];
+    x.rate=x.sale>0?x.amt/x.sale:null;
+    x.share=x.ord>0?x.rqty/x.ord:null;
+    return x;})
     .sort(function(a,b){return b.amt-a.amt;});
 }
 /* 报损情况表：按维度(区域/团队/站点)聚合启用+考核账号的汇总表最新一期值，口径同 KPI。
@@ -20790,7 +20822,7 @@ function lsDimTrend(kind,mode,dimKeys){
   const hs=((baoMetaOf(kind).hist)||[]).filter(function(e){return e&&e[f];});
   /* 首期兜底：历史批次为空时，用「当前汇总表快照」按维度聚合补一个点，先显示单个圆点；
      以后每上传一期 hist 自动多一条，点逐期连成折线。口径只写注释不上界面。 */
-  if(!hs.length){
+    if(!hs.length){
     const sq=(DATA.sumBao&&DATA.sumBao[kind])||{},dm={};
     (DATA.accounts||[]).forEach(function(a){
       if(!a)return;
@@ -20798,18 +20830,26 @@ function lsDimTrend(kind,mode,dimKeys){
       const raw=(f==='st'?a.site:(f==='gp'?a.group:a.region));
       const key=f==='st'?String(raw==null?'':raw).trim().toUpperCase():String(raw==null?'':raw).trim();
       if(!key)return;
-      const t=dm[key]||(dm[key]={sale:0,ref:0});
+      const t=dm[key]||(dm[key]={sale:0,ref:0,ord:0,rqty:0});
       t.sale+=Number(sq[k].sale)||0;t.ref+=Number(sq[k].ref)||0;
+      t.ord+=Number(sq[k].ord)||0;t.rqty+=Number(sq[k].rqty)||0;
     });
     if(Object.keys(dm).length){const e={d:baoMetaDate(kind)||todayStr()};e[f]=dm;hs.push(e);}
   }
   const labels=hs.map(function(e){
     const s=String(e.d||e.at||'');return s.length>=10?s.slice(5):(s||'—');
   });
+  const qtyT=(typeof lsMetric!=='undefined'&&lsMetric==='qty');
   const lines=dimKeys.map(function(k,i){
     const badge=(i+1)<=20?String.fromCharCode(0x2460+i):((i+1)<=50?String.fromCharCode(0x323C+(i+1)):String(i+1));
     return {name:k,badge:badge,color:(i<LS_TREND_C.length?LS_TREND_C[i]:'hsl('+((i*47+20)%360)+',55%,42%)'),axis:'r',w:1.6,
-      vals:hs.map(function(e){const a=e[f][k];if(!a)return null;const s=Number(a.sale)||0,r=Number(a.ref)||0;return s>0?r/s*100:null;}),
+      vals:hs.map(function(e){
+        const a=e[f][k];if(!a)return null;
+        const s=Number(a.sale)||0,r=Number(a.ref)||0;
+        /* 订单维度画退款占比（退款量÷订单量）；历史快照自 2026-11 起同时存 ord/rqty，缺则断点 */
+        if(qtyT){const o=Number(a.ord)||0,q=Number(a.rqty)||0;return o>0?q/o*100:null;}
+        return s>0?r/s*100:null;
+      }),
       fmt:function(v){return v==null?'—':(Math.round(v*100)/100)+'%';}};
   });
   return {labels:labels,lines:lines,pts:hs.length};
@@ -21089,15 +21129,20 @@ function lsCatAgg(){
   });
   const tgt=lsTargetRate();
   const base=(tgt!=null)?tgt:(totSale>0?totAmt/totSale:null);
-  list.forEach(function(x){x.lamp=lsLamp(x.rate,base);});
-  const key=lsSort==='rate'?'rate':(lsSort==='sale'?'sale':'amt');
+  /* 灯值跟随口径：金额维度比退款率、订单维度比退款占比（退款量÷订单量） */
+  const totShare=totOrd>0?totRqty/totOrd:null;
+  list.forEach(function(x){x.lamp=lsLamp(lsMetric==='qty'?x.share:x.rate,lsMetric==='qty'?totShare:base);});
+  const key=lsMetric==='qty'
+    ?(lsSort==='rate'?'share':(lsSort==='sale'?'ordn':'rqty'))
+    :(lsSort==='rate'?'rate':(lsSort==='sale'?'sale':'amt'));
   list.sort(function(a,b){
     const av=(a[key]==null)?-1:a[key],bv=(b[key]==null)?-1:b[key];
-    return bv-av||b.amt-a.amt||String(a.cat).localeCompare(String(b.cat),'zh');
+    const fallback=lsMetric==='qty'?(b.rqty-a.rqty):(b.amt-a.amt);
+    return bv-av||fallback||String(a.cat).localeCompare(String(b.cat),'zh');
   });
   list.forEach(function(x,i){x.rank=i+1;});
-  return {list:list,base:base,tot:{sale:totSale,amt:totAmt,ordn:totOrd,rqty:totRqty,
-    rate:totSale>0?totAmt/totSale:null,share:totOrd>0?totRqty/totOrd:null},n:sub.length};
+  return {list:list,base:lsMetric==='qty'?totShare:base,tot:{sale:totSale,amt:totAmt,ordn:totOrd,rqty:totRqty,
+    rate:totSale>0?totAmt/totSale:null,share:totShare},n:sub.length};
 }
 /* 报损透视台 一/二模块数值悬浮用「最高退款原因」（口径隐藏不上界面）：
    · 只从退款明细 REF.rows 算，行筛选与 lsRows 完全一致（运营筛选 + 丢弃行）。
@@ -21273,7 +21318,9 @@ function paRefRows(w){
        （源数据存在整批退款原因都是 '-' 的批次，例如 2026-11-16）。 */
     var rsn=lsS(refVal(r,'refReason'));if(!rsn||rsn==='-')rsn=lsS(refVal(r,'issueCat'));
     if(!rsn||rsn==='-')rsn='';
-    out.push({day:day,sku:lsS(refVal(r,'sku')),reason:rsn||'（未填）',
+    /* ok = 订单标识（平台单号优先、退化汇总单号），用于订单维度算订单量；缺则用行号兜底 */
+    var ok=lsS(refVal(r,'platNo'))||lsS(refVal(r,'sumNo'))||('R'+i);
+    out.push({day:day,sku:lsS(refVal(r,'sku')),reason:rsn||'（未填）',ok:ok,
       region:region||'（未分区）',group:grp||'（未分组）',
       c1:lsS(refVal(r,'cat1'))||'（未分类）',c2:lsS(refVal(r,'cat2'))||'（未分类）',
       gs:lsS(refVal(r,'goodsState'))||'—',
@@ -21380,6 +21427,14 @@ function paRateOfPeriod(w){
   });
   return out;
 }
+/* 某窗口按当前维度分组的「退款量占比」表：{key: share|null}，订单维度用它算环比序列。
+   占比 = 该分组退款量 ÷ 该期全部退款量（与右侧饼图同口径）；该期没有退款记 null，不硬算。 */
+function paShareOfPeriod(w){
+  var g={},tot=0,out={};
+  paRefRows(w).forEach(function(r){var k=paGroupKey(r);g[k]=(g[k]||0)+1;tot++;});
+  Object.keys(g).forEach(function(k){out[k]=tot>0?g[k]/tot:null;});
+  return out;
+}
 function paPpDiff(cur,prev){
   if(cur==null||prev==null||!isFinite(cur)||!isFinite(prev))return null;
   return (cur-prev)*100;
@@ -21399,42 +21454,56 @@ function paHistDiffs(ser){
   return [s/ds.length];
 }
 function paAgg(){
-  var rows=paRefRows(),sales=paSalesMap(),m={},order=[];
+  var rows=paRefRows(),sales=paSalesMap(),m={},order=[],totRqty=rows.length;
   rows.forEach(function(r){
     var k=paGroupKey(r),g=m[k];
     if(!g){g=m[k]={key:k,rows:[],skus:{},amt:0};order.push(k);}
     g.rows.push(r);g.amt+=r.amt;if(r.sku)g.skus[r.sku]=1;
   });
-  /* 环比：一次性构造最近 4 期的报损率序列（本期用主表 rate，保证与主表口径一致） */
+  /* 环比：一次性构造最近 4 期的序列（本期用主表值，保证与主表口径一致）。
+     金额维度=报损率序列（退款额÷销售额）；订单维度=退款占比序列（退款量÷订单量）。
+     两套序列互不混用，某一期缺分母记 null → 该期环比为「—」。 */
   var periods=[0,1,2,3].map(paPeriod).filter(Boolean);
-  var rateMaps=periods.map(function(w,i){return i===0?null:paRateOfPeriod(w);});
+  var qtyMode=(typeof lsMetric!=='undefined'&&lsMetric==='qty');
+  var maps=(qtyMode?paShareOfPeriod:paRateOfPeriod);
+  var serMaps=periods.map(function(w,i){return i===0?null:maps(w);});
   var list=order.map(function(k){
     var g=m[k],sale=0;
     Object.keys(g.skus).forEach(function(sk){sale+=(sales[sk]||0);});
     var r0=g.rows[0]||{};
     var rate=sale>0?g.amt/sale:null;
-    var ser=[rate];
-    for(var i=1;i<periods.length;i++)ser.push((rateMaps[i]||{})[k]);
+    var ordn=(function(){var st={};g.rows.forEach(function(r){if(r.ok)st[r.ok]=1;});return Object.keys(st).length;})();
+    var rqty=g.rows.length,share=totRqty>0?rqty/totRqty:null;
+    var val=qtyMode?share:rate;
+    var ser=[val];
+    for(var i=1;i<periods.length;i++)ser.push((serMaps[i]||{})[k]);
     var topR=paTopReasonOf(g.rows);
     return {key:k,label:k.split('\u0001').pop(),region:r0.region,group:r0.group,
       c1:r0.c1||'—',c2:r0.c2||'—',gs:r0.gs||'—',
       topCat:paTopBy(g.rows,paLevel==='2'?'c2':'c1'),topReason:topR.reason,topReasonAmt:topR.amt,
-      sale:sale,amt:g.amt,rate:rate,
+      sale:sale,amt:g.amt,rate:rate,ordn:ordn,rqty:rqty,share:share,val:val,
       wow:paPpDiff(ser[0],ser[1]),hist:paHistDiffs(ser)};
   });
-  list.sort(function(a,b){return (b.rate==null?-1:b.rate)-(a.rate==null?-1:a.rate)||b.amt-a.amt;});
+  /* 排名跟随口径：金额维度按报损率降序，订单维度按退款占比降序；同值按量兜底 */
+  list.sort(function(a,b){
+    var av=qtyMode?a.share:a.rate,bv=qtyMode?b.share:b.rate;
+    return (bv==null?-1:bv)-(av==null?-1:av)||(qtyMode?b.rqty-a.rqty:b.amt-a.amt);
+  });
   list.forEach(function(x,i){x.rank=i+1;});
   return list;
 }
-/* 品类退款占比 + 其环比/历史环比；占比分母 = 该期全部品类退款额（三者同口径）。 */
+/* 品类退款占比 + 其环比/历史环比；占比分母 = 该期全部品类退款额（三者同口径）。
+   订单维度改按「退款量」计：占比分母 = 该期全部退款量，金额字段换成笔数。 */
 function paCatAgg(){
   var lv=paLevel==='2'?'c2':'c1';
+  var qty=(typeof lsMetric!=='undefined'&&lsMetric==='qty');
+  var valOf=function(r){return qty?1:r.amt;};
   var periods=[0,1,2,3].map(paPeriod).filter(Boolean);
   var shareSer={};
   periods.forEach(function(w,i){
     var mm={},tot=0;
     paRefRows(w).forEach(function(r){
-      var k=r[lv];mm[k]=(mm[k]||0)+r.amt;tot+=r.amt;
+      var k=r[lv],v=valOf(r);mm[k]=(mm[k]||0)+v;tot+=v;
     });
     Object.keys(mm).forEach(function(k){
       (shareSer[k]||(shareSer[k]=[null,null,null,null]))[i]=tot>0?mm[k]/tot:null;
@@ -21442,9 +21511,9 @@ function paCatAgg(){
   });
   var m0={},tot0=0,ramt={},rbest={};
   paRefRows(periods[0]).forEach(function(r){
-    var k=r[lv],rk=r.reason||'（未填）',ck=k+'\u0001'+rk;
-    m0[k]=(m0[k]||0)+r.amt;tot0+=r.amt;
-    ramt[ck]=(ramt[ck]||0)+r.amt;
+    var k=r[lv],rk=r.reason||'（未填）',ck=k+'\u0001'+rk,v=valOf(r);
+    m0[k]=(m0[k]||0)+v;tot0+=v;
+    ramt[ck]=(ramt[ck]||0)+v;
     if(!rbest[k]||ramt[ck]>rbest[k].amt)rbest[k]={reason:rk,amt:ramt[ck]};
   });
   var list=Object.keys(m0).map(function(k){
@@ -21474,13 +21543,15 @@ function paHistHtml(deltas){
 function paPieHtml(){
   var all=paCatAgg(),total=all.reduce(function(s,x){return s+x.amt;},0);
   var list=all.slice(0,10);
+  var qty=(typeof lsMetric!=='undefined'&&lsMetric==='qty');
+  var fmt=function(v){return qty?lsNum(v)+' 件':lsMoney(v);};
   if(!list.length||total<=0)return '<div class="ls-empty">当前时间窗暂无退款数据</div>';
   var R=68,SW=24,CIR=2*Math.PI*R,off=0;
   var slices=list.map(function(x,i){
     var len=CIR*x.amt/total;
     var s='<circle cx="88" cy="88" r="'+R+'" fill="none" stroke="'+PA_COLORS[i%PA_COLORS.length]+'" stroke-width="'+SW+'"'
       +' stroke-dasharray="'+len.toFixed(2)+' '+(CIR-len).toFixed(2)+'" stroke-dashoffset="'+(-off).toFixed(2)+'"'
-      +' transform="rotate(-90 88 88)"><title>'+esc(x.k)+' · 退款额 '+lsMoney(x.amt)+' · 占比 '+lsPct(x.share)
+      +' transform="rotate(-90 88 88)"><title>'+esc(x.k)+' · '+(qty?'退款量 ':'退款额 ')+fmt(x.amt)+' · 占比 '+lsPct(x.share)
       +' · 最高退款原因：'+esc(x.topReason)+'</title></circle>';
     off+=len;return s;
   }).join('');
@@ -21492,39 +21563,56 @@ function paPieHtml(){
   var leg=list.map(function(x,i){
     return '<div style="display:flex;align-items:center;gap:5px;font-size:11px;color:#5b6270;line-height:1.9">'
       +'<i style="width:9px;height:9px;border-radius:2px;background:'+PA_COLORS[i%PA_COLORS.length]+';flex:none"></i>'
-      +'<span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="'+esc(x.k)+' · '+lsMoney(x.amt)+' · 最高退款原因：'+esc(x.topReason)+'">'+esc(x.k)+'</span>'
+      +'<span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="'+esc(x.k)+' · '+fmt(x.amt)+' · 最高退款原因：'+esc(x.topReason)+'">'+esc(x.k)+'</span>'
       +'<b style="font-variant-numeric:tabular-nums;color:#333b47;width:42px;text-align:right">'+lsPct(x.share)+'</b>'
       +'<span style="width:58px;text-align:right">'+paWowHtml(x.wow)+'</span>'
       +'<span style="width:60px;text-align:right;font-variant-numeric:tabular-nums">'+paHistHtml(x.hist)+'</span></div>';
   }).join('');
-  return '<div class="ls-donut"><div style="font-size:12px;font-weight:700;color:#8d6f68;margin:0 0 4px">前10'+(paLevel==='2'?'星耀二级':'星耀一级')+'品类退款占比</div>'
+  return '<div class="ls-donut"><div style="font-size:12px;font-weight:700;color:#8d6f68;margin:0 0 4px">前10'+(paLevel==='2'?'星耀二级':'星耀一级')+'品类'+(qty?'退款量占比':'退款占比')+'</div>'
     +'<div style="display:flex;align-items:center;gap:14px">'
     +'<svg viewBox="0 0 176 176" style="width:176px;height:176px;flex:none">'+slices
-    +'<text x="88" y="101" text-anchor="middle" font-size="14" font-weight="700" fill="#333b47">'+esc(lsMoney(total))+'</text></svg>'
+    +'<text x="88" y="101" text-anchor="middle" font-size="14" font-weight="700" fill="#333b47">'+esc(fmt(total))+'</text></svg>'
     +'<div style="flex:1;min-width:0;max-height:210px;overflow:auto">'+legHead+leg+'</div></div></div>';
 }
 function paTableHtml(){
   var list=paAgg(),shown=paAll?list:list.slice(0,10);
   var lvName=paLevel==='2'?'星耀二级品类':'星耀一级品类';
+  var qty=(typeof lsMetric!=='undefined'&&lsMetric==='qty');
+  /* 三列指标随口径切换：
+     金额维度 = 销售额 / 退款额 / 报损率 ；订单维度 = 订单量 / 退款量 / 退款量占比。
+     产品维度的「订单量」只能取退款明细里平台单号去重（即发生退款的订单数）——业绩分析表只有金额、报损表只到账号级，
+     因此订单维度的占比用「该分组退款量 ÷ 全部退款量」，与右侧饼图同一分母，避免用退款单数÷退款订单数凑出 100%+ 的假占比。 */
+  var mAmt=qty?['订单量','退款量','退款量占比','退款量排名']:['销售额','退款额','报损率','报损率排名'];
   var head='';
   /* 环比/历史环比两列放在「最高退款原因」之后（末两列） */
-  if(paDim==='cat')head='<th>'+lvName+'</th><th>销售额</th><th>退款额</th><th>报损率</th><th>报损率排名</th><th>最高退款原因</th><th>环比</th><th>历史环比</th>';
-  else if(paDim==='region')head='<th>区域</th><th>区域最高退款品类</th><th>销售额</th><th>退款额</th><th>报损率</th><th>报损率排名</th><th>最高退款原因</th><th>环比</th><th>历史环比</th>';
-  else if(paDim==='group')head='<th>区域</th><th>核算小组</th><th>最高退款品类</th><th>销售额</th><th>退款额</th><th>报损率</th><th>报损率排名</th><th>最高退款原因</th><th>环比</th><th>历史环比</th>';
-  else head='<th>SKU</th><th>星耀一级品类</th><th>星耀二级品类</th><th>商品状态</th><th>销售额</th><th>退款额</th><th>报损率</th><th>报损率排名</th><th>最高退款原因</th><th>环比</th><th>历史环比</th>';
+  if(paDim==='cat')head='<th>'+lvName+'</th><th>'+mAmt[0]+'</th><th>'+mAmt[1]+'</th><th>'+mAmt[2]+'</th><th>'+mAmt[3]+'</th><th>最高退款原因</th><th>环比</th><th>历史环比</th>';
+  else if(paDim==='region')head='<th>区域</th><th>区域最高退款品类</th><th>'+mAmt[0]+'</th><th>'+mAmt[1]+'</th><th>'+mAmt[2]+'</th><th>'+mAmt[3]+'</th><th>最高退款原因</th><th>环比</th><th>历史环比</th>';
+  else if(paDim==='group')head='<th>区域</th><th>核算小组</th><th>最高退款品类</th><th>'+mAmt[0]+'</th><th>'+mAmt[1]+'</th><th>'+mAmt[2]+'</th><th>'+mAmt[3]+'</th><th>最高退款原因</th><th>环比</th><th>历史环比</th>';
+  else head='<th>SKU</th><th>星耀一级品类</th><th>星耀二级品类</th><th>商品状态</th><th>'+mAmt[0]+'</th><th>'+mAmt[1]+'</th><th>'+mAmt[2]+'</th><th>'+mAmt[3]+'</th><th>最高退款原因</th><th>环比</th><th>历史环比</th>';
+  var ordTip='退款明细里平台单号去重，仅统计发生过退款的订单';
   var body=shown.map(function(x){
     var tds='';
     if(paDim==='group')tds='<td>'+esc(x.region)+'</td><td>'+esc(x.group)+'</td><td>'+esc(x.topCat)+'</td>';
     else if(paDim==='region')tds='<td>'+esc(x.region)+'</td><td>'+esc(x.topCat)+'</td>';
     else if(paDim==='sku')tds='<td class="ls-cat">'+esc(x.label)+'</td><td>'+esc(x.c1)+'</td><td>'+esc(x.c2)+'</td><td>'+esc(x.gs)+'</td>';
     else tds='<td class="ls-cat">'+esc(x.label)+'</td>';
-    tds+='<td class="num">'+lsMoney(x.sale)+'</td>'
-      +'<td class="num ls-ref">'+lsMoney(x.amt)+'</td>'
-      +'<td class="num"><b>'+lsPct(x.rate)+'</b></td>'
-      +'<td class="num">'+x.rank+'</td>'
-      +'<td title="'+esc(x.topReason)+' · 退款额 '+esc(lsMoney(x.topReasonAmt))+'">'+esc(x.topReason)+'</td>'
-      +'<td>'+paWowHtml(x.wow)+'</td>'
-      +'<td>'+paHistHtml(x.hist)+'</td>';
+    if(qty){
+      tds+='<td class="num" title="'+ordTip+'">'+(x.ordn>0?lsNum(x.ordn):'—')+'</td>'
+        +'<td class="num ls-ref">'+lsNum(x.rqty)+'</td>'
+        +'<td class="num"><b>'+lsPct(x.share)+'</b></td>'
+        +'<td class="num">'+x.rank+'</td>'
+        +'<td title="'+esc(x.topReason)+'">'+esc(x.topReason)+'</td>'
+        +'<td>'+paWowHtml(x.wow)+'</td>'
+        +'<td>'+paHistHtml(x.hist)+'</td>';
+    }else{
+      tds+='<td class="num">'+lsMoney(x.sale)+'</td>'
+        +'<td class="num ls-ref">'+lsMoney(x.amt)+'</td>'
+        +'<td class="num"><b>'+lsPct(x.rate)+'</b></td>'
+        +'<td class="num">'+x.rank+'</td>'
+        +'<td title="'+esc(x.topReason)+' · 退款额 '+esc(lsMoney(x.topReasonAmt))+'">'+esc(x.topReason)+'</td>'
+        +'<td>'+paWowHtml(x.wow)+'</td>'
+        +'<td>'+paHistHtml(x.hist)+'</td>';
+    }
     return '<tr>'+tds+'</tr>';
   }).join('');
   if(!body)body='<tr><td colspan="'+(paDim==='sku'?11:10)+'" class="dim">当前时间窗暂无退款明细</td></tr>';
@@ -21675,16 +21763,29 @@ function lsInner(){
   /* 退款额 / 退款率卡片悬浮：显示当前范围退款金额最高的退款原因（口径隐藏） */
   const topAll=lsTopReasonAll();
   const topTip='最高退款原因：'+topAll.reason+'（退款额 '+lsMoney(topAll.amt)+'）';
-  let kpis='<div class="ls-kpis">'
-    +kpi('退款率',lsKpiVal('rate',sumRate),'rate',M.rate.d,M.rate.avg,topTip)
-    +kpi('销售额',lsKpiVal('sale',A.sale),'sale',M.sale.d,M.sale.avg)
-    +kpi('退款额',lsKpiVal('ref',A.ref),'ref',M.ref.d,M.ref.avg,topTip)
-    +kpi('订单量',lsKpiVal('ord',A.ord),'ord',M.ord.d,M.ord.avg)
-    +kpi('退款量',lsKpiVal('rqty',A.rqty),'rqty',M.rqty.d,M.rqty.avg)
-    +kpi('退款量占比',lsKpiVal('share',ordShare),'share',M.share.d,M.share.avg)
-    +kpi('账号退款达标率',lsKpiVal('std',SD.rate),'std',M.std.d,M.std.avg,
-      '不达标率 '+lsPct(badRate)+' · 不达标 '+SD.bad+' 个')
-    +'</div>';
+  /* 金额维度：退款率 / 销售额 / 退款额 / 订单量 / 退款量 / 退款量占比；
+     订单维度：把三个金额指标换成 退款占比 / 订单量 / 退款量（与金额卡一一对应）。 */
+  let kpis;
+  if(lsMetric==='qty'){
+    kpis='<div class="ls-kpis">'
+      +kpi('退款占比',lsKpiVal('share',ordShare),'share',M.share.d,M.share.avg,'退款量 ÷ 订单量')
+      +kpi('订单量',lsKpiVal('ord',A.ord),'ord',M.ord.d,M.ord.avg)
+      +kpi('退款量',lsKpiVal('rqty',A.rqty),'rqty',M.rqty.d,M.rqty.avg)
+      +kpi('账号退款达标率',lsKpiVal('std',SD.rate),'std',M.std.d,M.std.avg,
+        '不达标率 '+lsPct(badRate)+' · 不达标 '+SD.bad+' 个')
+      +'</div>';
+  }else{
+    kpis='<div class="ls-kpis">'
+      +kpi('退款率',lsKpiVal('rate',sumRate),'rate',M.rate.d,M.rate.avg,topTip)
+      +kpi('销售额',lsKpiVal('sale',A.sale),'sale',M.sale.d,M.sale.avg)
+      +kpi('退款额',lsKpiVal('ref',A.ref),'ref',M.ref.d,M.ref.avg,topTip)
+      +kpi('订单量',lsKpiVal('ord',A.ord),'ord',M.ord.d,M.ord.avg)
+      +kpi('退款量',lsKpiVal('rqty',A.rqty),'rqty',M.rqty.d,M.rqty.avg)
+      +kpi('退款量占比',lsKpiVal('share',ordShare),'share',M.share.d,M.share.avg)
+      +kpi('账号退款达标率',lsKpiVal('std',SD.rate),'std',M.std.d,M.std.avg,
+        '不达标率 '+lsPct(badRate)+' · 不达标 '+SD.bad+' 个')
+      +'</div>';
+  }
   /* 图一：报损规模（销售额 / 退款额 两柱 + 退款率折线）。
      订单量 / 退款量不占柱，只在悬浮销售额 / 退款额时并列显示。
      数据源 = AMZ汇总表每次上传的快照（滚动30次，第31次删最老），不再回落到退款明细；
@@ -21699,21 +21800,36 @@ function lsInner(){
       ordn:A.ord,rqty:A.rqty,rate:sumRate,ok:SD.ok,bad:SD.bad}];
   }
   const labels=U.map(function(x){return x.lab;});
+  /* 订单维度：柱换订单量/退款量，折线换退款占比；金额维度保持销售额/退款额/退款率。 */
+  const qtyMode=lsMetric==='qty';
   let chart1='';
   if(U.length){
-    chart1=lsLegend([['销售额',LS_C.sale],['退款额',LS_C.ref],['退款率（右轴）',LS_C.rate]])
-      +lsPlot({labels:labels,h:253,fixH:253,right:true,tgtAxis:'r',tipFloat:true,
-        bars:[{name:'销售额',color:LS_C.sale,vals:U.map(function(x){return x.sale;})},
-              {name:'退款额',color:LS_C.ref,vals:U.map(function(x){return x.amt;})}],
-        lines:[{name:'退款率',color:LS_C.rate,vals:U.map(function(x){return x.rate==null?null:x.rate*100;}),axis:'r',w:2,fmt:function(v){return lsPct(v/100);}}],
-        fmtL:lsMoney,fmtR:function(v){return (v>=10?Math.round(v):Math.round(v*10)/10)+'%';},
-        fmtTip:function(nm,v,i){
-          let s;
-          if(nm==='销售额')s=lsMoney(v)+' · 订单量 '+lsNum((U[i]||{}).ordn||0);
-          else if(nm==='退款额')s=lsMoney(v)+' · 退款量 '+lsNum((U[i]||{}).rqty||0);
-          else s=lsPct(v/100);
-          return s+' ｜ 最高退款原因：'+lsTopReasonTipText(lsTopReasonAll());
-        },labelFmt:function(nm,v){return lsMoney(v);},labelLine:true});
+    chart1=qtyMode
+      ? lsLegend([['订单量',LS_C.ord],['退款量',LS_C.rqty],['退款占比（右轴）',LS_C.share]])
+        +lsPlot({labels:labels,h:253,fixH:253,right:true,tgtAxis:'r',tipFloat:true,
+          bars:[{name:'订单量',color:LS_C.ord,vals:U.map(function(x){return x.ordn||0;})},
+                {name:'退款量',color:LS_C.rqty,vals:U.map(function(x){return x.rqty||0;})}],
+          lines:[{name:'退款占比',color:LS_C.share,vals:U.map(function(x){return (x.ordn>0)?x.rqty/x.ordn*100:null;}),axis:'r',w:2,fmt:function(v){return lsPct(v/100);}}],
+          fmtL:lsNum,fmtR:function(v){return (v>=10?Math.round(v):Math.round(v*10)/10)+'%';},
+          fmtTip:function(nm,v,i){
+            const x=U[i]||{};
+            if(nm==='订单量')return lsNum(v)+' ｜ 退款量 '+lsNum(x.rqty||0);
+            if(nm==='退款量')return lsNum(v)+' ｜ 订单量 '+lsNum(x.ordn||0);
+            return lsPct(v/100)+' ｜ 最高退款原因：'+lsTopReasonTipText(lsTopReasonAll());
+          },labelFmt:function(nm,v){return lsNum(v);},labelLine:true})
+      : lsLegend([['销售额',LS_C.sale],['退款额',LS_C.ref],['退款率（右轴）',LS_C.rate]])
+        +lsPlot({labels:labels,h:253,fixH:253,right:true,tgtAxis:'r',tipFloat:true,
+          bars:[{name:'销售额',color:LS_C.sale,vals:U.map(function(x){return x.sale;})},
+                {name:'退款额',color:LS_C.ref,vals:U.map(function(x){return x.amt;})}],
+          lines:[{name:'退款率',color:LS_C.rate,vals:U.map(function(x){return x.rate==null?null:x.rate*100;}),axis:'r',w:2,fmt:function(v){return lsPct(v/100);}}],
+          fmtL:lsMoney,fmtR:function(v){return (v>=10?Math.round(v):Math.round(v*10)/10)+'%';},
+          fmtTip:function(nm,v,i){
+            let s;
+            if(nm==='销售额')s=lsMoney(v)+' · 订单量 '+lsNum((U[i]||{}).ordn||0);
+            else if(nm==='退款额')s=lsMoney(v)+' · 退款量 '+lsNum((U[i]||{}).rqty||0);
+            else s=lsPct(v/100);
+            return s+' ｜ 最高退款原因：'+lsTopReasonTipText(lsTopReasonAll());
+          },labelFmt:function(nm,v){return lsMoney(v);},labelLine:true});
   }else{
     chart1='<div class="ls-empty">还没有可用的报损数据 —— 到「AMZ汇总表 · ⬆ 上传指标数据源」上传账号报损后这里会自动出现</div>';
   }
@@ -21729,16 +21845,32 @@ function lsInner(){
     if(!YM.length){
       yearPage='<div class="ls-empty">还没有年月度数据 —— 请在每月1日上传月度汇总表，系统会自动记为上个月的整月数据，攒满12个月后自动滚动</div>';
     }else{
-      const ymTip=function(nm,v,i){const x=YM[i]||{};return lsMoney(v)+(nm==='销售额'?' · 订单量 ':' · 退款量 ')+lsNum(nm==='销售额'?(x.ord||0):(x.rqty||0));};
+      const qtyY=(lsMetric==='qty');
+      const ymTip=function(nm,v,i){
+        const x=YM[i]||{};
+        if(qtyY){
+          if(nm==='订单量')return lsNum(v)+' ｜ 退款量 '+lsNum(x.rqty||0);
+          if(nm==='退款量')return lsNum(v)+' ｜ 订单量 '+lsNum(x.ord||0);
+          return lsPct(v/100);
+        }
+        return lsMoney(v)+(nm==='销售额'?' · 订单量 ':' · 退款量 ')+lsNum(nm==='销售额'?(x.ord||0):(x.rqty||0));
+      };
       const yW=Math.max(660,YM.length*72);
-      yearPage=lsLegend([['销售额',LS_C.sale],['退款额',LS_C.ref],['退款率（右轴）',LS_C.rate]])
+      yearPage=lsLegend(qtyY
+          ?[['订单量',LS_C.ord],['退款量',LS_C.rqty],['退款占比（右轴）',LS_C.share]]
+          :[['销售额',LS_C.sale],['退款额',LS_C.ref],['退款率（右轴）',LS_C.rate]])
         +'<div class="ls-hscroll">'+lsPlot({labels:YM.map(function(x){return x.ym.slice(2).replace('-','/');}),w:yW,h:228,right:true,tgtAxis:'r',
           allLabels:true,hLabels:YM.length>10,pxW:yW,
-          bars:[{name:'销售额',color:LS_C.sale,vals:YM.map(function(x){return x.sale;})},
-                {name:'退款额',color:LS_C.ref,vals:YM.map(function(x){return x.ref;})}],
-          lines:[{name:'退款率',color:LS_C.rate,vals:YM.map(function(x){return x.sale>0?x.ref/x.sale*100:null;}),axis:'r',w:2,fmt:function(v){return lsPct(v/100);}}],
-          fmtL:lsMoney,fmtR:function(v){return (v>=10?Math.round(v):Math.round(v*10)/10)+'%';},
-          fmtTip:ymTip,labelFmt:function(nm,v){return lsMoney(v);},barLabelSplit:true,labelLine:true,labelLineDy:-18})+'</div>';
+          bars:qtyY
+            ?[{name:'订单量',color:LS_C.ord,vals:YM.map(function(x){return x.ord||0;})},
+              {name:'退款量',color:LS_C.rqty,vals:YM.map(function(x){return x.rqty||0;})}]
+            :[{name:'销售额',color:LS_C.sale,vals:YM.map(function(x){return x.sale;})},
+              {name:'退款额',color:LS_C.ref,vals:YM.map(function(x){return x.ref;})}],
+          lines:[qtyY
+            ?{name:'退款占比',color:LS_C.share,vals:YM.map(function(x){return x.ord>0?x.rqty/x.ord*100:null;}),axis:'r',w:2,fmt:function(v){return lsPct(v/100);}}
+            :{name:'退款率',color:LS_C.rate,vals:YM.map(function(x){return x.sale>0?x.ref/x.sale*100:null;}),axis:'r',w:2,fmt:function(v){return lsPct(v/100);}}],
+          fmtL:qtyY?lsNum:lsMoney,fmtR:function(v){return (v>=10?Math.round(v):Math.round(v*10)/10)+'%';},
+          fmtTip:ymTip,labelFmt:qtyY?function(nm,v){return lsNum(v);}:function(nm,v){return lsMoney(v);},barLabelSplit:true,labelLine:true,labelLineDy:-18})+'</div>';
     }
   }
   let cmpPage='';
@@ -21753,7 +21885,8 @@ function lsInner(){
         const hs=((baoMetaOf(kind).hist)||[]).filter(function(e){return e&&e[f]&&e[f][key];});
         return hs.map(function(e){
           const a=e[f][key],s=Number(a.sale)||0,r=Number(a.ref)||0;
-          return {sale:s,amt:r,rate:s>0?r/s:null};
+          const o=Number(a.ord)||0,q=Number(a.rqty)||0;
+          return {sale:s,amt:r,rate:s>0?r/s:null,ord:o,rqty:q,share:o>0?q/o:null};
         });
       };
       const dInfo=dimList.map(function(x){
@@ -21770,12 +21903,26 @@ function lsInner(){
           ref:lsKpiDiff(x.amt,last?last.amt:null,'ref',false).t,
           refAvg:lsKpiCmp(x.amt,avg('amt'),'ref',false).t,
           rate:lsKpiDiff(x.rate,last?last.rate:null,'rate',false).t,
-          rateAvg:lsKpiCmp(x.rate,avg('rate'),'rate',false).t};
+          rateAvg:lsKpiCmp(x.rate,avg('rate'),'rate',false).t,
+          ord:lsKpiDiff(x.ord,last?last.ord:null,'ord',true).t,
+          ordAvg:lsKpiCmp(x.ord,avg('ord'),'ord',true).t,
+          rqty:lsKpiDiff(x.rqty,last?last.rqty:null,'rqty',false).t,
+          rqtyAvg:lsKpiCmp(x.rqty,avg('rqty'),'rqty',false).t,
+          share:lsKpiDiff(x.share,last?last.share:null,'share',false).t,
+          shareAvg:lsKpiCmp(x.share,avg('share'),'share',false).t};
       });
+      const qtyCmp=(lsMetric==='qty');
       const tipOf=function(nm,v,i){
         const inf=dInfo[i]||{};
         let kk='rate';
-        if(nm==='销售额')kk='sale';else if(nm==='退款额')kk='ref';
+        if(nm==='销售额'||nm==='订单量')kk='sale';
+        else if(nm==='退款额'||nm==='退款量')kk='ref';
+        if(qtyCmp){
+          kk=(nm==='订单量')?'ord':(nm==='退款量'?'rqty':'share');
+          const base=(nm==='退款占比')?lsPct(v/100):lsNum(v);
+          return base+' · 较上次 '+(inf[kk]||'—')+' · 历史均值 '+(inf[kk+'Avg']||'—');
+        }
+        if(nm!=='销售额'&&nm!=='退款额')kk='rate';
         const base=(kk==='rate')?lsPct(v/100):lsMoney(v);
         return base+' · 较上次 '+(inf[kk]||'—')+' · 历史均值 '+(inf[kk+'Avg']||'—');
       };
@@ -21786,19 +21933,28 @@ function lsInner(){
       const cw=wide?Math.max(660,nDim*66):660;
       const cplot=lsPlot({labels:dimList.map(function(x){return x.k;}),w:cw,h:253,right:true,tgtAxis:'r',
           allLabels:true,hLabels:wide,pxW:cw,
-          bars:[{name:'销售额',color:LS_C.sale,vals:dimList.map(function(x){return x.sale;})},
-                {name:'退款额',color:LS_C.ref,vals:dimList.map(function(x){return x.amt;})}],
-          lines:[{name:'退款率',color:LS_C.rate,vals:dimList.map(function(x){return x.rate==null?null:x.rate*100;}),axis:'r',w:2,
-            fmt:function(v,i){return tipOf('退款率',v,i);},labelFmt:function(v){return lsPct(v/100);}}],
-          fmtL:lsMoney,fmtR:function(v){return (v>=10?Math.round(v):Math.round(v*10)/10)+'%';},
+          bars:qtyCmp
+            ?[{name:'订单量',color:LS_C.ord,vals:dimList.map(function(x){return x.ord||0;})},
+              {name:'退款量',color:LS_C.rqty,vals:dimList.map(function(x){return x.rqty||0;})}]
+            :[{name:'销售额',color:LS_C.sale,vals:dimList.map(function(x){return x.sale;})},
+              {name:'退款额',color:LS_C.ref,vals:dimList.map(function(x){return x.amt;})}],
+          lines:[qtyCmp
+            ?{name:'退款占比',color:LS_C.share,vals:dimList.map(function(x){return x.share==null?null:x.share*100;}),axis:'r',w:2,
+              fmt:function(v,i){return tipOf('退款占比',v,i);},labelFmt:function(v){return lsPct(v/100);}}
+            :{name:'退款率',color:LS_C.rate,vals:dimList.map(function(x){return x.rate==null?null:x.rate*100;}),axis:'r',w:2,
+              fmt:function(v,i){return tipOf('退款率',v,i);},labelFmt:function(v){return lsPct(v/100);}}],
+          fmtL:qtyCmp?lsNum:lsMoney,fmtR:function(v){return (v>=10?Math.round(v):Math.round(v*10)/10)+'%';},
           fmtTip:tipOf,
-          labelFmt:(wide||nDim<=20)?function(nm,v){return lsMoney(v);}:null,labelLine:true,labelLineDy:wide?-11:-16});
-      const cmpChart=lsLegend([['销售额',LS_C.sale],['退款额',LS_C.ref],['退款率（右轴）',LS_C.rate]])
+          labelFmt:(wide||nDim<=20)?(qtyCmp?function(nm,v){return lsNum(v);}:function(nm,v){return lsMoney(v);}):null,
+          labelLine:true,labelLineDy:wide?-11:-16});
+      const cmpChart=lsLegend(qtyCmp
+          ?[['订单量',LS_C.ord],['退款量',LS_C.rqty],['退款占比（右轴）',LS_C.share]]
+          :[['销售额',LS_C.sale],['退款额',LS_C.ref],['退款率（右轴）',LS_C.rate]])
         +'<div class="ls-hscroll">'+cplot+'</div>';
       /* 历史趋势线：按上传批次，每个维度项一条折线 */
       /* 趋势显示全部区域/核算小组维度，不再截前8个；口径只写注释不上界面。 */const trendKeys=dimList.map(function(x){return x.k;});
       const trend=lsDimTrend(kind,lsDonutMode,trendKeys);
-      let trendHtml='<div class="ls-sub" style="margin:0 0 4px">各'+dimLabel+'退款率趋势 · 按上传批次</div>';
+      let trendHtml='<div class="ls-sub" style="margin:0 0 4px">各'+dimLabel+(qtyCmp?'退款占比':'退款率')+'趋势 · 按上传批次</div>';
       if(trend.pts>=1){
         const tW=Math.max(660,trend.lines.length*66);trendHtml+='<div class="ls-hscroll">'+lsPlot({labels:trend.labels,w:tW,pxW:tW,h:253,fixH:253,rMin:'auto',focusIdx:lsFocus,right:true,noLeft:true,lineBadge:true,labelLine:true,singleSpread:true,lines:trend.lines,
             fmtR:function(v){return (Math.round(v*10)/10)+'%';}})+'</div>'
@@ -21823,16 +21979,37 @@ function lsInner(){
   const lv='<span class="ls-lv">'+[['1','星耀1级'],['2','星耀2级']].map(function(x){
     return '<button data-lslv="'+x[0]+'" class="'+(lsLevel===x[0]?'on':'')+'">'+x[1]+'</button>';
   }).join('')+'</span>';
-  const sortBtn='<span class="ls-lv">'+[['ref','退款额'],['rate','退款率'],['sale','销售额']].map(function(x){
-    return '<button data-lssort="'+x[0]+'" class="'+(lsSort===x[0]?'on':'')+'" title="按'+x[1]+'降序排名">'+x[1]+'</button>';
-  }).join('')+'</span>';
+  const sortBtn='<span class="ls-lv">'+(lsMetric==='qty'
+    ?[['ref','退款量'],['rate','退款占比'],['sale','订单量']].map(function(x){
+      return '<button data-lssort="'+x[0]+'" class="'+(lsSort===x[0]?'on':'')+'" title="按'+x[1]+'降序排名">'+x[1]+'</button>';}).join('')
+    :[['ref','退款额'],['rate','退款率'],['sale','销售额']].map(function(x){
+      return '<button data-lssort="'+x[0]+'" class="'+(lsSort===x[0]?'on':'')+'" title="按'+x[1]+'降序排名">'+x[1]+'</button>';}).join('')
+    )+'</span>';
   const lampLegend='<div class="ls-legend ls-lamp-lg"><span><i style="background:#1f8a5b;border-radius:50%"></i>达标</span>'
     +'<span><i style="background:#d99a1f;border-radius:50%"></i>预警</span>'
     +'<span><i style="background:#d93b2b;border-radius:50%"></i>超线</span>'
     +'<span class="dim">基准线 '+(ag.base!=null?lsPct(ag.base):'待设目标')+'</span></div>';
   let rowsHtml='';
+  const catColN=lsMetric==='qty'?7:9;
   if(!ag.list.length){
-    rowsHtml='<tr><td colspan="9" class="dim">当前筛选下没有退款明细数据</td></tr>';
+    rowsHtml='<tr><td colspan="'+catColN+'" class="dim">当前筛选下没有退款明细数据</td></tr>';
+  }else if(lsMetric==='qty'){
+    /* 订单维度：销售额→订单量、退款额→退款量、退款率→退款占比（原来重复的订单量/退款量列不再重复） */
+    ag.list.forEach(function(x){
+      const lamp=x.lamp;
+      rowsHtml+='<tr data-lscat="'+esc(x.cat)+'" title="点击查看该品类的退款明细">'
+        +'<td class="ls-rk">'+x.rank+'</td>'
+        +'<td class="ls-cat"><a class="ls-cat-a">'+esc(x.cat)+'</a></td>'
+        +'<td class="ls-lamp"><i style="background:'+lamp.c+'"></i><span style="color:'+lamp.c+'">'+esc(lamp.t)+'</span></td>'
+        +'<td class="num">'+lsNum(x.ordn)+'</td>'
+        +'<td class="num ls-ref" data-tip="'+esc(catReasonTip(x.cat))+'">'+lsNum(x.rqty)+'</td>'
+        +'<td class="num" data-tip="'+esc(catReasonTip(x.cat))+'"><b style="color:'+lamp.c+'">'+lsPct(x.share)+'</b></td>'
+        +'<td class="num dim">'+lsPct(ag.tot.rqty>0?x.rqty/ag.tot.rqty:null)+'</td>'
+        +'</tr>';
+    });
+    rowsHtml+='<tr class="ls-sum"><td>—</td><td class="ls-cat">合计</td><td>—</td>'
+      +'<td class="num">'+lsNum(ag.tot.ordn)+'</td><td class="num" data-tip="'+esc(topTip)+'">'+lsNum(ag.tot.rqty)+'</td>'
+      +'<td class="num" data-tip="'+esc(topTip)+'"><b>'+lsPct(ag.tot.share)+'</b></td><td class="num dim">100.00%</td></tr>';
   }else{
     ag.list.forEach(function(x){
       const lamp=x.lamp;
@@ -21860,7 +22037,9 @@ function lsInner(){
     +'</div>'+lampLegend
     +'<div class="ls-tblwrap"><table class="hk-tbl ls-tbl"><thead><tr>'
     +'<th style="width:46px">排名</th><th>品类</th><th style="width:82px">灯</th>'
-    +'<th>销售额</th><th>退款额</th><th>退款率</th><th>订单量</th><th>退款量</th><th>退款额占比</th>'
+    +(lsMetric==='qty'
+      ?'<th>订单量</th><th>退款量</th><th>退款占比</th><th>退款量占比</th>'
+      :'<th>销售额</th><th>退款额</th><th>退款率</th><th>订单量</th><th>退款量</th><th>退款额占比</th>')
     +'</tr></thead><tbody>'+rowsHtml+'</tbody></table></div>';
   /* 筛选栏选项源：启用且纳入考核的账号；补 stdCsLeader 兼容运营关注区同名字段 */
   const lsAll=(DATA.accounts||[]).filter(function(a){return a&&a.status==='启用'&&a.assess==='纳入考核';})
@@ -21875,22 +22054,34 @@ function lsInner(){
     const siteTip=function(nm,v,i){
       const x=siteList[i]||{};
       const reason='最高退款原因：'+lsTopReasonTipText(lsTopReasonSite(x.k));
-      if(nm==='退款率')return lsPct(v/100)+' ｜ '+reason;
+      if(nm==='退款率'||nm==='退款占比')return lsPct(v/100)+' ｜ '+reason;
+      if(nm==='订单量')return lsNum(v)+' ｜ '+reason;
+      if(nm==='退款量')return lsNum(v)+' ｜ '+reason;
       return lsMoney(v)+(nm==='销售额'?' · 订单量 ':' · 退款量 ')+' ｜ '+reason;
     };
     /* 站点多时每个站点固定 66px 画到宽画布里、外套横向滚动 → 标签全平排不叠、数值清楚（同核算小组对比页）。 */
     const sWide=siteList.length>10, sW=Math.max(660,siteList.length*66);
-    const siteChart=lsLegend([['销售额',LS_C.sale],['退款额',LS_C.ref],['退款率（右轴）',LS_C.rate]])
-      +'<div class="ls-hscroll">'+lsPlot({labels:siteKeys,w:sW,h:(sWide?253:234),right:true,tgtAxis:'r',tipFloat:true,
+    const siteChart=(lsMetric==='qty'
+      ? lsLegend([['订单量',LS_C.ord],['退款量',LS_C.rqty],['退款占比（右轴）',LS_C.share]])
+        +'<div class="ls-hscroll">'+lsPlot({labels:siteKeys,w:sW,h:(sWide?253:234),right:true,tgtAxis:'r',tipFloat:true,
+          allLabels:true,hLabels:sWide,pxW:(sWide?sW:null),
+          bars:[{name:'订单量',color:LS_C.ord,vals:siteList.map(function(x){return x.ord||0;})},
+                {name:'退款量',color:LS_C.rqty,vals:siteList.map(function(x){return x.rqty||0;})}],
+          lines:[{name:'退款占比',color:LS_C.share,vals:siteList.map(function(x){return x.share==null?null:x.share*100;}),axis:'r',w:2,
+            fmt:function(v){return lsPct(v/100);}}],
+          fmtL:lsNum,fmtR:function(v){return (v>=10?Math.round(v):Math.round(v*10)/10)+'%';},
+          fmtTip:siteTip,labelFmt:function(nm,v){return lsNum(v);},barLabelSplit:true,labelLine:true,labelLineDy:sWide?-11:-18})+'</div>'
+      : lsLegend([['销售额',LS_C.sale],['退款额',LS_C.ref],['退款率（右轴）',LS_C.rate]])
+        +'<div class="ls-hscroll">'+lsPlot({labels:siteKeys,w:sW,h:(sWide?253:234),right:true,tgtAxis:'r',tipFloat:true,
           allLabels:true,hLabels:sWide,pxW:(sWide?sW:null),
           bars:[{name:'销售额',color:LS_C.sale,vals:siteList.map(function(x){return x.sale;})},
                 {name:'退款额',color:LS_C.ref,vals:siteList.map(function(x){return x.amt;})}],
           lines:[{name:'退款率',color:LS_C.rate,vals:siteList.map(function(x){return x.rate==null?null:x.rate*100;}),axis:'r',w:2,
             fmt:function(v){return lsPct(v/100);}}],
           fmtL:lsMoney,fmtR:function(v){return (v>=10?Math.round(v):Math.round(v*10)/10)+'%';},
-          fmtTip:siteTip,labelFmt:function(nm,v){return lsMoney(v);},barLabelSplit:true,labelLine:true,labelLineDy:sWide?-11:-18})+'</div>';
+          fmtTip:siteTip,labelFmt:function(nm,v){return lsMoney(v);},barLabelSplit:true,labelLine:true,labelLineDy:sWide?-11:-18})+'</div>');
     /* 趋势显示全部站点，不再截前10个；口径只写注释不上界面。 */const siteTrend=lsDimTrend(kind,'site',siteKeys);
-    let siteTrendHtml='<div class="ls-sub" style="margin:0 0 4px">各站点退款率趋势 · 按上传批次</div>';
+    let siteTrendHtml='<div class="ls-sub" style="margin:0 0 4px">各站点'+(lsMetric==='qty'?'退款占比':'退款率')+'趋势 · 按上传批次</div>';
     if(siteTrend.pts>=1){
       /* 折线点悬浮带该站点最高退款原因；标签仍用原 fmt，不被加长 */
       const stLines=siteTrend.lines.map(function(l){
@@ -21911,6 +22102,10 @@ function lsInner(){
   }
   return '<div class="ls-wrap">'
     +'<div class="ls-mhead"><span class="ls-bar-red"></span>'+seg
+    +'<span class="ls-seg ls-metseg">'
+    +'<button data-lsmetric="amt" class="'+(lsMetric==='amt'?'on':'')+'" title="按金额看：销售额 / 退款额 / 报损率">金额维度</button>'
+    +'<button data-lsmetric="qty" class="'+(lsMetric==='qty'?'on':'')+'" title="按订单看：销售额→订单量、退款额→退款量、报损率→退款占比">订单维度</button>'
+    +'</span>'
     +'<span class="ls-scope" title="AMZ汇总表该维度最近更新时间">最新更新 '+esc(baoMetaDate(kind)||'—')+'</span>'
     +'<button class="ls-sync" data-lssync="1" title="从云端重新同步 AMZ汇总表与退款明细">同步 ↻</button>'
     +opsFilterBar(lsAll,true)+'</div>'
@@ -21981,19 +22176,22 @@ function caTotSeries(){
   return periods.map(function(w){return caRows(w).reduce(function(s,r){return s+r.amt;},0);});
 }
 /* 通用聚合：按 keyFields 分组求和，返回 {key,label,amt,share} 列表（按金额降序）。
-   share 分母 = 该期物流原因退款总额。wow = 本期占比 − 上期占比（pp）；hist = 最近3期环比均值。 */
+   share 分母 = 该期物流原因退款总额。wow = 本期占比 − 上期占比（pp）；hist = 最近3期环比均值。
+   订单维度：amt 换成退款笔数、占比换成人次占比，环比/历史环比同步按量算。 */
 function caAggBy(keyFields,dimLabel){
+  var qty=(typeof lsMetric!=='undefined'&&lsMetric==='qty');
+  var valOf=function(r){return qty?1:r.amt;};
   var rows=caRows(),m={},order=[],tot=0;
   rows.forEach(function(r){
-    var k=keyFields.map(function(f){return r[f];}).join('\u0001');
+    var k=keyFields.map(function(f){return r[f];}).join('\u0001'),v=valOf(r);
     var g=m[k];if(!g){g=m[k]={key:k,parts:keyFields.map(function(f){return r[f];}),amt:0};order.push(k);}
-    g.amt+=r.amt;tot+=r.amt;
+    g.amt+=v;tot+=v;
   });
   /* 占比序列（每期：该 key 金额 / 该期物流退款总额） */
   var periods=[0,1,2,3].map(paPeriod).filter(Boolean);
   var shareSer={},totBy={};
   periods.forEach(function(w,i){var mm={},t=0;caRows(w).forEach(function(r){
-    var k=keyFields.map(function(f){return r[f];}).join('\u0001');mm[k]=(mm[k]||0)+r.amt;t+=r.amt;});
+    var k=keyFields.map(function(f){return r[f];}).join('\u0001'),v=valOf(r);mm[k]=(mm[k]||0)+v;t+=v;});
     totBy[i]=t;Object.keys(mm).forEach(function(k){(shareSer[k]||(shareSer[k]=[null,null,null,null]))[i]=t>0?mm[k]/t:null;});
   });
   var list=order.map(function(k){
@@ -22003,7 +22201,7 @@ function caAggBy(keyFields,dimLabel){
       wow:paPpDiff(ser[0],ser[1]),hist:paHistDiffs(ser)};
   });
   list.sort(function(a,b){return b.amt-a.amt;});
-  return {list:list,tot:tot,n:rows.length,periods:periods.length};
+  return {list:list,tot:tot,n:rows.length,periods:periods.length,qty:qty};
 }
 /* 主表：物流渠道 × 退款原因 的二维聚合（每组合一行） */
 function caChannelAgg(){
@@ -22054,7 +22252,8 @@ function caTable(list,tot,headCells,rowCells,emptyMsg){
 }
 function caChannelTableHtml(){
   var a=caChannelAgg();
-  var head=['物流渠道','物流退款原因','物流退款金额','物流退款占比','环比','历史环比'];
+  var q=a.qty,fmt=q?lsNum:lsMoney;
+  var head=['物流渠道','物流退款原因',q?'物流退款量':'物流退款金额',q?'物流退款量占比':'物流退款占比','环比','历史环比'];
   var row=function(x){
     /* 当期原因若为占位 '-'，用全量该渠道的最高具体原因兜底，与退款明细口径一致 */
     var rsn=x.parts[1];
@@ -22064,7 +22263,7 @@ function caChannelTableHtml(){
     }
     return '<td class="ls-cat" title="'+esc(x.parts[0])+'">'+esc(x.parts[0])+'</td>'
       +'<td title="'+esc(rsn)+'">'+esc(rsn)+'</td>'
-      +'<td class="num ls-ref">'+lsMoney(x.amt)+'</td>'
+      +'<td class="num ls-ref">'+fmt(x.amt)+'</td>'
       +'<td class="num">'+lsPct(x.share)+'</td>'
       +'<td>'+paWowHtml(x.wow)+'</td>'
       +'<td>'+paHistHtml(x.hist)+'</td>';
@@ -22073,14 +22272,15 @@ function caChannelTableHtml(){
 }
 function caSiteTableHtml(){
   var a=caSiteAgg();
-  var head=['站点','最高物流退款原因','物流渠道','物流退款金额','物流退款占比','环比','历史环比'];
+  var q=a.qty,fmt=q?lsNum:lsMoney;
+  var head=['站点','最高物流退款原因','物流渠道',q?'物流退款量':'物流退款金额',q?'物流退款量占比':'物流退款占比','环比','历史环比'];
   var row=function(x){
     var top=caTopReasonDetail(function(r){return r.site===x.parts[0];});
     var rsn=caTopReasonText(top),lg=caTopLogiText(top);
     return '<td>'+esc(x.parts[0])+'</td>'
       +'<td class="ls-cat" title="'+esc(rsn)+'">'+esc(rsn)+'</td>'
       +'<td title="'+esc(lg)+'">'+esc(lg)+'</td>'
-      +'<td class="num ls-ref">'+lsMoney(x.amt)+'</td>'
+      +'<td class="num ls-ref">'+fmt(x.amt)+'</td>'
       +'<td class="num">'+lsPct(x.share)+'</td>'
       +'<td>'+paWowHtml(x.wow)+'</td>'
       +'<td>'+paHistHtml(x.hist)+'</td>';
@@ -22089,14 +22289,15 @@ function caSiteTableHtml(){
 }
 function caGroupTableHtml(){
   var a=caGroupAgg();
-  var head=['区域','核算小组','最高物流退款原因','物流渠道','物流退款金额','物流退款占比','环比','历史环比'];
+  var q=a.qty,fmt=q?lsNum:lsMoney;
+  var head=['区域','核算小组','最高物流退款原因','物流渠道',q?'物流退款量':'物流退款金额',q?'物流退款量占比':'物流退款占比','环比','历史环比'];
   var row=function(x){
     var top=caTopReasonDetail(function(r){return r.region===x.parts[0]&&r.group===x.parts[1];});
     var rsn=caTopReasonText(top),lg=caTopLogiText(top);
     return '<td>'+esc(x.parts[0])+'</td><td>'+esc(x.parts[1])+'</td>'
       +'<td class="ls-cat" title="'+esc(rsn)+'">'+esc(rsn)+'</td>'
       +'<td title="'+esc(lg)+'">'+esc(lg)+'</td>'
-      +'<td class="num ls-ref">'+lsMoney(x.amt)+'</td>'
+      +'<td class="num ls-ref">'+fmt(x.amt)+'</td>'
       +'<td class="num">'+lsPct(x.share)+'</td>'
       +'<td>'+paWowHtml(x.wow)+'</td>'
       +'<td>'+paHistHtml(x.hist)+'</td>';
@@ -22105,8 +22306,9 @@ function caGroupTableHtml(){
 }
 function caSection(){
   var a=caChannelAgg();
+  var q=a.qty;
   var cnt='<div class="ls-flt"><span class="ls-cnt">问题归类=物流原因 · 共 '
-    +refFmtNum(a.n)+' 笔退款 · 物流退款合计 '+lsMoney(a.tot)+'</span></div>';
+    +refFmtNum(a.n)+' 笔退款 · '+(q?'物流退款量 '+refFmtNum(a.tot)+' 件':'物流退款合计 '+lsMoney(a.tot))+'</span></div>';
   return cnt
     +'<div class="ca-sub"><h4>4.1 物流渠道分析</h4>'+caChannelTableHtml()+'</div>'
     +'<div class="ca-grid">'
