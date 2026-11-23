@@ -10441,7 +10441,7 @@ document.getElementById('app').addEventListener('change',e=>{
   if(id==='pasFile'){const _pf=e.target.files&&e.target.files[0];e.target.value='';if(_pf)pasReadFile(_pf);return;}
   if(id==='lightFile'){const _lf=e.target.files&&e.target.files[0];e.target.value='';if(_lf)lightReadFile(_lf);return;}
   if(id==='lightSearch'){lightSearch=e.target.value;lightPage=1;lightRefresh();return;}
-  if(id==='lightSortSel'){lightSort=lightSortOk(e.target.value)?(e.target.value||'phiDesc'):'phiDesc';lightPage=1;lightRefresh();return;}
+  if(id==='lightSortSel'){lightSort=e.target.value||'phiDesc';lightPage=1;lightRefresh();return;}
   if(id==='lightFState'||id==='lightFCat1'||id==='lightFCat2'||id==='lightFGrade'||id==='lightFAssess'||id==='lightFDev'||id==='lightF3m'||id==='lightFPhi'){
     var _fk={lightFState:'state',lightFCat1:'cat1',lightFCat2:'cat2',lightFGrade:'grade',lightFAssess:'assess',lightFDev:'dev',lightF3m:'full3m',lightFPhi:'phi'}[id];
     lightF=lightF||{};lightF[_fk]=e.target.value;lightPage=1;lightRefresh();return;
@@ -18285,7 +18285,7 @@ function lightList(){
   if(F.dev==='1'||F.dev==='0')rows=rows.filter(function(r){return !!r.devWithin3m===(F.dev==='1');});
   if(F.full3m==='1'||F.full3m==='0')rows=rows.filter(function(r){return !!r.full3m===(F.full3m==='1');});
   if(F.phi)rows=rows.filter(function(r){return lightPhiBand(r.phi)===F.phi;});
-  var s=lightSortCur();
+  var s=lightSort;
   rows.sort(function(a,b){
     if(s==='phiAsc')return a.phi-b.phi;
     if(s==='lossDesc')return b.lossRate-a.lossRate;
@@ -18296,15 +18296,7 @@ function lightList(){
   });
   return rows;
 }
-/* 排序也受字段权限约束：按「销售额 / 退款金额 / 报损率」排序会把量级顺序漏出去，
-   值全是 *** 但谁大谁小一目了然，所以没权限就不给按它排（回退到 PHI）。 */
-function lightSortOk(k){
-  if(k==='saleDesc')return fpCan('sale');
-  if(k==='refDesc')return fpCan('refund');
-  if(k==='lossDesc')return fpCan('refund')&&fpCan('sale');
-  return true;
-}
-function lightSortCur(){return lightSortOk(lightSort)?lightSort:'phiDesc';}
+/* 排序不受字段权限限制（用户 2026-11-23 拍板：可以按销售额/退款金额排，只要值不显示就行） */
 function lightLvClass(light){return light==='红灯'?'ll-red':(light==='黄灯'?'ll-yellow':(light==='绿灯'?'ll-green':''));}
 function lightOverviewHtml(){
   var rows=lightBuild().rows,cnt={S:0,A:0,B:0,C:0,D:0,E:0,F:0,NA:0};
@@ -18516,8 +18508,7 @@ function lightSection(){
     }).join('')+'</select></span>'
     +'<span class="is-sel"><label>排序</label><select id="lightSortSel">'
     +[['phiDesc','PHI总得分 ↓'],['phiAsc','PHI总得分 ↑'],['lossDesc','报损率 ↓'],['saleDesc','销售额 ↓'],['refDesc','退款金额 ↓'],['sku','SKU']].map(function(o){
-      var ok=lightSortOk(o[0]);
-      return '<option value="'+o[0]+'"'+(lightSortCur()===o[0]?' selected':'')+(ok?'':' disabled')+'>'+o[1]+(ok?'':'（无权限）')+'</option>';
+      return '<option value="'+o[0]+'"'+(lightSort===o[0]?' selected':'')+'>'+o[1]+'</option>';
     }).join('')+'</select></span>'
     +'</div>';
   var lc=(DATA.lightSnapMeta&&DATA.lightSnapMeta.lastClean)?(' · 最近一次满期清洗：'+esc(String(DATA.lightSnapMeta.lastClean.at||''))+'，保留 '+DATA.lightSnapMeta.lastClean.kept+' 个、删除 '+DATA.lightSnapMeta.lastClean.removed+' 个'):'';
