@@ -21962,8 +21962,9 @@ function caRows(w){
     var acc=lsS(refVal(r,'acc')).toUpperCase(),d=ai[acc]||{};
     var region=lsS(d.region)||lsS(refVal(r,'region'));if(!region||region==='-')region='';
     var grp=lsS(refVal(r,'team'));if(!grp||grp==='-')grp=d.group||'';
-    var rsn=lsS(refVal(r,'refReason'));if(!rsn||rsn==='-')rsn=lsS(refVal(r,'issueCat'));
-    if(!rsn||rsn==='-')rsn='';
+    /* 具体退款原因优先；为空时不再回退成问题归类「物流原因」（那不是具体原因）。 */
+    var rsn=lsS(refVal(r,'refReason'));
+    if(!rsn||rsn==='-')rsn='（未填具体原因）';
     out.push({day:day,
       logi:lsS(refVal(r,'logi'))||'（未填物流渠道）',
       reason:rsn||'（未填）',
@@ -22014,6 +22015,24 @@ function caSiteAgg(){return caAggBy(['site'],'站点');}
 /* 区域 + 核算小组：两级组合 */
 function caGroupAgg(){return caAggBy(['region','group'],'区域核算小组');}
 
+/* 某分组内「退款金额最高的具体物流原因 + 对应渠道」。
+   先按 原因×渠道 聚合金额取最大，避免单笔小额噪声；原因空值不冒充归类。 */
+function caTopReasonDetail(filter){
+  var m={},best=null;
+  caRows().forEach(function(r){
+    if(filter&&!filter(r))return;
+    var k=r.reason+'\u0001'+r.logi;
+    var g=m[k]||(m[k]={reason:r.reason,logi:r.logi,amt:0});g.amt+=r.amt;
+  });
+  Object.keys(m).forEach(function(k){var g=m[k];if(!best||g.amt>best.amt)best=g;});
+  return best;
+}
+function caTopReasonText(best){
+  if(!best)return '—';
+  var reason=best.reason&&best.reason!=='（未填具体原因）'?best.reason:'具体原因未填';
+  return reason+' · '+best.logi;
+}
+
 /* 表格渲染（通用）：cols = [{label,field}...]，数据中文字段从 x.parts 按下标取 */
 function caTable(list,tot,headCells,rowCells,emptyMsg){
   var shown=caAll?list:list.slice(0,10);
@@ -22038,9 +22057,12 @@ function caChannelTableHtml(){
 }
 function caSiteTableHtml(){
   var a=caSiteAgg();
-  var head=['站点','物流退款金额','物流退款占比','环比','历史环比'];
+  var head=['站点','最高物流退款原因','物流退款金额','物流退款占比','环比','历史环比'];
   var row=function(x){
+    var top=caTopReasonDetail(function(r){return r.site===x.parts[0];});
+    var tip=top?caTopReasonText(top):'—';
     return '<td>'+esc(x.parts[0])+'</td>'
+      +'<td class="ls-cat" title="'+esc(tip)+'">'+esc(tip)+'</td>'
       +'<td class="num ls-ref">'+lsMoney(x.amt)+'</td>'
       +'<td class="num">'+lsPct(x.share)+'</td>'
       +'<td>'+paWowHtml(x.wow)+'</td>'
@@ -22050,9 +22072,12 @@ function caSiteTableHtml(){
 }
 function caGroupTableHtml(){
   var a=caGroupAgg();
-  var head=['区域','核算小组','物流退款金额','物流退款占比','环比','历史环比'];
+  var head=['区域','核算小组','最高物流退款原因','物流退款金额','物流退款占比','环比','历史环比'];
   var row=function(x){
+    var top=caTopReasonDetail(function(r){return r.region===x.parts[0]&&r.group===x.parts[1];});
+    var tip=top?caTopReasonText(top):'—';
     return '<td>'+esc(x.parts[0])+'</td><td>'+esc(x.parts[1])+'</td>'
+      +'<td class="ls-cat" title="'+esc(tip)+'">'+esc(tip)+'</td>'
       +'<td class="num ls-ref">'+lsMoney(x.amt)+'</td>'
       +'<td class="num">'+lsPct(x.share)+'</td>'
       +'<td>'+paWowHtml(x.wow)+'</td>'
