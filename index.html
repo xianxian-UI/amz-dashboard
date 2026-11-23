@@ -391,6 +391,13 @@
   .ls-tbl td.num,.ls-tbl th:nth-child(n+4){text-align:right;font-variant-numeric:tabular-nums}
   /* 产品分析表全部字段居中：提高特异性+important，压过后面 .ls-tbl .ls-cat 的左对齐 */
   table.pa-tbl th,table.pa-tbl td,table.pa-tbl td.num,table.pa-tbl .ls-cat{text-align:center!important}
+  /* 渠道分析（第四模块）：表格居中 + 两张附表并排，窄屏回落单列 */
+  table.ca-tbl th,table.ca-tbl td,table.ca-tbl td.num,table.ca-tbl .ls-cat{text-align:center!important}
+  .ca-sub{background:#fff;border:1px solid #f1f1f4;border-radius:8px;padding:10px 12px;min-width:0}
+  .ca-sub h4{margin:0 0 8px;font-size:12.5px;font-weight:700;color:#a4473a}
+  .ca-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin-top:12px}
+  @media(max-width:1100px){.ca-grid{grid-template-columns:minmax(0,1fr)}}
+  .ca-more{font-size:11px;color:#9aa1ad;margin-top:6px;text-align:right}
   .ls-tbl .ls-rk{width:46px;color:#b0b5c0;font-weight:700}
   .ls-tbl .ls-cat{text-align:left;font-weight:600;color:#3a3656;max-width:250px;overflow:hidden;text-overflow:ellipsis}
   .ls-tbl tbody tr[data-lscat]{cursor:pointer}
@@ -11351,6 +11358,8 @@ document.getElementById('app').addEventListener('click',e=>{
   if(palevel){paLevel=palevel.getAttribute('data-palevel')||'1';paAll=false;render();return;}
   const paall=t.closest&&t.closest('[data-paall]');
   if(paall){paAll=!paAll;lsRefresh();return;}
+  const caall=t.closest&&t.closest('[data-caall]');
+  if(caall){caAll=!caAll;lsRefresh();return;}
   const lslv=t.closest&&t.closest('[data-lslv]');
   if(lslv){lsLevel=lslv.getAttribute('data-lslv');render();return;}
   const lssort=t.closest&&t.closest('[data-lssort]');
@@ -21925,8 +21934,144 @@ function lsInner(){
       )
     +'<section class="ls-sec"><h3>二、站点报损规模与趋势</h3>'+siteSec+'</section>'
     +'<section class="ls-sec"><h3>三、产品分析</h3>'+paSection()+'</section>'
+    +'<section class="ls-sec"><h3>四、渠道分析</h3>'+caSection()+'</section>'
     +'</div>';
 }
+/* ══════════════════════════════════════════════════════════════════════════
+   报损透视台 · 第四模块「渠道分析」
+   口径：只取问题归类=物流原因 的退款行，按物流渠道 × 退款原因聚合退款金额/占比/环比。
+   数据源 = 退款明细 REF.rows（与产品分析同源），时间窗沿用 paWindow（日/周/月随主看板）。
+   ══════════════════════════════════════════════════════════════════════════ */
+var CA_ISSUE='物流原因';
+var CA_ROWS_CACHE={};
+var caAll=false;   /* 三张附表共用的「显示全部 / 收起」开关 */
+/* 物流原因退款行（规范化）：复用 paRefRows 的筛选/时间窗/字段映射，再补 logi 并只留物流原因。 */
+function caRows(w){
+  w=w||paWindow();
+  var fsig=(typeof opsFilterActive==='function'&&opsFilterActive()?JSON.stringify(opsFilter):'');
+  var ck=(w.all?'ALL':w.from+'~'+w.to)+'|'+(REF.ver||0)+'|'+fsig+'|LOGI';
+  if(CA_ROWS_CACHE[ck])return CA_ROWS_CACHE[ck];
+  var ai=lsAccIdx(),out=[];
+  (REF.rows||[]).forEach(function(r){
+    try{if(refIsDropped(r))return;}catch(e){}
+    if(!lsRowPass(r,ai))return;
+    var day=refDayKey(refVal(r,'refTime'));
+    if(!w.all&&(!day||day<w.from||day>w.to))return;
+    var issue=lsS(refVal(r,'issueCat'));
+    if(issue!==CA_ISSUE)return;                 /* 只算物流原因 */
+    var acc=lsS(refVal(r,'acc')).toUpperCase(),d=ai[acc]||{};
+    var region=lsS(d.region)||lsS(refVal(r,'region'));if(!region||region==='-')region='';
+    var grp=lsS(refVal(r,'team'));if(!grp||grp==='-')grp=d.group||'';
+    var rsn=lsS(refVal(r,'refReason'));if(!rsn||rsn==='-')rsn=lsS(refVal(r,'issueCat'));
+    if(!rsn||rsn==='-')rsn='';
+    out.push({day:day,
+      logi:lsS(refVal(r,'logi'))||'（未填物流渠道）',
+      reason:rsn||'（未填）',
+      site:lsS(refVal(r,'site')).toUpperCase()||'未分站',
+      region:region||'（未分区）',group:grp||'（未分组）',
+      amt:refNumK(refVal(r,'refAmt'))});
+  });
+  CA_ROWS_CACHE[ck]=out;
+  return out;
+}
+/* 环比所需的最近 4 期物流退款总额序列（新→旧）：本期、上期、上上期、上上上期。 */
+function caTotSeries(){
+  var periods=[0,1,2,3].map(paPeriod).filter(Boolean);
+  return periods.map(function(w){return caRows(w).reduce(function(s,r){return s+r.amt;},0);});
+}
+/* 通用聚合：按 keyFields 分组求和，返回 {key,label,amt,share} 列表（按金额降序）。
+   share 分母 = 该期物流原因退款总额。wow = 本期占比 − 上期占比（pp）；hist = 最近3期环比均值。 */
+function caAggBy(keyFields,dimLabel){
+  var rows=caRows(),m={},order=[],tot=0;
+  rows.forEach(function(r){
+    var k=keyFields.map(function(f){return r[f];}).join('\u0001');
+    var g=m[k];if(!g){g=m[k]={key:k,parts:keyFields.map(function(f){return r[f];}),amt:0};order.push(k);}
+    g.amt+=r.amt;tot+=r.amt;
+  });
+  /* 占比序列（每期：该 key 金额 / 该期物流退款总额） */
+  var periods=[0,1,2,3].map(paPeriod).filter(Boolean);
+  var shareSer={},totBy={};
+  periods.forEach(function(w,i){var mm={},t=0;caRows(w).forEach(function(r){
+    var k=keyFields.map(function(f){return r[f];}).join('\u0001');mm[k]=(mm[k]||0)+r.amt;t+=r.amt;});
+    totBy[i]=t;Object.keys(mm).forEach(function(k){(shareSer[k]||(shareSer[k]=[null,null,null,null]))[i]=t>0?mm[k]/t:null;});
+  });
+  var list=order.map(function(k){
+    var g=m[k],ser=(shareSer[k]||[]).slice(0,periods.length);
+    return {key:k,parts:g.parts,label:g.parts[g.parts.length-1],amt:g.amt,
+      share:tot>0?g.amt/tot:null,
+      wow:paPpDiff(ser[0],ser[1]),hist:paHistDiffs(ser)};
+  });
+  list.sort(function(a,b){return b.amt-a.amt;});
+  return {list:list,tot:tot,n:rows.length,periods:periods.length};
+}
+/* 主表：物流渠道 × 退款原因 的二维聚合（每组合一行） */
+function caChannelAgg(){
+  var a=caAggBy(['logi','reason'],'渠道');
+  return a;
+}
+/* 站点维度：只按 site 聚合 */
+function caSiteAgg(){return caAggBy(['site'],'站点');}
+/* 区域 + 核算小组：两级组合 */
+function caGroupAgg(){return caAggBy(['region','group'],'区域核算小组');}
+
+/* 表格渲染（通用）：cols = [{label,field}...]，数据中文字段从 x.parts 按下标取 */
+function caTable(list,tot,headCells,rowCells,emptyMsg){
+  var shown=caAll?list:list.slice(0,10);
+  var body=shown.map(function(x){return '<tr>'+rowCells(x)+'</tr>';}).join('');
+  if(!body)body='<tr><td colspan="'+headCells.length+'" class="dim">'+(emptyMsg||'当前时间窗暂无物流原因退款')+'</td></tr>';
+  var more=list.length>10?'<div class="ca-more"><button class="btn xs ghost" data-caall="1" style="margin-top:6px">'
+    +(caAll?'收起 ▲':'显示全部 '+list.length+' 项 ▼')+'</button></div>':'';
+  return '<div class="ls-tblwrap"'+(caAll?' style="max-height:none"':'')+'><table class="hk-tbl ls-tbl ca-tbl"><thead><tr>'+headCells.map(function(h){return '<th>'+h+'</th>';}).join('')+'</tr></thead><tbody>'+body+'</tbody></table></div>'+more;
+}
+function caChannelTableHtml(){
+  var a=caChannelAgg();
+  var head=['物流渠道','物流退款原因','物流退款金额','物流退款占比','环比','历史环比'];
+  var row=function(x){
+    return '<td class="ls-cat" title="'+esc(x.parts[0])+'">'+esc(x.parts[0])+'</td>'
+      +'<td title="'+esc(x.parts[1])+'">'+esc(x.parts[1])+'</td>'
+      +'<td class="num ls-ref">'+lsMoney(x.amt)+'</td>'
+      +'<td class="num">'+lsPct(x.share)+'</td>'
+      +'<td>'+paWowHtml(x.wow)+'</td>'
+      +'<td>'+paHistHtml(x.hist)+'</td>';
+  };
+  return caTable(a.list,a.tot,head,row);
+}
+function caSiteTableHtml(){
+  var a=caSiteAgg();
+  var head=['站点','物流退款金额','物流退款占比','环比','历史环比'];
+  var row=function(x){
+    return '<td>'+esc(x.parts[0])+'</td>'
+      +'<td class="num ls-ref">'+lsMoney(x.amt)+'</td>'
+      +'<td class="num">'+lsPct(x.share)+'</td>'
+      +'<td>'+paWowHtml(x.wow)+'</td>'
+      +'<td>'+paHistHtml(x.hist)+'</td>';
+  };
+  return caTable(a.list,a.tot,head,row,'当前时间窗暂无站点物流原因退款');
+}
+function caGroupTableHtml(){
+  var a=caGroupAgg();
+  var head=['区域','核算小组','物流退款金额','物流退款占比','环比','历史环比'];
+  var row=function(x){
+    return '<td>'+esc(x.parts[0])+'</td><td>'+esc(x.parts[1])+'</td>'
+      +'<td class="num ls-ref">'+lsMoney(x.amt)+'</td>'
+      +'<td class="num">'+lsPct(x.share)+'</td>'
+      +'<td>'+paWowHtml(x.wow)+'</td>'
+      +'<td>'+paHistHtml(x.hist)+'</td>';
+  };
+  return caTable(a.list,a.tot,head,row,'当前时间窗暂无区域/核算小组物流原因退款');
+}
+function caSection(){
+  var a=caChannelAgg();
+  var cnt='<div class="ls-flt"><span class="ls-cnt">问题归类=物流原因 · 共 '
+    +refFmtNum(a.n)+' 笔退款 · 物流退款合计 '+lsMoney(a.tot)+'</span></div>';
+  return cnt
+    +'<div class="ca-sub"><h4>4.1 物流渠道分析</h4>'+caChannelTableHtml()+'</div>'
+    +'<div class="ca-grid">'
+    +'<div class="ca-sub"><h4>4.2 站点维度 · 物流原因退款</h4>'+caSiteTableHtml()+'</div>'
+    +'<div class="ca-sub"><h4>4.3 区域核算小组 · 物流原因退款</h4>'+caGroupTableHtml()+'</div>'
+    +'</div>';
+}
+
 function lossFocusSection(){return '<div id="lsWrap">'+lsInner()+'</div>';}
 function lsRefresh(){
   const w=document.getElementById('lsWrap');
