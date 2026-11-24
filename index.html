@@ -3866,7 +3866,7 @@ const UM_SCOPES={all:'全部数据',mgr:'本经理名下',supervisor:'本主管�
 /* ================= 字段查看权限（数据范围旁边那一组） =================
    5 个敏感指标：销售额 / 订单量 / 利润 / 利润率 / 退款金额。
    存在 perms 这个 JSON 列的 _fields 子键里（{sale:false,…}），不新增数据库列，
-   所以后端 amz_user_save 不用改表；缺省一律视为「有权限」，老账号升级后不会突然看不见数。
+   所以后端 amz_user_save 不用改表；缺省策略见 FP_DEFAULT —— 未配置过只开「退款金额」。
    没权限时统一显示 ***（金额、数量、比率全打码 —— 只码金额不码比率等于白码，比率能反推出金额量级）。
    打码用哨兵值 FP_MASK 往下游传：数据层把数值换成它，lsMoney/lsNum/lsPct 认出来后输出 ***，
    这样图表/表格/提示框几十处调用点都不用单独改。 */
@@ -3874,11 +3874,16 @@ const UM_FIELDS=[
   {k:'sale',n:'销售额'},{k:'order',n:'订单量'},{k:'profit',n:'利润'},
   {k:'margin',n:'利润率'},{k:'refund',n:'退款金额'}
 ];
+/* 缺省（从未配置过 _fields 的老账号 / 新账号）：只开「退款金额」，其余 4 项默认关闭
+   —— 用户 2026-11-23 拍板：宁可先收紧、要看得来申请，也不默认把销售额/利润敞开。 */
+const FP_DEFAULT={sale:false,order:false,profit:false,margin:false,refund:true};
 const FP_MASK='\u0001FPMASK';
 function fpFieldsOf(u){
   const f=((u&&u.perms)||{})._fields||{};
   const o={};
-  UM_FIELDS.forEach(function(x){o[x.k]=(f[x.k]===false)?false:true;});
+  UM_FIELDS.forEach(function(x){
+    o[x.k]=(f[x.k]===false)?false:(f[x.k]===true)?true:!!FP_DEFAULT[x.k];
+  });
   return o;
 }
 function fpCount(u){
@@ -3892,7 +3897,7 @@ function fpCan(k){
   /* 未登录（本地打开/离线预览）：不拦，免得整块看板变成 *** */
   if(!u)return true;
   if(u.role==='admin')return true;
-  return fpFieldsOf(u)[k]!==false;
+  return fpFieldsOf(u)[k]===true;
 }
 function fpM(k,v){return fpCan(k)?v:FP_MASK;}
 
@@ -4465,6 +4470,7 @@ function umFpModal(){
     +'<div class="body one-col">'
     +'<p class="um-desc">取消勾选的字段在整块看板里显示 <b>***</b>，比率/占比/图表会一起屏蔽 —— '
     +'只码金额留着比率，等于把金额量级白送。<b>管理员</b>恒定全开，避免把自己锁死。</p>'
+    +'<p class="um-desc">未单独配置过的账号<b>默认只开「退款金额」</b>，销售额 / 订单量 / 利润 / 利润率要在这里手动勾。</p>'
     +'<p class="um-desc">生效范围：<b>产品按灯</b>（销售额 / 利润 / 利润率 / 退款金额及其得分、总分、PHI、导出）、'
     +'AMZ 汇总表、报损透视台一～四模块、退款明细（金额卡与金额列、导出）。</p>'
     +(isAdm?'<p class="um-desc"><b>这个人是管理员，5 个字段全部可见且不可改。</b></p>':'')
@@ -8201,6 +8207,8 @@ let SB_SEC = !(typeof location!=='undefined' && String(location.protocol).indexO
 const SEC_TK = 'amz_sec_token', SEC_US = 'amz_sec_user';
 let SEC = { tok: '', user: null, pwd: '' };
 let SEC_TIMER = null;
+/* 本机缓存已渲染、但云端返回登录失效：顶部状态改作「重新登录」入口，避免点重试死循环 */
+let SEC_NEED_LOGIN = false;
 /* 用户主动勾选「清除全部历史数据」上传合规明细时置时间戳 —— 只在这 2 分钟内的那一次保存
    放行批量删除保护，其余情况一律按闸门拦截。 */
 let SEC_PURGE_OK = 0;
@@ -8404,6 +8412,7 @@ function secTip(txt,title){
 }
 function secBoot(){
   SB.on = true;
+  SEC_NEED_LOGIN = false;  /* 重新引导即解除「待重新登录」态 */
   BOOT_DIRTY = false;      /* 每次重新引导/手动同步都清掉「本机有改动」标记，保证云端最新能落地 */
   var app = document.getElementById('app');
   var tk = secToken();
@@ -8445,7 +8454,19 @@ function secBoot(){
   secRpc('amz_pull', { p_token: tk }).then(function (j) {
     clearInterval(tick);
     if (!j || !j.ok) {
-      if (painted) { BOOT_STALE = false; secTip('云端同步失败（' + ((j && j.msg) || '登录已失效') + '）· 当前显示本机缓存', '点击重试'); return; }
+      if (painted) {
+        BOOT_STALE = false;
+        var _em = String((j && j.msg) || '登录已失效');
+        /* token 过期 / 改过密码时，点「重试」仍用旧 token，必然再次失败。
+           登录失效要给真正的重新登录入口；secClear 只清 token/user，本机缓存数据保留。 */
+        if (/登录|失效|token|401|未授权/i.test(_em)) {
+          SEC_NEED_LOGIN = true;
+          secTip('登录已失效 · 点这里重新登录', '点击重新登录后会自动同步云端最新数据');
+        } else {
+          secTip('云端同步失败（' + _em.slice(0, 40) + '）· 当前显示本机缓存', '点击重试');
+        }
+        return;
+      }
       secClear(); sbLoginGate((j && j.msg) || '登录已失效，请重新登录'); return;
     }
     var cu2 = secUserCache();
@@ -23664,6 +23685,8 @@ try{
     document.addEventListener('click',function(e){
       var el=e.target&&e.target.closest?e.target.closest('#saveTip'):null;
       if(!el)return;
+      /* 登录态失效时点顶部状态不再徒劳重试，直接进登录框 */
+      if(SEC_NEED_LOGIN){secClear();WB.user=null;sbLoginGate('请重新登录以继续同步云端');return;}
       if(!WB.user){wbShowLogin('请先登录');return;}
       if(SB_SEC){secBoot();return;}
       wbPull({}).then(function(r){
