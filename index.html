@@ -13109,17 +13109,16 @@ function csFocusNet(){
   const res={ds:ds,hasSrc:Object.keys(src).length>0,main:{up:0,down:0,net:0,n:0},small:{up:0,down:0,net:0,n:0}};
   if(!ds||!res.hasSrc)return res;
   healthRowsFor(ds).forEach(function(r){
-    const base=src[healthKeyOf(r)];
-    if(!base)return;
-    const bStd=accSrcFbmStd(base.odr);                       /* 基线：按达标设置 FBM 阈值判定 */
-    if(bStd!=='达标'&&bStd!=='不达标')return;
-    const lv=stdLevel('fbmOdr',r.fbmOdr,r);                  /* 最新周：复用达标表判定 */
+    if(!src[healthKeyOf(r)])return;                         /* 只统计账号目标源里的账号 */
+    /* 口径（用户确认）：按本周实际值逐账号计分——达标 +1、不达标 −1。
+       旧实现用月初基线判状态变化（转好/转差），导致一直不达标的主站账号没减、
+       一直达标的小站账号没加。 */
+    const lv=stdLevel('fbmOdr',r.fbmOdr,r);
     const cStd=(lv==='ok')?'达标':((lv==='fail'||lv==='warn')?'不达标':'');
     if(!cStd)return;
     const t=(r.stdMain==='是')?res.main:res.small;
     t.n++;
-    if(bStd==='不达标'&&cStd==='达标')t.up++;                 /* 转好 +1 */
-    else if(bStd==='达标'&&cStd==='不达标')t.down++;          /* 转差 −1 */
+    if(cStd==='达标')t.up++;else t.down++;                   /* 达标 +1 / 不达标 −1 */
   });
   res.main.net=res.main.up-res.main.down;
   res.small.net=res.small.up-res.small.down;
@@ -14055,10 +14054,10 @@ function csNetRows(keyFn){
   if(!ds||!Object.keys(src).length)return [];
   healthRowsFor(ds).forEach(function(r){
     if(!csCoreRowPass(r))return;
-    const base=src[healthKeyOf(r)];
-    if(!base)return;
-    const bStd=accSrcFbmStd(base.odr);
-    if(bStd!=='达标'&&bStd!=='不达标')return;
+    if(!src[healthKeyOf(r)])return;                         /* 只统计账号目标源里的账号 */
+    /* 口径（用户确认）：按本周实际值逐账号计分——达标 +1、不达标 −1。
+       旧实现用月初基线判状态变化（转好/转差），导致一直不达标的主站账号没减、
+       一直达标的小站账号没加。 */
     const lv=stdLevel('fbmOdr',r.fbmOdr,r);
     const cStd=(lv==='ok')?'达标':((lv==='fail'||lv==='warn')?'不达标':'');
     if(!cStd)return;
@@ -14067,8 +14066,7 @@ function csNetRows(keyFn){
     const o=out[k]||(out[k]={name:k,main:netBlank(),small:netBlank()});
     const t=(r.stdMain==='是')?o.main:o.small;
     t.n++;
-    if(bStd==='不达标'&&cStd==='达标')t.up++;
-    else if(bStd==='达标'&&cStd==='不达标')t.down++;
+    if(cStd==='达标')t.up++;else t.down++;                   /* 达标 +1 / 不达标 −1 */
     t.net=t.up-t.down;
     out[k]=o;
   });
