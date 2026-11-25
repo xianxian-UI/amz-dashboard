@@ -23375,15 +23375,14 @@ function accSrcNum(v){
 }
 /* FBM订单缺陷率达标判定：复用达标设置里 fbmOdr 的方向(dir)与阈值(val，百分数) */
 function accSrcFbmStd(odr){
-  const n=Number(odr);
-  if(odr==null||odr===''||!isFinite(n))return '';
-  const m=((DATA.stdCfg||{}).metrics||{}).fbmOdr||{};
-  const dir=m.dir||'le';
-  const val=Number(m.val==null?1:m.val);
-  if(!isFinite(val))return '';
-  const pct=n*100;                           /* 数据存小数、阈值是百分数 → ×100 后比较 */
-  const ok=(dir==='ge')?(pct>=val):(pct<=val);
-  return ok?'达标':'不达标';
+  /* 基线 ODR 必须与最新周 stdLevel('fbmOdr') 用完全同一套口径：
+     旧实现 Number(odr) 遇到 "1.2%" 会变 NaN → 整行被跳过（该减/加的 1 没算），
+     且缺 warn / 0 值映射 / 率字段单位处理，与最新周判定不一致。
+     现统一：accSrcNum 兼容小数与带 % 两种存储，stdLevel 复用同一阈值/warn/单位。 */
+  const n=accSrcNum(odr);
+  if(!isFinite(n))return '';
+  const lv=stdLevel('fbmOdr',n,{});
+  return lv==='ok'?'达标':(lv?'不达标':'');
 }
 /* 当前 FBM 判定口径文案（跟随达标设置，便于用户核对） */
 function accSrcThrText(){
