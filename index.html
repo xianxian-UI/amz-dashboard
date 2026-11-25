@@ -13121,8 +13121,7 @@ function csFocusNet(){
     if(bStd==='不达标'&&cStd==='达标')t.up++;                 /* 转好 +1 */
     else if(bStd==='达标'&&cStd==='不达标')t.down++;          /* 转差 −1 */
   });
-  res.main.net=res.main.up-res.main.down;
-  res.small.net=res.small.up-res.small.down;
+  netApply(res);
   return res;
 }
 function csFocusPct(v){return (v==null||!isFinite(v))?'—':(Math.round(v*10000)/100).toFixed(2)+'%';}
@@ -14048,6 +14047,20 @@ function shopSection(){
    不达标→达标 计 +1、达标→不达标 计 −1，求和；主站点 / 小站点分开算。
    组长区用中心零点双向条形（与一、柱线图，二、横向条，三、环形区分）。 */
 function netBlank(){return {up:0,down:0,net:0,n:0};}
+/* 额外规则（用户指定）：净值 = 达标数 + 1 − 不达标数，即「达标项额外 +1」。
+   只在主站点 / 小站点该分支有参与统计的账号（n>0）时生效，空分支不凭空 +1。
+   显示的「达标 / 不达标」两个数字仍是真实计数，+1 只作用于净值（和由净值推出的扣分）。 */
+const NET_UP_BONUS=1;
+function netApply(x){
+  if(!x)return x;
+  const f=function(b){
+    if(!b)return;
+    b.net=((b.up||0)-(b.down||0))+((b.n||0)>0?NET_UP_BONUS:0);
+  };
+  f(x.main);f(x.small);
+  if(x.main&&x.small){x.total=x.main.net+x.small.net;}
+  return x;
+}
 function csNetRows(keyFn){
   const weeks=healthWeeks(),ds=weeks[0]||'';
   const src=DATA.accSrc||{};
@@ -14140,6 +14153,14 @@ function netSection(){
   const lds=csNetRows(function(r){return r.stdCsLeader;});
   const cats=csNetRows(function(r){return csCatOf(r.cs);});
   const all=csNetRows(function(){return '__ALL__';})[0]||null;
+  /* 额外 +1 只在「人」这一层算（主 / 小各算一处），组 / 组长 / 全体一律 = 成员净值之和，
+     否则明细相加会对不上汇总。 */
+  rows.forEach(netApply);
+  rows.sort(function(a,b){
+    if(b.total!==a.total)return b.total-a.total;
+    return a.name.localeCompare(b.name,'zh');
+  });
+  rows.forEach(function(x,i){x.rank=i+1;});
   /* 扣分在「人」这一层计算，组 / 组长 / 全体一律= 成员扣分之和，
      这样明细加起来才等于汇总（不能拿汇总净值反算，会跟明细对不上）。 */
   const penC={},ldOf={};
@@ -14148,6 +14169,21 @@ function netSection(){
     const c=String(r.cs==null?'':r.cs).trim(),g=String(r.stdCsLeader==null?'':r.stdCsLeader).trim();
     if(c&&g&&ldOf[c]==null)ldOf[c]=g;
   });
+  /* 组长 / 分类组 / 全体：净值 = 成员净值之和（含每人已加的 +1） */
+  const sumMembers=function(list){
+    let m=0,sm=0;
+    list.forEach(function(y){m+=y.main.net;sm+=y.small.net;});
+    return {m:m,s:sm};
+  };
+  lds.forEach(function(x){
+    const q=sumMembers(rows.filter(function(y){return ldOf[y.name]===x.name;}));
+    x.main.net=q.m;x.small.net=q.s;x.total=q.m+q.s;
+  });
+  cats.forEach(function(x){
+    const q=sumMembers(rows.filter(function(y){return csCatOf(y.name)===x.name;}));
+    x.main.net=q.m;x.small.net=q.s;x.total=q.m+q.s;
+  });
+  if(all){const q=sumMembers(rows);all.main.net=q.m;all.small.net=q.s;all.total=q.m+q.s;}
   const penAgg=function(list){
     let m=0,sm=0;
     list.forEach(function(x){const q=penC[x.name];if(q){m+=q.m;sm+=q.s;}});
@@ -14218,7 +14254,7 @@ function netSection(){
 
   const note=netNote
     ?'<div class="nt-note">口径：<b>基线</b> = 账号目标源（「账号管理」上传时记录的月初 ODR 值），按「达标设置③」FBM订单缺陷率阈值判定；'
-      +'<b>最新周</b> = 当前 AMZ达标表最新一周的判定。不达标→达标 计 <b>+1</b>，达标→不达标 计 <b>−1</b>，不变不计，求和即净值。'
+      +'<b>最新周</b> = 当前 AMZ达标表最新一周的判定。不达标→达标 计 <b>+1</b>，达标→不达标 计 <b>−1</b>，不变不计；另按额外规则，达标项再 <b>+1</b>（净值 = 达标数 + 1 − 不达标数）。'
       +'主站点 = 「达标设置①」勾选的主站站点；小站点 = 其余站点。条形向<b>右</b>为净增（绿），向<b>左</b>为净减（红），长度为相对最大值的比例。'
       +'<b>扣分</b>：净值 &lt; −1 才计罚，从 −2 起每多降 1 个净值，主站点扣 <b>3 分</b>、小站点扣 <b>1 分</b>（例：主站 −2 扣 3 分、−3 扣 6 分；小站 −2 扣 1 分、−3 扣 2 分）。总扣分 = 主站 + 小站。扣分按<b>每个客服</b>分别计算，分组 / 组长 / 汇总为其成员之和（所以明细相加等于汇总）。</div>'
     :'';
