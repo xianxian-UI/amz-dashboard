@@ -23411,7 +23411,10 @@ function usageView(){
 /* ===== 月度绩效数据（📈 模块设置 · 账号目标源旁边）=====
    模板：X月绩效数据.xlsx（Sheet1!A1:I1 九列表头）。
    口径（只写源码，不在界面展示）：
-     B–F = 客服关注区各表「达成率」= 最新周实际达标率 ÷ 月目标值 × 100（与每周三客服群播报同一口径）；
+     B–E = 客服关注区各表「最新周实际达标率」（不是达成率，不除以月目标）：
+           健康率 = 健康账号 ÷ 该周主站账号；ODR主/小 = 达标账号 ÷ 该周对应站点账号；
+           店铺评分 = 达标账号 ÷ 该周 UK/DE/FR 站点账号。
+     F   = 月退款率实际值 = 月窗口退款额 ÷ 销售额 × 100（不是达成率）；
      G/H = 净值模块 per 客服主站点/小站点净值（含「达标额外 +1」修正，见 netApply）；
      I   = 扣分 = netPenalty(主净值, 小净值).total（主 −2 起每个 3 分、小每个 1 分）。
    月份：同步/导出/推送时一律取「上个月」（12/1 → 11月），见 perfPrevMonth()。 */
@@ -23420,14 +23423,22 @@ function perfPrevMonth(){
   if(m===0){y--;m=12;}
   return {year:y,month:m,ym:y+'-'+String(m).padStart(2,'0'),label:m+'月'};
 }
-function perfPct(v){return (v==null||!isFinite(Number(v)))?'':Math.round(Number(v)*100)/100;}
-function perfRefundAch(){
-  const out={};let rows=[];
-  try{rows=baoAcctRows('m')||[];}catch(e){return out;}
+/* 存储精度：B–E 存实际达标率小数，F 存实际退款率百分数；统一保留 4 位小数 = 百分比 2 位精度，
+   避免 91.09% 这类值被提前截成 91%。显示/导出统一 toFixed(2) 保留两位小数。 */
+function perfPct(v){return (v==null||!isFinite(Number(v)))?'':Math.round(Number(v)*10000)/10000;}
+/* 百分比显示口径：B–E 存的是实际达标率小数（0.8309 = 83.09%），F 存的是实际退款率百分数（5.66 = 5.66%）。
+   B–F 全部是实际值，不是达成率（达成率 = 实际值 ÷ 月目标，本表不体现）。 */
+function perfShow(v,alreadyPct){
+  if(v==null||v===''||!isFinite(Number(v)))return '—';
+  const n=alreadyPct?Number(v):Number(v)*100;
+  return n.toFixed(2)+'%';
+}
+/* 月退款率实际值 = 该客服月窗口退款额 ÷ 销售额 × 100（不是达成率） */
+function perfRefundVal(rows){
+  const out={};rows=rows||baoAcctRows('m')||[];
   Array.from(new Set(rows.map(function(r){return r.cs;}).filter(Boolean))).forEach(function(nm){
-    const st=baoStatOf(rows.filter(function(r){return r.cs===nm;}),nm),tg=baoTgtOf('cs',nm);
-    const rp=(st.rate==null)?null:st.rate*100;
-    out[nm]=(tg.t!=null&&rp!=null&&rp>0)?(tg.t/rp*100):null;
+    const st=baoStatOf(rows.filter(function(r){return r.cs===nm;}),nm);
+    out[nm]=(st.rate==null)?null:st.rate*100;
   });
   return out;
 }
@@ -23435,22 +23446,81 @@ function perfCollectRows(){
   const weeks=csWeeks(),ds=weeks[0]||'',pds=weeks[1]||'';
   const byName=function(list){const o={};list.forEach(function(x){o[x.name]=x;});return o;};
   const css=csLsAll(DATA.stdCfg||{});
-  const h=byName(csCoreList(ds,pds,function(r){return r.cs;},function(nm){return csTgtGet(nm,'mainHealth');},weeks));
-  const om=byName(csCoreList(ds,pds,function(r){return r.cs;},function(nm){return odrTgtGet('cs',nm,'main');},weeks,{scope:'main',metric:'odr'}));
-  const os=byName(csCoreList(ds,pds,function(r){return r.cs;},function(nm){return odrTgtGet('cs',nm,'small');},weeks,{scope:'small',metric:'odr'}));
+  const optMain={scope:'main',metric:'odr'},optSmall={scope:'small',metric:'odr'};
   const sites=(typeof STD_EU3!=='undefined'&&STD_EU3&&STD_EU3.length)?STD_EU3:['UK','DE','FR'];
-  const sh=byName(csCoreList(ds,pds,function(r){return r.cs;},function(nm){return shopTgtGet('cs',nm);},weeks,{metric:'shop',sites:sites}));
-  const rf=perfRefundAch();
+  const optShop={metric:'shop',sites:sites};
+  const h=byName(csCoreList(ds,pds,function(r){return r.cs;},function(nm){return csTgtGet(nm,'mainHealth');},weeks));
+  const om=byName(csCoreList(ds,pds,function(r){return r.cs;},function(nm){return odrTgtGet('cs',nm,'main');},weeks,optMain));
+  const os=byName(csCoreList(ds,pds,function(r){return r.cs;},function(nm){return odrTgtGet('cs',nm,'small');},weeks,optSmall));
+  const sh=byName(csCoreList(ds,pds,function(r){return r.cs;},function(nm){return shopTgtGet('cs',nm);},weeks,optShop));
+  const baoRows=baoAcctRows('m')||[],rf=perfRefundVal(baoRows);
   const nr={};
   (csNetRows(function(r){return r.cs;})||[]).forEach(function(x){const y=netApply(x);nr[y.name]=y;});
-  const g=function(o,k){return (o&&o[k]&&o[k].ach!=null)?o[k].ach:null;};
-  return css.map(function(nm){
+  /* 取最新周实际达标率 rate，不取 ach（达成率） */
+  const g=function(o,k){return (o&&o[k]&&o[k].rate!=null)?o[k].rate:null;};
+  const rows=css.map(function(nm){
     const mn=(nr[nm]&&nr[nm].main)||{net:0},sn=(nr[nm]&&nr[nm].small)||{net:0};
     const pen=netPenalty(mn.net||0,sn.net||0);
     return {cs:nm,health:perfPct(g(h,nm)),odrMain:perfPct(g(om,nm)),odrSmall:perfPct(g(os,nm)),
       shop:perfPct(g(sh,nm)),refund:perfPct(rf[nm]),
       netMain:(mn.net||0),netSmall:(sn.net||0),penalty:pen.total};
   });
+
+  /* 汇总 / 组长行：与「客服关注区」完全一致——全体与组长都是账号去重后的实际达标率合计口径，
+     不是把客服实际值做平均；净值 = 成员已修正净值之和；扣分 = 成员扣分之和（见 netSection）。 */
+  const allOf=function(list){return (byName(list)||{})['__ALL__']||null;};
+  const hAll=allOf(csCoreList(ds,pds,function(){return '__ALL__';},function(){return csFocusTgtTotal('mainHealth');},weeks));
+  const omAll=allOf(csCoreList(ds,pds,function(){return '__ALL__';},function(){return odrTgtGet('cs','__ALL__','main');},weeks,optMain));
+  const osAll=allOf(csCoreList(ds,pds,function(){return '__ALL__';},function(){return odrTgtGet('cs','__ALL__','small');},weeks,optSmall));
+  const shAll=allOf(csCoreList(ds,pds,function(){return '__ALL__';},function(){return shopTgtGet('cs','__ALL__');},weeks,optShop));
+  const hLd=byName(csCoreList(ds,pds,function(r){return r.stdCsLeader;},csLeaderTgt,weeks));
+  const omLd=byName(csCoreList(ds,pds,function(r){return r.stdCsLeader;},function(nm){return odrTgtGet('leader',nm,'main');},weeks,optMain));
+  const osLd=byName(csCoreList(ds,pds,function(r){return r.stdCsLeader;},function(nm){return odrTgtGet('leader',nm,'small');},weeks,optSmall));
+  const shLd=byName(csCoreList(ds,pds,function(r){return r.stdCsLeader;},function(nm){return shopTgtGet('leader',nm);},weeks,optShop));
+  const refundOf=function(list){
+    const st=baoStatOf(list,'');   /* 汇总/组长退款率 = 该组退款额合计 ÷ 销售额合计（实际值） */
+    return (st.rate==null)?null:st.rate*100;
+  };
+  const refundAll=refundOf(baoRows);
+  /* 客服 → 组长：账号上的客服组长优先，回退到达标设置②客服→组长对照表 */
+  const ldOf={};
+  (DATA.accounts||[]).forEach(function(a){
+    const c=String(a.cs==null?'':a.cs).trim(),l=String(a.csLeader==null?'':a.csLeader).trim();
+    if(c&&l&&!ldOf[c])ldOf[c]=l;
+  });
+  Object.keys((DATA.stdCfg||{}).csMap||{}).forEach(function(c){
+    const l=String(((DATA.stdCfg||{}).csMap||{})[c]==null?'':((DATA.stdCfg||{}).csMap||{})[c]).trim();
+    if(c&&l&&!ldOf[c])ldOf[c]=l;
+  });
+  if(ds){try{healthRowsFor(ds).forEach(function(r){
+    const c=String(r.cs==null?'':r.cs).trim(),l=String(r.stdCsLeader==null?'':r.stdCsLeader).trim();
+    if(c&&l&&!ldOf[c])ldOf[c]=l;
+  });}catch(e){}}
+  const netOf=function(list){
+    let m=0,sm=0,p=0;
+    list.forEach(function(r){
+      const mn=(nr[r.cs]&&nr[r.cs].main)||{net:0},sn=(nr[r.cs]&&nr[r.cs].small)||{net:0};
+      m+=mn.net||0;sm+=sn.net||0;p+=netPenalty(mn.net||0,sn.net||0).total||0;
+    });
+    return {m:m,s:sm,p:p};
+  };
+  const mkRow=function(name,kind,src){
+    return {cs:name,kind:kind,
+      health:perfPct(src.h&&src.h.rate!=null?src.h.rate:null),
+      odrMain:perfPct(src.om&&src.om.rate!=null?src.om.rate:null),
+      odrSmall:perfPct(src.os&&src.os.rate!=null?src.os.rate:null),
+      shop:perfPct(src.sh&&src.sh.rate!=null?src.sh.rate:null),
+      refund:perfPct(src.refund),
+      netMain:src.net.m,netSmall:src.net.s,penalty:src.net.p};
+  };
+  rows.push(mkRow('汇总','sum',{h:hAll,om:omAll,os:osAll,sh:shAll,refund:refundAll,net:netOf(rows)}));
+  tgtLeaderList().forEach(function(g){
+    const mem=rows.filter(function(r){return !r.kind&&ldOf[r.cs]===g;});
+    if(!mem.length)return;
+    rows.push(mkRow('组长｜'+g,'leader',{h:hLd[g],om:omLd[g],os:osLd[g],sh:shLd[g],
+      refund:refundOf(baoRows.filter(function(r){return r.ld===g;})),net:netOf(mem)}));
+  });
+  return rows;
 }
 function perfSyncNow(manual){
   const p=perfPrevMonth();
@@ -23459,13 +23529,15 @@ function perfSyncNow(manual){
   DATA.monthlyPerf.rows=perfCollectRows();
   DATA.monthlyPerf.syncedAt=new Date().toISOString().slice(0,19).replace('T',' ');
   save();render();
-  if(manual!==false)alert('已同步「'+p.label+'绩效数据」：'+DATA.monthlyPerf.rows.length+' 位客服。');
+  const n=(DATA.monthlyPerf.rows||[]).filter(function(r){return !r.kind;}).length;
+  if(manual!==false)alert('已同步「'+p.label+'绩效数据」：'+n+' 位客服 + 汇总/组长行。');
 }
 function perfAoa(){
   const d=DATA.monthlyPerf||{};
   return [['客服','核心账号健康率','ODR 达标率（主账号）','ODR 达标率（小账号）','店铺评分达标率（UK/DE/FR）','月退款率','主站点净值','小站点净值','扣分']]
     .concat((d.rows||[]).map(function(r){
-      return [r.cs,r.health,r.odrMain,r.odrSmall,r.shop,r.refund,r.netMain,r.netSmall,r.penalty];
+      return [r.cs,perfShow(r.health),perfShow(r.odrMain),perfShow(r.odrSmall),perfShow(r.shop),perfShow(r.refund,true),
+        r.netMain,r.netSmall,r.penalty];
     }));
 }
 function perfDownload(){
@@ -23474,7 +23546,7 @@ function perfDownload(){
   const aoa=perfAoa();
   if(window.XLSX){
     const ws=XLSX.utils.aoa_to_sheet(aoa);
-    ws['!cols']=[{wch:14},{wch:16},{wch:20},{wch:20},{wch:26},{wch:12},{wch:12},{wch:12},{wch:8}];
+    ws['!cols']=[{wch:16},{wch:16},{wch:20},{wch:20},{wch:26},{wch:12},{wch:12},{wch:12},{wch:8}];
     const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'Sheet1');
     const out=XLSX.write(wb,{bookType:'xlsx',type:'array'});
     downloadBlob(new Blob([out],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'}),p.label+'绩效数据.xlsx');
@@ -23508,16 +23580,19 @@ function monthlyPerfView(){
   if(!rows.length){
     body+='<div class="hk-empty">暂无月度绩效数据。点「立即同步」从「客服关注区」取当前字段。</div>';
   }else{
+    const v=function(x){return (x==null||x==='')?'—':esc(String(x));};
+    const pv=function(x,already){return (x==null||x==='')?'—':esc(perfShow(x,already));};
     const trs=rows.map(function(r){
-      const v=function(x){return (x==null||x==='')?'—':esc(String(x));};
-      return '<tr><td>'+v(r.cs)+'</td><td>'+v(r.health)+'</td><td>'+v(r.odrMain)+'</td><td>'+v(r.odrSmall)
-        +'</td><td>'+v(r.shop)+'</td><td>'+v(r.refund)+'</td><td>'+v(r.netMain)+'</td><td>'+v(r.netSmall)
+      const st=r.kind==='sum'?' style="background:#eef3f8;font-weight:600"':(r.kind==='leader'?' style="background:#f7f9fc"':'');
+      return '<tr'+st+'><td>'+v(r.cs)+'</td><td>'+pv(r.health)+'</td><td>'+pv(r.odrMain)+'</td><td>'+pv(r.odrSmall)
+        +'</td><td>'+pv(r.shop)+'</td><td>'+pv(r.refund,true)+'</td><td>'+v(r.netMain)+'</td><td>'+v(r.netSmall)
         +'</td><td>'+v(r.penalty)+'</td></tr>';
     }).join('');
     body+='<table class="cfg-table tgt-tbl"><thead><tr><th>客服</th><th>核心账号健康率</th><th>ODR 达标率（主账号）</th><th>ODR 达标率（小账号）</th><th>店铺评分达标率（UK/DE/FR）</th><th>月退款率</th><th>主站点净值</th><th>小站点净值</th><th>扣分</th></tr></thead><tbody>'+trs+'</tbody></table>';
   }
   return '<div class="panel">'+cfgTabBar()+body+'</div>';
 }
+
 
 /* ===== 账号目标源（📁 账号目标源）：由「账号管理」上传时自动同步 =====
    - 账号管理上传的文件若含 ODR / 评分 / 店铺评分 列 → 按账号简称同步到 DATA.accSrc；不含则完全不变
