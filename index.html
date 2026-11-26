@@ -23569,7 +23569,7 @@ function perfSendPrep(){
   const txt='请查收'+p.label+'绩效数据'+(d.url?'\n下载链接：'+d.url:'');
   try{if(navigator.clipboard&&navigator.clipboard.writeText)navigator.clipboard.writeText(txt);}catch(e){}
   render();
-  alert('表格已下载，推送文案已复制：\n'+txt+'\n\n定时推送：每月 1 日 18:30 自动发群；也可让 WorkBuddy「手动传送绩效数据」。');
+  alert('表格已下载，推送文案已复制：\n'+txt+'\n\n定时推送：每月 1 日 14:00 自动发群；也可让 WorkBuddy「手动传送绩效数据」。');
 }
 function monthlyPerfView(){
   const p=perfPrevMonth(),d=DATA.monthlyPerf||{},rows=d.rows||[];
