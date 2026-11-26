@@ -1807,6 +1807,9 @@
      .tgt-tbl thead th:first-child{left} —— 单类名选择器会被后面的规则覆盖 */
   .cfg-table.accsrc-tbl th,.cfg-table.accsrc-tbl td,
   .cfg-table.accsrc-tbl thead th,.cfg-table.accsrc-tbl thead th:first-child{text-align:center;white-space:nowrap}
+  /* 月度绩效数据表：表头与全部单元格居中（需压过 .tgt-tbl thead th{right} 与第一列 {left}） */
+  .cfg-table.perf-tbl th,.cfg-table.perf-tbl td,
+  .cfg-table.perf-tbl thead th,.cfg-table.perf-tbl thead th:first-child{text-align:center;white-space:nowrap}
   .tgt-tot td{background:#f7f8fc}
   .tgt-tot .tgt-in{font-weight:400;color:#4a4f63;background:#fbfbfe}
   .tgt-tot .tgt-in.manual{font-weight:700;color:#3a3550;background:#fff}
@@ -23588,7 +23591,7 @@ function monthlyPerfView(){
         +'</td><td>'+pv(r.shop)+'</td><td>'+pv(r.refund,true)+'</td><td>'+v(r.netMain)+'</td><td>'+v(r.netSmall)
         +'</td><td>'+v(r.penalty)+'</td></tr>';
     }).join('');
-    body+='<table class="cfg-table tgt-tbl"><thead><tr><th>客服</th><th>核心账号健康率</th><th>ODR 达标率（主账号）</th><th>ODR 达标率（小账号）</th><th>店铺评分达标率（UK/DE/FR）</th><th>月退款率</th><th>主站点净值</th><th>小站点净值</th><th>扣分</th></tr></thead><tbody>'+trs+'</tbody></table>';
+    body+='<table class="cfg-table tgt-tbl perf-tbl"><thead><tr><th>客服</th><th>核心账号健康率</th><th>ODR 达标率（主账号）</th><th>ODR 达标率（小账号）</th><th>店铺评分达标率（UK/DE/FR）</th><th>月退款率</th><th>主站点净值</th><th>小站点净值</th><th>扣分</th></tr></thead><tbody>'+trs+'</tbody></table>';
   }
   return '<div class="panel">'+cfgTabBar()+body+'</div>';
 }
